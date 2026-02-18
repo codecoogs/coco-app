@@ -14,9 +14,11 @@ export interface Position {
   is_admin: boolean;
 }
 
-/** Profile row returned from user_profile view (or equivalent join). */
+/** Profile row returned from user_profile view (joins user_positions → positions → roles). */
 export interface UserProfile {
   positionTitle: string;
+  /** Role name from public.roles (positions.role_id → roles.id). */
+  roleName: string;
   is_admin: boolean;
   permissions: string[];
 }
@@ -31,13 +33,13 @@ export interface EnrichedUser {
   profile: UserProfile | null;
 }
 
-/** Team portal: only these titles or is_admin may access. */
-export const TEAM_ALLOWED_TITLES = ["Officer", "Executive", "Admin"] as const;
+/** Team portal: only these role names (from public.roles) or positions.is_admin may access. */
+export const TEAM_ALLOWED_ROLES = ["Officer", "Executive", "Admin"] as const;
 
 export function isTeamAllowed(profile: UserProfile | null): boolean {
   if (!profile) return false;
   if (profile.is_admin) return true;
-  return TEAM_ALLOWED_TITLES.some(
-    (t) => t.toLowerCase() === profile.positionTitle.toLowerCase()
+  return TEAM_ALLOWED_ROLES.some(
+    (r) => r.toLowerCase() === (profile.roleName ?? "").toLowerCase()
   );
 }
