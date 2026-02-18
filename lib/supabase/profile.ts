@@ -4,16 +4,17 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 /**
  * Fetches the current user's position title, role name (from roles), is_admin, and permissions in a single request.
  * Uses the `user_profile` view; see lib/supabase/user_profile_view.sql.
+ * Queries by auth_id (Supabase Auth user id); the view joins through public.users so roles are keyed by app user.id.
  * Team access is determined by roles.name (Officer/Executive/Admin) or positions.is_admin.
  */
 export async function fetchUserProfile(
   supabase: SupabaseClient,
-  userId: string
+  authUserId: string
 ): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from("user_profile")
     .select("positionTitle, role_name, is_admin, permissions")
-    .eq("user_id", userId)
+    .eq("auth_id", authUserId)
     .limit(1)
     .maybeSingle();
 
