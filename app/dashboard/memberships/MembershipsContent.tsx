@@ -107,10 +107,10 @@ export function MembershipsContent({ users }: Props) {
             setSearch(e.target.value);
             setPage(1);
           }}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+          className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
         />
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
               checked={activeOnly}
@@ -118,11 +118,11 @@ export function MembershipsContent({ users }: Props) {
                 setActiveOnly(e.target.checked);
                 setPage(1);
               }}
-              className="rounded border-slate-300"
+              className="rounded border-border"
             />
             Active only
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
               checked={paidOnly}
@@ -130,7 +130,7 @@ export function MembershipsContent({ users }: Props) {
                 setPaidOnly(e.target.checked);
                 setPage(1);
               }}
-              className="rounded border-slate-300"
+              className="rounded border-border"
             />
             Paid only
           </label>
@@ -140,7 +140,7 @@ export function MembershipsContent({ users }: Props) {
               setMembershipFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+            className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
           >
             <option value="">All types</option>
             {membershipTypes.map((t) => (
@@ -150,7 +150,7 @@ export function MembershipsContent({ users }: Props) {
             ))}
           </select>
           <div className="flex items-center gap-1">
-            <span className="text-sm text-slate-600 dark:text-zinc-300">Sort:</span>
+            <span className="text-sm text-muted-foreground">Sort:</span>
             <select
               value={`${sortKey}-${sortOrder}`}
               onChange={(e) => {
@@ -159,7 +159,7 @@ export function MembershipsContent({ users }: Props) {
                 setSortOrder(o);
                 setPage(1);
               }}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+              className="rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground"
             >
               <option value="first_name-asc">First name A–Z</option>
               <option value="first_name-desc">First name Z–A</option>
@@ -170,69 +170,66 @@ export function MembershipsContent({ users }: Props) {
         </div>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
-        <div className="border-b border-slate-200 px-4 py-4 dark:border-zinc-600 sm:px-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+      <section className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="border-b border-border px-4 py-4 sm:px-6">
+          <h2 className="text-lg font-semibold text-card-foreground">
             All users (payment info)
           </h2>
-          <p className="mt-0.5 text-sm text-slate-500 dark:text-zinc-400">
+          <p className="mt-0.5 text-sm text-muted-foreground">
             {filteredAndSorted.length} of {users.length} member
             {users.length !== 1 ? "s" : ""}
           </p>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 dark:divide-zinc-600">
+          <table className="min-w-full divide-y divide-border">
             <thead>
               <tr>
-                <th className="bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:bg-zinc-700/50 dark:text-zinc-300 sm:px-6">
+                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                   Name
                 </th>
-                <th className="bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:bg-zinc-700/50 dark:text-zinc-300 sm:px-6">
+                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                   Email
                 </th>
-                <th className="bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:bg-zinc-700/50 dark:text-zinc-300 sm:px-6">
+                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                   Major
                 </th>
-                <th className="bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:bg-zinc-700/50 dark:text-zinc-300 sm:px-6">
+                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                   Membership
                 </th>
-                <th className="bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:bg-zinc-700/50 dark:text-zinc-300 sm:px-6">
+                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                   Paid
                 </th>
-                <th className="bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:bg-zinc-700/50 dark:text-zinc-300 sm:px-6">
+                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                   Next due
                 </th>
-                <th className="bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:bg-zinc-700/50 dark:text-zinc-300 sm:px-6">
+                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                   Last payment
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 bg-white dark:divide-zinc-600 dark:bg-zinc-800">
+            <tbody className="divide-y divide-border bg-card">
               {pageUsers.length === 0 ? (
                 <tr>
                   <td
                     colSpan={7}
-                    className="px-4 py-8 text-center text-slate-500 dark:text-zinc-400 sm:px-6"
+                    className="px-4 py-8 text-center text-muted-foreground sm:px-6"
                   >
                     No members match the current filters.
                   </td>
                 </tr>
               ) : (
                 pageUsers.map((u) => (
-                  <tr
-                    key={u.id}
-                    className="hover:bg-slate-50 dark:hover:bg-zinc-700/50"
-                  >
-                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-slate-900 dark:text-white sm:px-6">
+                  <tr key={u.id} className="hover:bg-muted">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-card-foreground sm:px-6">
                       {fullName(u)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-zinc-300 sm:px-6">
+                    <td className="px-4 py-3 text-sm text-muted-foreground sm:px-6">
                       {u.email || "—"}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600 dark:text-zinc-300 sm:px-6">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground sm:px-6">
                       {u.major || "—"}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600 dark:text-zinc-300 sm:px-6">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground sm:px-6">
                       {u.membership}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6">
@@ -240,16 +237,16 @@ export function MembershipsContent({ users }: Props) {
                         className={
                           u.paid
                             ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-slate-500 dark:text-zinc-400"
+                            : "text-muted-foreground"
                         }
                       >
                         {u.paid ? "Yes" : "No"}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600 dark:text-zinc-300 sm:px-6">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground sm:px-6">
                       {formatDate(u.next_due_date)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600 dark:text-zinc-300 sm:px-6">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground sm:px-6">
                       {formatDate(u.last_payment_date)}
                     </td>
                   </tr>
@@ -259,8 +256,8 @@ export function MembershipsContent({ users }: Props) {
           </table>
         </div>
         {filteredAndSorted.length > PAGE_SIZE && (
-          <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 dark:border-zinc-600 sm:px-6">
-            <p className="text-sm text-slate-600 dark:text-zinc-400">
+          <div className="flex items-center justify-between border-t border-border px-4 py-3 sm:px-6">
+            <p className="text-sm text-muted-foreground">
               Page {page} of {totalPages}
               <span className="ml-2">
                 ({start + 1}–{Math.min(start + PAGE_SIZE, filteredAndSorted.length)} of{" "}
@@ -272,7 +269,7 @@ export function MembershipsContent({ users }: Props) {
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
               >
                 Previous
               </button>
@@ -280,7 +277,7 @@ export function MembershipsContent({ users }: Props) {
                 type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
               >
                 Next
               </button>

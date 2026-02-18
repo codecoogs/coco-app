@@ -184,19 +184,19 @@ export function DashboardSidebar() {
 
   return (
     <aside
-      className={`flex flex-col border-r border-zinc-200 bg-white transition-[width] duration-200 dark:border-zinc-700 dark:bg-zinc-900 ${
+      className={`sticky top-0 flex h-screen flex-col self-start border-r border-border bg-card transition-[width] duration-200 ${
         collapsed ? "w-18" : "w-56"
       }`}
     >
       <div
-        className={`flex h-14 items-center border-b border-zinc-200 px-3 dark:border-zinc-700 ${
+        className={`flex h-14 shrink-0 items-center border-b border-border px-3 ${
           collapsed ? "justify-center" : "justify-between"
         }`}
       >
         {!collapsed && (
           <Link
             href="/dashboard"
-            className="font-bold text-zinc-900 no-underline dark:text-zinc-100"
+            className="font-bold text-card-foreground no-underline"
           >
             Coco
           </Link>
@@ -204,7 +204,7 @@ export function DashboardSidebar() {
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           <svg
@@ -225,7 +225,10 @@ export function DashboardSidebar() {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-0.5 p-2" aria-label="Dashboard navigation">
+      <nav
+        className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2"
+        aria-label="Dashboard navigation"
+      >
         {navItems.map(({ href, label, icon }) => {
           const isActive = pathname === href;
           return (
@@ -234,8 +237,8 @@ export function DashboardSidebar() {
               href={href}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                 isActive
-                  ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  ? "bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-400"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               } ${collapsed ? "justify-center px-2" : ""}`}
               title={collapsed ? label : undefined}
             >
@@ -247,11 +250,11 @@ export function DashboardSidebar() {
       </nav>
 
       {themeContext && (
-        <div className="border-t border-zinc-200 p-2 dark:border-zinc-700">
+        <div className="shrink-0 border-t border-border p-2">
           <button
             type="button"
             onClick={() => themeContext.cycleTheme()}
-            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 ${
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground ${
               collapsed ? "justify-center px-2" : ""
             }`}
             title={`Theme: ${themeContext.theme} (click to cycle)`}

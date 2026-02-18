@@ -32,10 +32,10 @@ export default async function MembershipsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-foreground">
           Member memberships
         </h1>
-        <p className="mt-1 text-slate-600 dark:text-zinc-300">
+        <p className="mt-1 text-muted-foreground">
           View all users with payment and due date info. Filter by active
           membership, paid status, and membership type. For officers and admins.
         </p>

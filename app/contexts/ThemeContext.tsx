@@ -93,12 +93,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const cycleTheme = useCallback(() => {
     const next: Theme =
       theme === "system" ? "light" : theme === "light" ? "dark" : "system";
-    setThemeState(next);
-    persistTheme(next);
-    const resolved = next === "system" ? getSystemTheme() : next;
-    setResolvedTheme(resolved);
-    applyResolvedTheme(resolved);
-  }, [theme]);
+    setTheme(next);
+  }, [theme, setTheme]);
 
   // Hydrate from cookie/storage and listen to system preference
   useEffect(() => {

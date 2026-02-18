@@ -18,10 +18,10 @@ export default async function PointInformationPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-foreground">
           Point information
         </h1>
-        <p className="mt-1 text-slate-600 dark:text-zinc-300">
+        <p className="mt-1 text-muted-foreground">
           Point values by category. Use this to see how many points each
           activity is worth.
         </p>
@@ -32,53 +32,50 @@ export default async function PointInformationPage() {
           {error}
         </div>
       ) : (
-        <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
-          <div className="border-b border-slate-200 px-4 py-4 dark:border-zinc-600 sm:px-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+        <section className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-4 py-4 sm:px-6">
+            <h2 className="text-lg font-semibold text-card-foreground">
               Point categories
             </h2>
-            <p className="mt-0.5 text-sm text-slate-500 dark:text-zinc-400">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {categories.length} categor{categories.length === 1 ? "y" : "ies"}
             </p>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 dark:divide-zinc-600">
+            <table className="min-w-full divide-y divide-border">
               <thead>
                 <tr>
-                  <th className="bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 sm:px-6 dark:bg-zinc-700/50 dark:text-zinc-300">
+                  <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                     Category
                   </th>
-                  <th className="bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 sm:px-6 dark:bg-zinc-700/50 dark:text-zinc-300">
+                  <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                     Description
                   </th>
-                  <th className="bg-slate-50 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600 sm:px-6 dark:bg-zinc-700/50 dark:text-zinc-300">
+                  <th className="bg-muted px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                     Points
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 bg-white dark:divide-zinc-600 dark:bg-zinc-800">
+              <tbody className="divide-y divide-border bg-card">
                 {categories.length === 0 ? (
                   <tr>
                     <td
                       colSpan={3}
-                      className="px-4 py-8 text-center text-slate-500 dark:text-zinc-400 sm:px-6"
+                      className="px-4 py-8 text-center text-muted-foreground sm:px-6"
                     >
                       No categories found.
                     </td>
                   </tr>
                 ) : (
                   categories.map((cat) => (
-                    <tr
-                      key={cat.id}
-                      className="hover:bg-slate-50 dark:hover:bg-zinc-700/50"
-                    >
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white sm:px-6">
+                    <tr key={cat.id} className="hover:bg-muted">
+                      <td className="px-4 py-3 text-sm font-medium text-card-foreground sm:px-6">
                         {cat.name}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-zinc-300 sm:px-6">
+                      <td className="px-4 py-3 text-sm text-muted-foreground sm:px-6">
                         {cat.description || "—"}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-white sm:px-6">
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-card-foreground sm:px-6">
                         {cat.points_value} pts
                       </td>
                     </tr>

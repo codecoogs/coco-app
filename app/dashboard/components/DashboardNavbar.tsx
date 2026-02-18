@@ -23,11 +23,10 @@ export function DashboardNavbar() {
   if (!user) return null;
   if (loading) {
     return (
-      <header className="sticky top-0 z-10 flex h-14 items-center justify-end border-b border-zinc-200 bg-white px-4 sm:px-6 dark:border-zinc-700 dark:bg-zinc-900">
+      <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
+        <div className="min-w-0" />
         <nav className="flex items-center gap-4">
-          <span className="text-sm text-zinc-400 dark:text-zinc-500">
-            Loading…
-          </span>
+          <span className="text-sm text-muted-foreground">Loading…</span>
           <form action="/auth/signout" method="POST">
             <button
               type="submit"
@@ -48,21 +47,21 @@ export function DashboardNavbar() {
   );
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-end border-b border-zinc-200 bg-white px-4 sm:px-6 dark:border-zinc-700 dark:bg-zinc-900">
-      <nav className="flex items-center gap-3 sm:gap-4">
-        <div className="flex flex-col items-end sm:flex-row sm:items-center sm:gap-2">
-          <span className="text-sm text-zinc-600 dark:text-zinc-300">
-            {showWelcomeBack ? "Welcome back" : "Welcome"}, {displayName}!
+    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
+      <div className="flex min-w-0 items-center">
+        {profile?.positionTitle && (
+          <span
+            className="rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+            style={{ backgroundColor: POSITION_BADGE_COLOR }}
+          >
+            {profile.positionTitle}
           </span>
-          {profile?.positionTitle && (
-            <span
-              className="rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
-              style={{ backgroundColor: POSITION_BADGE_COLOR }}
-            >
-              {profile.positionTitle}
-            </span>
-          )}
-        </div>
+        )}
+      </div>
+      <nav className="flex items-center gap-3 sm:gap-4">
+        <span className="text-sm text-foreground">
+          {showWelcomeBack ? "Welcome back" : "Welcome"}, {displayName}!
+        </span>
         <form action="/auth/signout" method="POST">
           <button
             type="submit"
