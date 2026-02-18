@@ -2,9 +2,14 @@
 
 import { PasswordInput } from "@/app/components/ui/PasswordInput";
 import { createClient } from "@/lib/supabase/client";
+import { fetchUserProfile } from "@/lib/supabase/profile";
+import { isTeamAllowed } from "@/lib/types/rbac";
 import { validateEmail, validatePassword } from "@/lib/validation";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+const TEAM_ACCESS_ERROR =
+  "Invalid Credentials: This portal is reserved for Officers, Executives, and Admins.";
 
 type TeamSignInModalProps = {
   open: boolean;
@@ -43,15 +48,31 @@ export function TeamSignInModal({
     }
     setLoading(true);
     setMessage(null);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       setMessage({ type: "error", text: error.message });
       return;
     }
+    // Team portal gate: only Officer, Executive, Admin titles or is_admin may proceed
+    const profile = data.user?.id
+      ? await fetchUserProfile(supabase, data.user.id)
+      : null;
+    if (!isTeamAllowed(profile)) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      setMessage({ type: "error", text: TEAM_ACCESS_ERROR });
+      setTimeout(() => {
+        onClose();
+        router.push("/login");
+        router.refresh();
+      }, 3000);
+      return;
+    }
+    setLoading(false);
     onClose();
     router.push(next);
     router.refresh();
