@@ -23,7 +23,7 @@ function HomePageContent() {
 
   return (
     <>
-      <div className="flex min-h-screen flex-col bg-zinc-950 lg:flex-row">
+      <div className="flex min-h-screen flex-col bg-zinc-900 lg:flex-row">
         <div className="relative flex min-h-[45vh] flex-col lg:min-h-screen lg:w-[50%]">
           <div className="absolute left-6 top-6 lg:left-8 lg:top-8">
             <Link href="/" className="block" aria-label="Coco home">
@@ -51,7 +51,7 @@ function HomePageContent() {
           </div>
         </div>
 
-        <div className="relative flex min-h-[55vh] flex-1 flex-col border-zinc-800/60 bg-zinc-900 lg:min-h-screen lg:border-l">
+        <div className="relative flex min-h-[55vh] flex-1 flex-col border-zinc-700/60 bg-zinc-800 lg:min-h-screen lg:border-l">
           <div className="flex flex-1 flex-col justify-center px-8 py-12 sm:px-12 lg:px-16">
             <div className="absolute right-6 top-6 lg:right-8 lg:top-8">
               <button
@@ -67,7 +67,7 @@ function HomePageContent() {
               <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                 Welcome to Coco
               </h1>
-              <p className="mt-4 text-base text-zinc-400">
+              <p className="mt-4 text-base text-zinc-300">
                 The CodeCoogs platform for member points, events, and more.{" "}
                 <br />
                 Please sign in to continue.
@@ -97,7 +97,7 @@ function HomePageContent() {
                 </button>
               </div>
 
-              <p className="mt-8 text-center text-sm text-zinc-500">
+              <p className="mt-8 text-center text-sm text-zinc-400">
                 Don&apos;t have an account?{" "}
                 <button
                   type="button"
@@ -134,9 +134,9 @@ function HomePageContent() {
 
 function HomePageFallback() {
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-950 lg:flex-row">
+    <div className="flex min-h-screen flex-col bg-zinc-900 lg:flex-row">
       <div className="relative flex min-h-[45vh] flex-col lg:min-h-screen lg:w-[50%]" />
-      <div className="relative flex min-h-[55vh] flex-1 flex-col border-zinc-800/60 bg-zinc-900 lg:min-h-screen lg:border-l" />
+      <div className="relative flex min-h-[55vh] flex-1 flex-col border-zinc-700/60 bg-zinc-800 lg:min-h-screen lg:border-l" />
     </div>
   );
 }

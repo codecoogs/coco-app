@@ -2,6 +2,7 @@
 
 import { PasswordInput } from "@/app/components/ui/PasswordInput";
 import { createClient } from "@/lib/supabase/client";
+import { getSiteUrl } from "@/lib/site-url";
 import { validateEmail, validatePassword } from "@/lib/validation";
 import Link from "next/link";
 import { useState } from "react";
@@ -26,12 +27,18 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
     e.preventDefault();
     const emailResult = validateEmail(email);
     if (!emailResult.valid) {
-      setMessage({ type: "error", text: emailResult.error ?? "Invalid email." });
+      setMessage({
+        type: "error",
+        text: emailResult.error ?? "Invalid email.",
+      });
       return;
     }
     const passwordResult = validatePassword(password, { minLength: 6 });
     if (!passwordResult.valid) {
-      setMessage({ type: "error", text: passwordResult.error ?? "Invalid password." });
+      setMessage({
+        type: "error",
+        text: passwordResult.error ?? "Invalid password.",
+      });
       return;
     }
     setLoading(true);
@@ -40,7 +47,7 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
       email: email.trim(),
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        emailRedirectTo: `${getSiteUrl()}/auth/callback?next=/dashboard`,
       },
     });
     setLoading(false);
@@ -73,11 +80,11 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
       aria-labelledby="signup-modal-title"
     >
       <div
-        className="absolute inset-0 bg-zinc-950/70 backdrop-blur-md"
+        className="absolute inset-0 bg-zinc-900/80 backdrop-blur-md"
         onClick={handleBackdropClick}
       />
 
-      <div className="relative w-full max-w-md rounded-xl border border-zinc-700/50 bg-zinc-900 p-6 shadow-2xl sm:p-8">
+      <div className="relative w-full max-w-md rounded-xl border border-zinc-600/50 bg-zinc-800 p-6 shadow-2xl sm:p-8">
         <button
           type="button"
           onClick={onClose}
@@ -105,7 +112,7 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
         >
           Create an account
         </h2>
-        <p className="mt-1 text-zinc-400">
+        <p className="mt-1 text-zinc-300">
           Enter your email and choose a password.
         </p>
 
@@ -146,7 +153,7 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
               minLength={6}
               className="mt-1"
             />
-            <p className="mt-1 text-xs text-zinc-500">At least 6 characters</p>
+            <p className="mt-1 text-xs text-zinc-400">At least 6 characters</p>
           </div>
           {message && (
             <p
@@ -166,7 +173,7 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-zinc-500">
+        <p className="mt-6 text-center text-sm text-zinc-400">
           Already have an account?{" "}
           {onOpenSignIn ? (
             <button

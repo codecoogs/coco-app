@@ -1,7 +1,9 @@
 import type {
+  ActiveMembersResponse,
   PointCategoriesResponse,
   PointTransactionsResponse,
   UserPointsResponse,
+  UsersPaymentInfoResponse,
 } from "./types";
 
 /** CodeCoogs API base URL (e.g. https://api.codecoogs.com/v1). Set NEXT_PUBLIC_CODECOOGS_API_URL in .env. */
@@ -47,11 +49,23 @@ export function getPointCategories() {
   });
 }
 
-/** GET /v1/users/points?transactions=true&email=... (or id / discordId) */
+/** GET /v1/users/points?transactions=true&email=... - point history list */
 export function getPointTransactionsByEmail(email: string) {
-  return fetchApi<PointTransactionsResponse>("/users/points", {
-    params: { transactions: "true", email },
-  });
+  const base = getBaseUrl();
+  const path = "/users/points";
+  const search = new URLSearchParams([
+    ["transactions", "true"],
+    ["email", email.trim()],
+  ]);
+  const url = `${base}${path}?${search.toString()}`;
+  return fetch(url, { cache: "no-store", headers: { Accept: "application/json" } })
+    .then(async (res) => {
+      const json = await res.json();
+      if (!res.ok) throw new Error((json as { error?: string }).error ?? res.statusText);
+      if (!(json as PointTransactionsResponse).success && (json as PointTransactionsResponse).error)
+        throw new Error((json as PointTransactionsResponse).error);
+      return json as PointTransactionsResponse;
+    });
 }
 
 export function getPointTransactionsById(id: string) {
@@ -82,5 +96,19 @@ export function getUserPointsById(id: string) {
 export function getUserPointsByDiscordId(discordId: string) {
   return fetchApi<UserPointsResponse>("/users/points", {
     params: { discordId },
+  });
+}
+
+/** GET /v1/users?active_memberships=true - active members (officers/admins) */
+export function getActiveMembers() {
+  return fetchApi<ActiveMembersResponse>("/users", {
+    params: { active_memberships: "true" },
+  });
+}
+
+/** GET /v1/users?payment_info=true - all users with payment/due info */
+export function getUsersPaymentInfo() {
+  return fetchApi<UsersPaymentInfoResponse>("/users", {
+    params: { payment_info: "true" },
   });
 }

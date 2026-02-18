@@ -33,7 +33,10 @@ export default function ResetPasswordPage() {
     }
     const passwordResult = validatePassword(password, { minLength: 6 });
     if (!passwordResult.valid) {
-      setMessage({ type: "error", text: passwordResult.error ?? "Invalid password." });
+      setMessage({
+        type: "error",
+        text: passwordResult.error ?? "Invalid password.",
+      });
       return;
     }
     setLoading(true);
@@ -50,12 +53,12 @@ export default function ResetPasswordPage() {
 
   if (noSession === true) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-4">
-        <div className="w-full max-w-md rounded-xl border border-zinc-700/50 bg-zinc-900 p-6 shadow-2xl sm:p-8 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-900 px-4">
+        <div className="w-full max-w-md rounded-xl border border-zinc-600/50 bg-zinc-800 p-6 shadow-2xl sm:p-8 text-center">
           <h1 className="text-2xl font-semibold tracking-tight text-white">
             Link expired or invalid
           </h1>
-          <p className="mt-2 text-zinc-400">
+          <p className="mt-2 text-zinc-300">
             This reset link may have expired. Request a new one below.
           </p>
           <Link
@@ -70,12 +73,12 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-4">
-      <div className="w-full max-w-md rounded-xl border border-zinc-700/50 bg-zinc-900 p-6 shadow-2xl sm:p-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-900 px-4">
+      <div className="w-full max-w-md rounded-xl border border-zinc-600/50 bg-zinc-800 p-6 shadow-2xl sm:p-8">
         <h1 className="text-2xl font-semibold tracking-tight text-white">
           Set new password
         </h1>
-        <p className="mt-1 text-zinc-400">Enter your new password below.</p>
+        <p className="mt-1 text-zinc-300">Enter your new password below.</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
@@ -132,7 +135,7 @@ export default function ResetPasswordPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-zinc-500">
+        <p className="mt-6 text-center text-sm text-zinc-400">
           <Link href="/" className="font-medium text-zinc-400 hover:text-white">
             Back to sign in
           </Link>

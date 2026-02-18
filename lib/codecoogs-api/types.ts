@@ -41,3 +41,48 @@ export type UserPointsResponse = {
   data?: UserPointsData;
   error?: string;
 };
+
+/** Response from GET /v1/users?active_memberships=true */
+export type ActiveMember = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  major: string;
+  classification: string;
+  expected_graduation: string;
+  membership: string;
+  discord: string;
+  due_date: string;
+  last_payment_date: string;
+};
+
+export type ActiveMembersResponse = {
+  success: boolean;
+  active_members?: ActiveMember[];
+  error?: string;
+};
+
+/** Response from GET /v1/users?payment_info=true - all users with payment/due info */
+export type UserPaymentInfo = {
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  major?: string;
+  classification?: string;
+  expected_graduation?: string;
+  membership: string;
+  discord?: string;
+  paid: boolean;
+  last_payment_date: string;
+  next_due_date: string;
+};
+
+export type UsersPaymentInfoResponse = {
+  success: boolean;
+  users_payment_info?: UserPaymentInfo[];
+  error?: string;
+};

@@ -69,7 +69,7 @@ export function PointHistoryContent({ email }: PointHistoryContentProps) {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
+      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
         Loading points…
       </div>
     );
@@ -77,7 +77,7 @@ export function PointHistoryContent({ email }: PointHistoryContentProps) {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
         {error}
       </div>
     );
@@ -85,44 +85,44 @@ export function PointHistoryContent({ email }: PointHistoryContentProps) {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-medium text-slate-500">Total points</h2>
-        <p className="mt-1 text-3xl font-bold text-slate-900">
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+        <h2 className="text-sm font-medium text-slate-500 dark:text-zinc-400">Total points</h2>
+        <p className="mt-1 text-3xl font-bold text-slate-900 dark:text-white">
           {totalPoints ?? 0}
         </p>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-slate-900">
+      <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-800">
+        <div className="border-b border-slate-200 px-4 py-4 sm:px-6 dark:border-zinc-600">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             Point transactions
           </h2>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-zinc-400">
             {transactions.length} transaction
             {transactions.length !== 1 ? "s" : ""}
           </p>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
+          <table className="min-w-full divide-y divide-slate-200 dark:divide-zinc-600">
             <thead>
               <tr>
-                <th className="bg-slate-50 px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-600 sm:px-6">
+                <th className="bg-slate-50 px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-600 sm:px-6 dark:bg-zinc-700/50 dark:text-zinc-300">
                   Date
                 </th>
-                <th className="bg-slate-50 px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-600 sm:px-6">
+                <th className="bg-slate-50 px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-600 sm:px-6 dark:bg-zinc-700/50 dark:text-zinc-300">
                   Category
                 </th>
-                <th className="bg-slate-50 px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-600 sm:px-6">
+                <th className="bg-slate-50 px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-600 sm:px-6 dark:bg-zinc-700/50 dark:text-zinc-300">
                   Points
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
+            <tbody className="divide-y divide-slate-200 bg-white dark:divide-zinc-600 dark:bg-zinc-800">
               {pageTransactions.length === 0 ? (
                 <tr>
                   <td
                     colSpan={3}
-                    className="px-4 py-8 text-center text-slate-500 sm:px-6"
+                    className="px-4 py-8 text-center text-slate-500 dark:text-zinc-400 sm:px-6"
                   >
                     No transactions yet.
                   </td>
@@ -131,16 +131,16 @@ export function PointHistoryContent({ email }: PointHistoryContentProps) {
                 pageTransactions.map((tx) => {
                   const cat = categoryMap.get(tx.category_id);
                   return (
-                    <tr key={tx.id} className="hover:bg-slate-50">
-                      <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-900 sm:px-6">
+                    <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-zinc-700/50">
+                      <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-900 dark:text-white sm:px-6">
                         {new Date(tx.created_at).toLocaleDateString(undefined, {
                           dateStyle: "medium",
                         })}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 sm:px-6">
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-zinc-300 sm:px-6">
                         {cat?.name ?? tx.category_id}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-slate-900 sm:px-6">
+                      <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-slate-900 dark:text-white sm:px-6">
                         +{tx.points_earned}
                       </td>
                     </tr>
@@ -151,8 +151,8 @@ export function PointHistoryContent({ email }: PointHistoryContentProps) {
           </table>
         </div>
         {transactions.length > PAGE_SIZE && (
-          <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 sm:px-6">
-            <p className="text-sm text-slate-600">
+          <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 dark:border-zinc-600 sm:px-6">
+            <p className="text-sm text-slate-600 dark:text-zinc-300">
               Page {page} of {totalPages}
             </p>
             <div className="flex gap-2">
@@ -160,7 +160,7 @@ export function PointHistoryContent({ email }: PointHistoryContentProps) {
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
               >
                 Previous
               </button>
@@ -168,7 +168,7 @@ export function PointHistoryContent({ email }: PointHistoryContentProps) {
                 type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
               >
                 Next
               </button>

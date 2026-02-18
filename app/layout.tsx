@@ -1,6 +1,8 @@
+import { ThemeScript } from "@/app/components/ThemeScript";
 import { ThemeProvider } from "@/app/contexts/ThemeContext";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,16 +23,24 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+const THEME_COOKIE = "coco-theme";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const themeCookie = cookieStore.get(THEME_COOKIE)?.value;
+  const htmlClass =
+    themeCookie === "dark" ? "dark" : themeCookie === "light" ? "" : undefined;
+
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" className={htmlClass} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ThemeScript />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

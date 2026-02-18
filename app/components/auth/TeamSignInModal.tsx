@@ -38,12 +38,18 @@ export function TeamSignInModal({
     e.preventDefault();
     const emailResult = validateEmail(email);
     if (!emailResult.valid) {
-      setMessage({ type: "error", text: emailResult.error ?? "Invalid email." });
+      setMessage({
+        type: "error",
+        text: emailResult.error ?? "Invalid email.",
+      });
       return;
     }
     const passwordResult = validatePassword(password);
     if (!passwordResult.valid) {
-      setMessage({ type: "error", text: passwordResult.error ?? "Invalid password." });
+      setMessage({
+        type: "error",
+        text: passwordResult.error ?? "Invalid password.",
+      });
       return;
     }
     setLoading(true);
@@ -97,11 +103,11 @@ export function TeamSignInModal({
       aria-labelledby="team-modal-title"
     >
       <div
-        className="absolute inset-0 bg-zinc-950/70 backdrop-blur-md"
+        className="absolute inset-0 bg-zinc-900/80 backdrop-blur-md"
         onClick={handleBackdropClick}
       />
 
-      <div className="relative w-full max-w-md rounded-xl border border-zinc-700/50 bg-zinc-900 p-6 shadow-2xl sm:p-8">
+      <div className="relative w-full max-w-md rounded-xl border border-zinc-600/50 bg-zinc-800 p-6 shadow-2xl sm:p-8">
         <button
           type="button"
           onClick={onClose}
@@ -132,7 +138,7 @@ export function TeamSignInModal({
         >
           Team login
         </h2>
-        <p className="mt-1 text-zinc-400">
+        <p className="mt-1 text-zinc-300">
           Sign in with your organization officer account.
         </p>
 
@@ -191,7 +197,7 @@ export function TeamSignInModal({
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-zinc-500">
+        <p className="mt-6 text-center text-sm text-zinc-400">
           Not an officer?{" "}
           <button
             type="button"

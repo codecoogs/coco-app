@@ -2,6 +2,7 @@
 
 import { PasswordInput } from "@/app/components/ui/PasswordInput";
 import { createClient } from "@/lib/supabase/client";
+import { getSiteUrl } from "@/lib/site-url";
 import { validateEmail, validatePassword } from "@/lib/validation";
 import Image from "next/image";
 import Link from "next/link";
@@ -33,12 +34,18 @@ export function SignInModal({
     e.preventDefault();
     const emailResult = validateEmail(email);
     if (!emailResult.valid) {
-      setMessage({ type: "error", text: emailResult.error ?? "Invalid email." });
+      setMessage({
+        type: "error",
+        text: emailResult.error ?? "Invalid email.",
+      });
       return;
     }
     const passwordResult = validatePassword(password);
     if (!passwordResult.valid) {
-      setMessage({ type: "error", text: passwordResult.error ?? "Invalid password." });
+      setMessage({
+        type: "error",
+        text: passwordResult.error ?? "Invalid password.",
+      });
       return;
     }
     setLoading(true);
@@ -63,9 +70,7 @@ export function SignInModal({
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${
-          window.location.origin
-        }/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
     setLoading(false);
@@ -86,12 +91,12 @@ export function SignInModal({
     >
       {/* Blurred backdrop */}
       <div
-        className="absolute inset-0 bg-zinc-950/70 backdrop-blur-md"
+        className="absolute inset-0 bg-zinc-900/80 backdrop-blur-md"
         onClick={handleBackdropClick}
       />
 
       {/* Card */}
-      <div className="relative w-full max-w-md rounded-xl border border-zinc-700/50 bg-zinc-900 p-6 shadow-2xl sm:p-8">
+      <div className="relative w-full max-w-md rounded-xl border border-zinc-600/50 bg-zinc-800 p-6 shadow-2xl sm:p-8">
         {/* Exit button */}
         <button
           type="button"
@@ -120,7 +125,7 @@ export function SignInModal({
         >
           Welcome back
         </h2>
-        <p className="mt-1 text-zinc-400">
+        <p className="mt-1 text-zinc-300">
           Sign in to your account and membership
         </p>
 
@@ -190,7 +195,7 @@ export function SignInModal({
 
         <div className="mt-6 flex items-center gap-4">
           <span className="h-px flex-1 bg-zinc-700" />
-          <span className="text-sm text-zinc-500">or</span>
+          <span className="text-sm text-zinc-400">or</span>
           <span className="h-px flex-1 bg-zinc-700" />
         </div>
 
@@ -212,7 +217,7 @@ export function SignInModal({
           </button>
         </div>
 
-        <p className="mt-6 text-center text-sm text-zinc-500">
+        <p className="mt-6 text-center text-sm text-zinc-400">
           Don&apos;t have an account?{" "}
           <Link
             href="/signup"

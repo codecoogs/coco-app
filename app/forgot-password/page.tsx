@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { getSiteUrl } from "@/lib/site-url";
 import { validateEmail } from "@/lib/validation";
 import Link from "next/link";
 import { useState } from "react";
@@ -18,14 +19,15 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     const emailResult = validateEmail(email);
     if (!emailResult.valid) {
-      setMessage({ type: "error", text: emailResult.error ?? "Invalid email." });
+      setMessage({
+        type: "error",
+        text: emailResult.error ?? "Invalid email.",
+      });
       return;
     }
     setLoading(true);
     setMessage(null);
-    const redirectTo = `${
-      window.location.origin
-    }/auth/callback?next=${encodeURIComponent("/reset-password")}`;
+    const redirectTo = `${getSiteUrl()}/auth/callback?next=${encodeURIComponent("/reset-password")}`;
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo,
     });
@@ -41,12 +43,12 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-4">
-      <div className="w-full max-w-md rounded-xl border border-zinc-700/50 bg-zinc-900 p-6 shadow-2xl sm:p-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-900 px-4">
+      <div className="w-full max-w-md rounded-xl border border-zinc-600/50 bg-zinc-800 p-6 shadow-2xl sm:p-8">
         <h1 className="text-2xl font-semibold tracking-tight text-white">
           Reset password
         </h1>
-        <p className="mt-1 text-zinc-400">
+        <p className="mt-1 text-zinc-300">
           Enter your email and we’ll send you a link to set a new password.
         </p>
 
@@ -88,7 +90,7 @@ export default function ForgotPasswordPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-zinc-500">
+        <p className="mt-6 text-center text-sm text-zinc-400">
           <Link href="/" className="font-medium text-zinc-400 hover:text-white">
             Back to sign in
           </Link>
