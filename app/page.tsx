@@ -6,9 +6,9 @@ import { TeamSignInModal } from "@/app/components/auth/TeamSignInModal";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
-export default function HomePage() {
+function HomePageContent() {
   const searchParams = useSearchParams();
   const [signInOpen, setSignInOpen] = useState(false);
   const [signUpOpen, setSignUpOpen] = useState(false);
@@ -129,5 +129,22 @@ export default function HomePage() {
         next="/dashboard"
       />
     </>
+  );
+}
+
+function HomePageFallback() {
+  return (
+    <div className="flex min-h-screen flex-col bg-zinc-950 lg:flex-row">
+      <div className="relative flex min-h-[45vh] flex-col lg:min-h-screen lg:w-[50%]" />
+      <div className="relative flex min-h-[55vh] flex-1 flex-col border-zinc-800/60 bg-zinc-900 lg:min-h-screen lg:border-l" />
+    </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<HomePageFallback />}>
+      <HomePageContent />
+    </Suspense>
   );
 }
