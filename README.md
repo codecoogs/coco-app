@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment
+
+- **CodeCoogs API** – Points and user data come from your CodeCoogs API. Default base URL is `https://api.codecoogs.com/v1`. If your API is at a different domain, set in `.env.local`:
+  - `NEXT_PUBLIC_CODECOOGS_API_URL=https://api.codecoogs.com/v1` (or your exact API base URL)
+  - Optional for the proxy only: `CODECOOGS_API_URL=...`
+
 ## Getting Started
 
 First, run the development server:
