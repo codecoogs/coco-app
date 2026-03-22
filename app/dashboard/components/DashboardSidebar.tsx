@@ -1,11 +1,21 @@
 "use client";
 
+import { useProfileOptional } from "@/app/contexts/ProfileContext";
 import { useThemeOptional } from "@/app/contexts/ThemeContext";
+import type { PermissionName } from "@/lib/types/rbac";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  /** If set, sidebar link is only shown when user has this permission (or is_admin). */
+  requiredPermission?: PermissionName;
+  icon: React.ReactNode;
+};
+
+const navItems: NavItem[] = [
   {
     href: "/dashboard",
     label: "Dashboard",
@@ -83,8 +93,29 @@ const navItems = [
     ),
   },
   {
+    href: "/dashboard/officers",
+    label: "Officers",
+    requiredPermission: "view_officers",
+    icon: (
+      <svg
+        className="h-5 w-5 shrink-0"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+        />
+      </svg>
+    ),
+  },
+  {
     href: "/dashboard/memberships",
     label: "Member memberships",
+    requiredPermission: "view_memberships",
     icon: (
       <svg
         className="h-5 w-5 shrink-0"
@@ -120,7 +151,7 @@ const navItems = [
       </svg>
     ),
   },
-] as const;
+];
 
 function ThemeIcon({ theme }: { theme: "light" | "dark" | "system" }) {
   if (theme === "system") {
@@ -181,6 +212,16 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const themeContext = useThemeOptional();
+  const profileContext = useProfileOptional();
+  const can = profileContext?.can ?? (() => false);
+
+  const visibleNavItems = useMemo(
+    () =>
+      navItems.filter(
+        (item) => !item.requiredPermission || can(item.requiredPermission)
+      ),
+    [can]
+  );
 
   return (
     <aside
@@ -229,7 +270,7 @@ export function DashboardSidebar() {
         className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2"
         aria-label="Dashboard navigation"
       >
-        {navItems.map(({ href, label, icon }) => {
+        {visibleNavItems.map(({ href, label, icon }) => {
           const isActive = pathname === href;
           return (
             <Link

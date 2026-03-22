@@ -1,6 +1,11 @@
 -- View used by fetchUserProfile(). Query by auth_id (Supabase Auth user id).
 -- public.users links auth to app: users.id (app user), users.auth_id (Supabase auth user id).
 -- user_positions.user_id is FK to public.users.id, so we join through users to filter by auth_id.
+--
+-- Permissions come from:
+--   public.permissions (id uuid, name text, description text, created_at timestamptz)
+--   public.position_permissions (id uuid, position_id bigint, permission_id uuid)
+-- The view aggregates permission names (perm.name) for the user's position into a text[].
 
 drop view if exists user_profile;
 

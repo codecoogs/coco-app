@@ -46,16 +46,22 @@ export function DashboardNavbar() {
     user.last_sign_in_at ?? undefined,
   );
 
+  const positionTitle = profile?.positionTitle?.trim() ?? "";
+  const roleName = profile?.roleName?.trim() ?? "";
+
   return (
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
-      <div className="flex min-w-0 items-center">
-        {profile?.positionTitle && (
+      <div className="flex min-w-0 items-center gap-2">
+        {positionTitle && (
           <span
             className="rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
             style={{ backgroundColor: POSITION_BADGE_COLOR }}
           >
-            {profile.positionTitle}
+            {positionTitle}
           </span>
+        )}
+        {roleName && (
+          <span className="text-xs text-muted-foreground">{roleName}</span>
         )}
       </div>
       <nav className="flex items-center gap-3 sm:gap-4">

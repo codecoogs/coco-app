@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/client";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import type { UserProfile } from "@/lib/types/rbac";
+import type { PermissionName } from "@/lib/types/rbac";
+import { hasPermission } from "@/lib/types/rbac";
 import type { User } from "@supabase/supabase-js";
 import {
   createContext,
@@ -19,6 +21,8 @@ type ProfileContextValue = {
   loading: boolean;
   error: string | null;
   refetchProfile: () => Promise<void>;
+  /** Returns true if the current user has the permission (or is_admin). Use for UI protection. */
+  can: (permission: PermissionName) => boolean;
 };
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
@@ -50,6 +54,11 @@ export function ProfileProvider({
     if (!user?.id) return;
     await loadProfile(user.id);
   }, [user?.id, loadProfile]);
+
+  const can = useCallback(
+    (permission: PermissionName) => hasPermission(profile, permission),
+    [profile]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -90,6 +99,13 @@ export function ProfileProvider({
     };
   }, [loadProfile]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const onFocus = () => refetchProfile();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [user?.id, refetchProfile]);
+
   const value = useMemo(
     () => ({
       user,
@@ -97,8 +113,9 @@ export function ProfileProvider({
       loading,
       error,
       refetchProfile,
+      can,
     }),
-    [user, profile, loading, error, refetchProfile]
+    [user, profile, loading, error, refetchProfile, can]
   );
 
   return (
