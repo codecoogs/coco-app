@@ -1,5 +1,12 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/public-env";
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+
+/**
+ * Node.js runtime so `fetch` to local Supabase (e.g. http://127.0.0.1:54321) works in dev.
+ * Edge/Turbopack sandbox often throws "Error: fetch failed" for localhost Auth refresh.
+ */
+export const runtime = 'nodejs'
 
 const PROTECTED_PATHS = ['/dashboard']
 const AUTH_PATHS = ['/login', '/signup', '/auth/team', '/forgot-password']
@@ -20,8 +27,8 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    getSupabaseUrl(),
+    getSupabaseAnonKey(),
     {
       cookies: {
         getAll() {

@@ -3,20 +3,47 @@
 import { PasswordInput } from "@/app/components/ui/PasswordInput";
 import { createClient } from "@/lib/supabase/client";
 import { getSiteUrl } from "@/lib/site-url";
-import { validateEmail, validatePassword } from "@/lib/validation";
+import {
+  sanitizeExpectedGraduationInput,
+  validateEmail,
+  validateExpectedGraduation,
+  validatePassword,
+  validatePersonName,
+} from "@/lib/validation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+export const SIGNUP_MAJOR_OPTIONS = [
+  "Computer Science",
+  "Computer Engineering",
+  "MIS",
+  "CIS",
+  "Other",
+] as const;
 
 type SignUpModalProps = {
   open: boolean;
   onClose: () => void;
   onOpenSignIn?: () => void;
+  /** Post-sign-in redirect when email confirmation is off (immediate session). */
+  next?: string;
 };
 
-export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
+export function SignUpModal({
+  open,
+  onClose,
+  onOpenSignIn,
+  next = "/dashboard",
+}: SignUpModalProps) {
   const supabase = createClient();
+  const router = useRouter();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [expectedGraduation, setExpectedGraduation] = useState("");
+  const [major, setMajor] = useState<string>(SIGNUP_MAJOR_OPTIONS[0]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{
     type: "error" | "success";
@@ -25,6 +52,17 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const fn = validatePersonName(firstName, "First name");
+    if (!fn.valid) {
+      setMessage({ type: "error", text: fn.error ?? "Invalid first name." });
+      return;
+    }
+    const ln = validatePersonName(lastName, "Last name");
+    if (!ln.valid) {
+      setMessage({ type: "error", text: ln.error ?? "Invalid last name." });
+      return;
+    }
     const emailResult = validateEmail(email);
     if (!emailResult.valid) {
       setMessage({
@@ -41,18 +79,50 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
       });
       return;
     }
+    const grad = validateExpectedGraduation(expectedGraduation);
+    if (!grad.valid) {
+      setMessage({
+        type: "error",
+        text: grad.error ?? "Invalid expected graduation.",
+      });
+      return;
+    }
+    if (
+      !SIGNUP_MAJOR_OPTIONS.includes(
+        major as (typeof SIGNUP_MAJOR_OPTIONS)[number]
+      )
+    ) {
+      setMessage({ type: "error", text: "Please select a major." });
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
-    const { error } = await supabase.auth.signUp({
+    const redirectTo = `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}`;
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
-        emailRedirectTo: `${getSiteUrl()}/auth/callback?next=/dashboard`,
+        emailRedirectTo: redirectTo,
+        data: {
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          major,
+          expected_graduation: expectedGraduation.trim(),
+        },
       },
     });
     setLoading(false);
     if (error) {
       setMessage({ type: "error", text: error.message });
+      return;
+    }
+    if (data.session) {
+      onClose();
+      const dest =
+        next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+      router.push(dest);
+      router.refresh();
       return;
     }
     setMessage({
@@ -84,7 +154,7 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
         onClick={handleBackdropClick}
       />
 
-      <div className="relative w-full max-w-md rounded-xl border border-zinc-600/50 bg-zinc-800 p-6 shadow-2xl sm:p-8">
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-zinc-600/50 bg-zinc-800 p-6 shadow-2xl sm:p-8">
         <button
           type="button"
           onClick={onClose}
@@ -113,10 +183,51 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
           Create an account
         </h2>
         <p className="mt-1 text-zinc-300">
-          Enter your email and choose a password.
+          Add your profile details and choose a password.
         </p>
 
         <form onSubmit={handleSignup} className="mt-6 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="signup-first-name"
+                className="block text-sm font-medium text-zinc-300"
+              >
+                First name
+              </label>
+              <input
+                id="signup-first-name"
+                name="first_name"
+                type="text"
+                autoComplete="given-name"
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Jane"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="signup-last-name"
+                className="block text-sm font-medium text-zinc-300"
+              >
+                Last name
+              </label>
+              <input
+                id="signup-last-name"
+                name="last_name"
+                type="text"
+                autoComplete="family-name"
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Doe"
+              />
+            </div>
+          </div>
+
           <div>
             <label
               htmlFor="signup-email"
@@ -136,6 +247,7 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
               placeholder="you@example.com"
             />
           </div>
+
           <div>
             <label
               htmlFor="signup-password"
@@ -155,6 +267,63 @@ export function SignUpModal({ open, onClose, onOpenSignIn }: SignUpModalProps) {
             />
             <p className="mt-1 text-xs text-zinc-400">At least 6 characters</p>
           </div>
+
+          <div>
+            <label
+              htmlFor="signup-graduation"
+              className="block text-sm font-medium text-zinc-300"
+            >
+              Expected graduation
+            </label>
+            <input
+              id="signup-graduation"
+              name="expected_graduation"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              spellCheck={false}
+              required
+              maxLength={7}
+              placeholder="YYYY-MM"
+              title="Year and month: YYYY-MM (months 01–09 use a leading zero)"
+              pattern="\d{4}-(0[1-9]|1[0-2])"
+              value={expectedGraduation}
+              onChange={(e) =>
+                setExpectedGraduation(
+                  sanitizeExpectedGraduationInput(e.target.value)
+                )
+              }
+              className="mt-1 block w-full rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-zinc-400">
+              Only numbers and a hyphen after the year. Month must be two digits
+              (01–09, 10–12), e.g. 2026-05.
+            </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor="signup-major"
+              className="block text-sm font-medium text-zinc-300"
+            >
+              Major
+            </label>
+            <select
+              id="signup-major"
+              name="major"
+              required
+              value={major}
+              onChange={(e) => setMajor(e.target.value)}
+              className="mt-1 block w-full rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2.5 text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {SIGNUP_MAJOR_OPTIONS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {message && (
             <p
               className={`text-sm ${

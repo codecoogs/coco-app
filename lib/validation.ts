@@ -70,3 +70,80 @@ export function validatePassword(
   }
   return { valid: true };
 }
+
+const MAX_NAME_LENGTH = 100;
+
+/**
+ * First/last name: required non-empty after trim, length cap, no dangerous patterns.
+ */
+export function validatePersonName(
+  value: string,
+  label: string
+): { valid: boolean; error?: string } {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { valid: false, error: `${label} is required.` };
+  }
+  if (trimmed.length > MAX_NAME_LENGTH) {
+    return { valid: false, error: `${label} is too long.` };
+  }
+  if (DANGEROUS_PATTERN.test(trimmed)) {
+    return { valid: false, error: `${label} contains invalid characters.` };
+  }
+  return { valid: true };
+}
+
+/** Full value: year + month 01–09 (leading 0) or 10–12. */
+const GRADUATION_REGEX = /^(\d{4})-(0[1-9]|1[0-2])$/;
+
+/**
+ * Builds display string YYYY-MM from user input: only digits (and ignored separators);
+ * month must use two digits (01–12, never a single digit for month).
+ */
+export function sanitizeExpectedGraduationInput(input: string): string {
+  let digits = input.replace(/\D/g, "").slice(0, 6);
+  const y = digits.slice(0, 4);
+  let ms = digits.slice(4);
+
+  while (ms.length > 0 && ms[0] !== "0" && ms[0] !== "1") {
+    ms = ms.slice(1);
+  }
+
+  let m = "";
+  if (ms.length >= 1) {
+    m = ms[0];
+    if (ms.length >= 2) {
+      const d1 = ms[1];
+      if (m === "0" && "123456789".includes(d1)) m += d1;
+      else if (m === "1" && "012".includes(d1)) m += d1;
+    }
+  }
+
+  if (y.length < 4) return y;
+  if (m.length === 0) return `${y}-`;
+  return `${y}-${m}`;
+}
+
+/**
+ * Expected graduation as YYYY-MM (months 01–12, two-digit month required).
+ */
+export function validateExpectedGraduation(value: string): {
+  valid: boolean;
+  error?: string;
+} {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { valid: false, error: "Expected graduation is required." };
+  }
+  if (!GRADUATION_REGEX.test(trimmed)) {
+    return {
+      valid: false,
+      error:
+        "Use YYYY-MM with a two-digit month (01–09, 10–12), e.g. 2026-05.",
+    };
+  }
+  if (DANGEROUS_PATTERN.test(trimmed)) {
+    return { valid: false, error: "Invalid value." };
+  }
+  return { valid: true };
+}

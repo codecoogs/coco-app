@@ -19,7 +19,34 @@ export type OfficerRow = {
   user_email: string | null;
   user_first_name: string | null;
   user_last_name: string | null;
+  /** Branch of the assigned position (from positions.branch_id → branches). */
+  branch_name: string | null;
 };
+
+export type PositionManageRow = {
+  id: number;
+  title: string;
+  description: string | null;
+  is_active: boolean;
+  branch_id: number | null;
+  branch_name: string | null;
+  role_id: number | null;
+  role_name: string | null;
+};
+
+export type BranchOption = { id: number; name: string };
+
+/** Full branch row for the Branches management tab. */
+export type BranchManageRow = {
+  id: number;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export type RoleOption = { id: number; name: string };
 
 export type PositionTitleOption = { title: string };
 
@@ -68,13 +95,39 @@ export async function getOfficers(): Promise<
     ])
   );
 
+  const titles = [
+    ...new Set(
+      (rows as { positionTitle: string | null }[])
+        .map((r) => r.positionTitle)
+        .filter((t): t is string => Boolean(t))
+    ),
+  ];
+  const branchByTitle = new Map<string, string | null>();
+  if (titles.length > 0) {
+    const { data: posRows } = await admin
+      .from("positions")
+      .select("title, branches(name)")
+      .in("title", titles);
+    for (const p of posRows ?? []) {
+      const row = p as {
+        title: string;
+        branches: { name: string } | { name: string }[] | null;
+      };
+      const b = row.branches;
+      const name = Array.isArray(b) ? b[0]?.name : b?.name;
+      branchByTitle.set(row.title, name ?? null);
+    }
+  }
+
   const data: OfficerRow[] = (rows as OfficerRow[]).map((r) => {
     const u = userMap.get(r.user_id);
+    const title = r.positionTitle ?? "";
     return {
       ...r,
       user_email: u?.email ?? null,
       user_first_name: u?.first_name ?? null,
       user_last_name: u?.last_name ?? null,
+      branch_name: title ? branchByTitle.get(title) ?? null : null,
     };
   });
 
@@ -219,4 +272,248 @@ export async function updateOfficer(
 /** Set is_active to false. Sets updated_by to current app user id (users.id). */
 export async function deactivateOfficer(id: string): Promise<{ error: string | null }> {
   return updateOfficer(id, { is_active: false });
+}
+
+/** All positions with branch and role labels for manage_officers tab. */
+export async function getPositionsForManage(): Promise<{
+  data: PositionManageRow[];
+  error: string | null;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { data: [], error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { data: [], error: "You do not have permission to manage officer roles." };
+  }
+
+  const admin = createAdminClient();
+  const { data: rows, error } = await admin
+    .from("positions")
+    .select("id, title, description, is_active, branch_id, role_id, branches(name), roles(name)")
+    .order("title");
+
+  if (error) return { data: [], error: error.message };
+
+  const data: PositionManageRow[] = (rows ?? []).map((r) => {
+    const row = r as {
+      id: number;
+      title: string;
+      description: string | null;
+      is_active: boolean;
+      branch_id: number | null;
+      role_id: number | null;
+      branches: { name: string } | { name: string }[] | null;
+      roles: { name: string } | { name: string }[] | null;
+    };
+    const b = row.branches;
+    const role = row.roles;
+    const branchName = Array.isArray(b) ? b[0]?.name : b?.name;
+    const roleName = Array.isArray(role) ? role[0]?.name : role?.name;
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      is_active: row.is_active,
+      branch_id: row.branch_id,
+      branch_name: branchName ?? null,
+      role_id: row.role_id,
+      role_name: roleName ?? null,
+    };
+  });
+
+  return { data, error: null };
+}
+
+/** All branches (active and inactive) for manage_officers Branches tab. */
+export async function getBranchesForManage(): Promise<{
+  data: BranchManageRow[];
+  error: string | null;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { data: [], error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { data: [], error: "No permission." };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("branches")
+    .select("id, name, description, is_active, created_at, updated_at")
+    .order("name");
+
+  if (error) return { data: [], error: error.message };
+  return { data: (data ?? []) as BranchManageRow[], error: null };
+}
+
+export async function getBranchOptions(): Promise<{
+  data: BranchOption[];
+  error: string | null;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { data: [], error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { data: [], error: "No permission." };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("branches")
+    .select("id, name")
+    .eq("is_active", true)
+    .order("name");
+
+  if (error) return { data: [], error: error.message };
+  return { data: (data ?? []) as BranchOption[], error: null };
+}
+
+export async function getRoleOptions(): Promise<{
+  data: RoleOption[];
+  error: string | null;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { data: [], error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { data: [], error: "No permission." };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("roles").select("id, name").order("name");
+
+  if (error) return { data: [], error: error.message };
+  return { data: (data ?? []) as RoleOption[], error: null };
+}
+
+/** Update a position definition (not title — FK from user_positions). */
+export async function updatePosition(
+  id: number,
+  updates: {
+    description: string | null;
+    is_active: boolean;
+    branch_id: number | null;
+    role_id: number | null;
+  }
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { error: "You do not have permission to manage officer roles." };
+  }
+
+  const appUserId = await getCurrentAppUserId(supabase);
+  if (!appUserId) return { error: "Could not resolve your user account." };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("positions")
+    .update({
+      description: updates.description?.trim() || null,
+      is_active: updates.is_active,
+      branch_id: updates.branch_id,
+      role_id: updates.role_id,
+      updated_by: appUserId,
+      updated_on: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/dashboard/officers");
+  return { error: null };
+}
+
+export async function createBranch(
+  name: string,
+  description: string | null,
+  is_active: boolean
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { error: "You do not have permission to manage branches." };
+  }
+
+  const trimmed = name.trim();
+  if (!trimmed) return { error: "Name is required." };
+
+  const appUserId = await getCurrentAppUserId(supabase);
+  if (!appUserId) return { error: "Could not resolve your user account." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("branches").insert({
+    name: trimmed,
+    description: description?.trim() || null,
+    is_active,
+    created_by: appUserId,
+    updated_by: appUserId,
+  });
+
+  if (error) return { error: error.message };
+  revalidatePath("/dashboard/officers");
+  return { error: null };
+}
+
+export async function updateBranch(
+  id: number,
+  updates: { name: string; description: string | null; is_active: boolean }
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { error: "You do not have permission to manage branches." };
+  }
+
+  const trimmed = updates.name.trim();
+  if (!trimmed) return { error: "Name is required." };
+
+  const appUserId = await getCurrentAppUserId(supabase);
+  if (!appUserId) return { error: "Could not resolve your user account." };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("branches")
+    .update({
+      name: trimmed,
+      description: updates.description?.trim() || null,
+      is_active: updates.is_active,
+      updated_by: appUserId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/dashboard/officers");
+  return { error: null };
 }

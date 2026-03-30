@@ -27,10 +27,16 @@ export interface Position {
 
 /** Profile row returned from user_profile view (joins user_positions → positions → roles). */
 export interface UserProfile {
+  /** public.users.id when loaded from user_profile.user_id. */
+  userId?: string;
+  /** Supabase Auth id; matches auth.getUser().id when loaded from user_profile.auth_id. */
+  authId?: string;
+  /** One position title, or comma-separated when the user has multiple assignments. */
   positionTitle: string;
   /** Role name from public.roles (positions.role_id → roles.id). */
   roleName: string;
   is_admin: boolean;
+  /** Union of permission names from all user_profile rows for this auth_id. */
   permissions: string[];
 }
 
@@ -62,6 +68,8 @@ export function isTeamAllowed(profile: UserProfile | null): boolean {
  * Convention:
  * - view_*: can see the tab/page (read-only).
  * - manage_*: can create, edit, and set is_active (or equivalent) for that resource.
+ * - view_events / manage_events: events page (view_any) vs create/edit/cancel.
+ * - view_point_categories / manage_point_categories: read vs edit point_categories (RLS).
  */
 export const PERMISSION_NAMES = [
   "view_officers",
@@ -70,6 +78,12 @@ export const PERMISSION_NAMES = [
   "manage_memberships",
   "view_points",
   "manage_points",
+  "view_point_categories",
+  "manage_point_categories",
+  "view_events",
+  "manage_events",
+  "view_branch",
+  "manage_branch",
 ] as const;
 
 export type PermissionName = (typeof PERMISSION_NAMES)[number];

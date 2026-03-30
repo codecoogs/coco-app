@@ -121,6 +121,7 @@ function HomePageContent() {
         open={signUpOpen}
         onClose={() => setSignUpOpen(false)}
         onOpenSignIn={() => setSignInOpen(true)}
+        next={searchParams.get("next") ?? "/dashboard"}
       />
       <TeamSignInModal
         open={teamSignInOpen}

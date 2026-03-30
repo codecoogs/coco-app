@@ -8,7 +8,16 @@ import {
   getUsersWithoutPosition,
   updateOfficer,
 } from "./actions";
-import type { OfficerRow, PositionTitleOption } from "./actions";
+import type {
+  BranchManageRow,
+  BranchOption,
+  OfficerRow,
+  PositionManageRow,
+  PositionTitleOption,
+  RoleOption,
+} from "./actions";
+import { BranchesPanel } from "./BranchesPanel";
+import { OfficerRolesPanel } from "./OfficerRolesPanel";
 import { useCallback, useState } from "react";
 
 function formatDate(iso: string | null) {
@@ -29,10 +38,32 @@ function displayName(row: OfficerRow): string {
   return [first, last].filter(Boolean).join(" ") || row.user_email || "—";
 }
 
-type Props = { officers: OfficerRow[]; canManage: boolean };
+type Props = {
+  officers: OfficerRow[];
+  canManage: boolean;
+  positionsForManage?: PositionManageRow[];
+  branchesForManage?: BranchManageRow[];
+  branchOptions?: BranchOption[];
+  roleOptions?: RoleOption[];
+  positionsLoadError?: string | null;
+  branchesLoadError?: string | null;
+};
 
-export function OfficersContent({ officers: initialOfficers, canManage }: Props) {
+export function OfficersContent({
+  officers: initialOfficers,
+  canManage,
+  positionsForManage = [],
+  branchesForManage = [],
+  branchOptions = [],
+  roleOptions = [],
+  positionsLoadError = null,
+  branchesLoadError = null,
+}: Props) {
   const { refetchProfile } = useProfileOptional() ?? {};
+  const [mainTab, setMainTab] = useState<"assignments" | "roles" | "branches">(
+    "assignments"
+  );
+  const showAssignments = !canManage || mainTab === "assignments";
   const [officers, setOfficers] = useState(initialOfficers);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -52,7 +83,8 @@ export function OfficersContent({ officers: initialOfficers, canManage }: Props)
     ]);
     if (titlesRes.error) setMessage({ type: "error", text: titlesRes.error });
     else setPositionTitles(titlesRes.data);
-    if (usersRes.error) setMessage((m) => m || { type: "error", text: usersRes.error });
+    if (usersRes.error)
+      setMessage((m) => m || { type: "error", text: String(usersRes.error) });
     else setUsersWithoutPosition(usersRes.data);
   }, []);
 
@@ -145,18 +177,78 @@ export function OfficersContent({ officers: initialOfficers, canManage }: Props)
       )}
 
       {canManage && (
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={openAdd}
-            className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-card-foreground hover:bg-muted"
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            className="inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted/40 p-0.5"
+            role="tablist"
+            aria-label="Officers sections"
           >
-            Add officer
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mainTab === "assignments"}
+              onClick={() => setMainTab("assignments")}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                mainTab === "assignments"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Position assignments
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mainTab === "roles"}
+              onClick={() => setMainTab("roles")}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                mainTab === "roles"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Officer roles
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mainTab === "branches"}
+              onClick={() => setMainTab("branches")}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                mainTab === "branches"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Branches
+            </button>
+          </div>
+          {mainTab === "assignments" && (
+            <button
+              type="button"
+              onClick={openAdd}
+              className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-card-foreground hover:bg-muted"
+            >
+              Add officer
+            </button>
+          )}
         </div>
       )}
 
-      {adding && (
+      {canManage && mainTab === "roles" && (
+        <OfficerRolesPanel
+          initialPositions={positionsForManage}
+          branchOptions={branchOptions}
+          roleOptions={roleOptions}
+          loadError={positionsLoadError}
+        />
+      )}
+
+      {canManage && mainTab === "branches" && (
+        <BranchesPanel initialBranches={branchesForManage} loadError={branchesLoadError} />
+      )}
+
+      {showAssignments && adding && (
         <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-card-foreground">Add officer</h2>
           <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end">
@@ -215,7 +307,7 @@ export function OfficersContent({ officers: initialOfficers, canManage }: Props)
         </section>
       )}
 
-      {editingRow && (
+      {showAssignments && editingRow && (
         <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-card-foreground">
             Edit {displayName(editingRow)}
@@ -270,6 +362,7 @@ export function OfficersContent({ officers: initialOfficers, canManage }: Props)
         </section>
       )}
 
+      {showAssignments && (
       <section className="rounded-xl border border-border bg-card shadow-sm">
         <div className="border-b border-border px-4 py-4 sm:px-6">
           <h2 className="text-lg font-semibold text-card-foreground">Officer assignments</h2>
@@ -288,6 +381,9 @@ export function OfficersContent({ officers: initialOfficers, canManage }: Props)
                   Position
                 </th>
                 <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
+                  Branch
+                </th>
+                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                   Status
                 </th>
                 <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
@@ -304,7 +400,7 @@ export function OfficersContent({ officers: initialOfficers, canManage }: Props)
               {officers.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={canManage ? 5 : 4}
+                    colSpan={canManage ? 6 : 5}
                     className="px-4 py-8 text-center text-muted-foreground sm:px-6"
                   >
                     No officer assignments yet.
@@ -319,6 +415,9 @@ export function OfficersContent({ officers: initialOfficers, canManage }: Props)
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground sm:px-6">
                       {row.positionTitle ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground sm:px-6">
+                      {row.branch_name ?? "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6">
                       <span
@@ -365,6 +464,7 @@ export function OfficersContent({ officers: initialOfficers, canManage }: Props)
           </table>
         </div>
       </section>
+      )}
     </div>
   );
 }

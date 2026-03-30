@@ -1,95 +1,76 @@
 "use client";
 
-import {
-  getPointCategories,
-  getPointTransactionsByEmail,
-  getUserPointsByEmail,
-} from "@/lib/codecoogs-api";
-import type { PointCategory, PointTransaction } from "@/lib/codecoogs-api";
-import { useEffect, useMemo, useState } from "react";
+import { refreshPointHistory } from "./actions";
+import type { PointHistoryBundle } from "./queries";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const PAGE_SIZE = 10;
 
-type PointHistoryContentProps = { email: string };
+type Props = {
+  initial: PointHistoryBundle;
+};
 
-export function PointHistoryContent({ email }: PointHistoryContentProps) {
-  const [totalPoints, setTotalPoints] = useState<number | null>(null);
-  const [transactions, setTransactions] = useState<PointTransaction[]>([]);
-  const [categories, setCategories] = useState<PointCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+export function PointHistoryContent({ initial }: Props) {
+  const [bundle, setBundle] = useState(initial);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    let cancelled = false;
+    setBundle(initial);
+  }, [initial]);
+
+  const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    Promise.all([
-      getUserPointsByEmail(email),
-      getPointTransactionsByEmail(email),
-      getPointCategories(),
-    ])
-      .then(([pointsRes, txRes, catRes]) => {
-        if (cancelled) return;
-        if (!pointsRes.success || !pointsRes.data) {
-          setTotalPoints(0);
-        } else {
-          setTotalPoints(pointsRes.data.points);
-        }
-        if (txRes.success && txRes.point_transactions) {
-          setTransactions(txRes.point_transactions);
-        } else {
-          setTransactions([]);
-        }
-        if (catRes.success && catRes.point_categories) {
-          setCategories(catRes.point_categories);
-        } else {
-          setCategories([]);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message ?? "Failed to load points.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [email]);
+    const res = await refreshPointHistory();
+    setLoading(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    if (res.data) setBundle(res.data);
+  }, []);
 
   const categoryMap = useMemo(
-    () => new Map(categories.map((c) => [c.id, c])),
-    [categories]
+    () => new Map(bundle.categories.map((c) => [c.id, c])),
+    [bundle.categories]
   );
 
+  const transactions = bundle.transactions;
   const totalPages = Math.ceil(transactions.length / PAGE_SIZE) || 1;
   const start = (page - 1) * PAGE_SIZE;
   const pageTransactions = transactions.slice(start, start + PAGE_SIZE);
 
-  if (loading) {
-    return (
-      <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
-        Loading points…
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
-        {error}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={loading}
+          className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
+        >
+          {loading ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h2 className="text-sm font-medium text-muted-foreground">Total points</h2>
         <p className="mt-1 text-3xl font-bold text-card-foreground">
-          {totalPoints ?? 0}
+          {bundle.totalPoints}
         </p>
+        {bundle.rank != null && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Leaderboard rank #{bundle.rank}
+          </p>
+        )}
       </div>
 
       <section className="rounded-xl border border-border bg-card shadow-sm">
@@ -129,19 +110,23 @@ export function PointHistoryContent({ email }: PointHistoryContentProps) {
                 </tr>
               ) : (
                 pageTransactions.map((tx) => {
-                  const cat = categoryMap.get(tx.category_id);
+                  const cat = tx.category_id ? categoryMap.get(tx.category_id) : undefined;
+                  const pts = tx.points_earned ?? 0;
+                  const created = tx.created_at
+                    ? new Date(tx.created_at).toLocaleDateString(undefined, {
+                        dateStyle: "medium",
+                      })
+                    : "—";
                   return (
                     <tr key={tx.id} className="hover:bg-muted">
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-card-foreground sm:px-6">
-                        {new Date(tx.created_at).toLocaleDateString(undefined, {
-                          dateStyle: "medium",
-                        })}
+                        {created}
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground sm:px-6">
-                        {cat?.name ?? tx.category_id}
+                        {cat?.name ?? tx.category_id ?? "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-card-foreground sm:px-6">
-                        +{tx.points_earned}
+                        +{pts}
                       </td>
                     </tr>
                   );

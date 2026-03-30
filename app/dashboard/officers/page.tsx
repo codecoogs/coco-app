@@ -2,7 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import { hasPermission } from "@/lib/types/rbac";
 import { redirect } from "next/navigation";
-import { getOfficers } from "./actions";
+import {
+  getBranchOptions,
+  getBranchesForManage,
+  getOfficers,
+  getPositionsForManage,
+  getRoleOptions,
+} from "./actions";
 import { OfficersContent } from "./OfficersContent";
 
 export default async function OfficersPage() {
@@ -20,7 +26,30 @@ export default async function OfficersPage() {
     redirect("/dashboard");
   }
 
+  const canManage = hasPermission(profile, "manage_officers");
   const { data: officers, error } = await getOfficers();
+
+  let positionsForManage: Awaited<ReturnType<typeof getPositionsForManage>>["data"] = [];
+  let branchesForManage: Awaited<ReturnType<typeof getBranchesForManage>>["data"] = [];
+  let branchOptions: Awaited<ReturnType<typeof getBranchOptions>>["data"] = [];
+  let roleOptions: Awaited<ReturnType<typeof getRoleOptions>>["data"] = [];
+  let positionsLoadError: string | null = null;
+  let branchesLoadError: string | null = null;
+
+  if (canManage) {
+    const [pr, br, rr, bmr] = await Promise.all([
+      getPositionsForManage(),
+      getBranchOptions(),
+      getRoleOptions(),
+      getBranchesForManage(),
+    ]);
+    positionsForManage = pr.data;
+    branchOptions = br.data;
+    roleOptions = rr.data;
+    branchesForManage = bmr.data;
+    positionsLoadError = pr.error ?? br.error ?? rr.error;
+    branchesLoadError = bmr.error;
+  }
 
   return (
     <div className="space-y-8">
@@ -39,7 +68,13 @@ export default async function OfficersPage() {
       ) : (
         <OfficersContent
           officers={officers}
-          canManage={hasPermission(profile, "manage_officers")}
+          canManage={canManage}
+          positionsForManage={positionsForManage}
+          branchesForManage={branchesForManage}
+          branchOptions={branchOptions}
+          roleOptions={roleOptions}
+          positionsLoadError={positionsLoadError}
+          branchesLoadError={branchesLoadError}
         />
       )}
     </div>
