@@ -5,25 +5,48 @@ import { createClient } from "@/lib/supabase/client";
 import { validatePassword } from "@/lib/validation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function ResetPasswordPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [noSession, setNoSession] = useState<boolean | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
   const [message, setMessage] = useState<{
     type: "error" | "success";
     text: string;
   } | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setNoSession(!user);
+    let cancelled = false;
+
+    const applySession = (hasUser: boolean) => {
+      if (cancelled) return;
+      setNoSession(!hasUser);
+      setSessionReady(true);
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
+        applySession(!!session?.user);
+      }
     });
-  }, []);
+
+    // Parses hash/query recovery tokens when detectSessionInUrl is enabled (browser client)
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      applySession(!!session?.user);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +73,16 @@ export default function ResetPasswordPage() {
     router.push("/dashboard");
     router.refresh();
   };
+
+  if (!sessionReady) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-900 px-4">
+        <div className="w-full max-w-md rounded-xl border border-zinc-600/50 bg-zinc-800 p-6 shadow-2xl sm:p-8 text-center">
+          <p className="text-zinc-300">Verifying your reset link…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (noSession === true) {
     return (

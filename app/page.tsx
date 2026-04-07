@@ -122,6 +122,7 @@ function HomePageContent() {
         onClose={() => setSignUpOpen(false)}
         onOpenSignIn={() => setSignInOpen(true)}
         next={searchParams.get("next") ?? "/dashboard"}
+        fromInvite={searchParams.get("from") === "invite"}
       />
       <TeamSignInModal
         open={teamSignInOpen}

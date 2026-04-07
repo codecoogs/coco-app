@@ -1,3 +1,4 @@
+import { sanitizeAuthNextParam } from "@/lib/auth-internal-path";
 import { getSiteUrl } from "@/lib/site-url";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/public-env";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
@@ -7,7 +8,7 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = sanitizeAuthNextParam(searchParams.get("next"));
   const baseUrl = getSiteUrl(origin);
 
   if (code) {

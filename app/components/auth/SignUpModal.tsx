@@ -12,7 +12,7 @@ import {
 } from "@/lib/validation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export const SIGNUP_MAJOR_OPTIONS = [
   "Computer Science",
@@ -28,6 +28,8 @@ type SignUpModalProps = {
   onOpenSignIn?: () => void;
   /** Post-sign-in redirect when email confirmation is off (immediate session). */
   next?: string;
+  /** True when opened via invite link (?from=invite); user already has an auth session. */
+  fromInvite?: boolean;
 };
 
 export function SignUpModal({
@@ -35,6 +37,7 @@ export function SignUpModal({
   onClose,
   onOpenSignIn,
   next = "/dashboard",
+  fromInvite = false,
 }: SignUpModalProps) {
   const supabase = createClient();
   const router = useRouter();
@@ -45,10 +48,22 @@ export function SignUpModal({
   const [expectedGraduation, setExpectedGraduation] = useState("");
   const [major, setMajor] = useState<string>(SIGNUP_MAJOR_OPTIONS[0]);
   const [loading, setLoading] = useState(false);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [message, setMessage] = useState<{
     type: "error" | "success";
     text: string;
   } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const client = createClient();
+    void client.auth.getUser().then(({ data: { user } }) => {
+      setSessionUserId(user?.id ?? null);
+      if (fromInvite && user?.email) {
+        setEmail(user.email);
+      }
+    });
+  }, [open, fromInvite]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +83,25 @@ export function SignUpModal({
       setMessage({
         type: "error",
         text: emailResult.error ?? "Invalid email.",
+      });
+      return;
+    }
+
+    const { data: authUserData } = await supabase.auth.getUser();
+    const existing = authUserData.user;
+
+    if (existing && !fromInvite) {
+      setMessage({
+        type: "error",
+        text: "You're already signed in. Open the app from your invite link, or go to the dashboard.",
+      });
+      return;
+    }
+
+    if (existing && fromInvite && existing.email?.toLowerCase() !== email.trim().toLowerCase()) {
+      setMessage({
+        type: "error",
+        text: "Email must match the address your invitation was sent to.",
       });
       return;
     }
@@ -98,18 +132,39 @@ export function SignUpModal({
 
     setLoading(true);
     setMessage(null);
+
+    const profileData = {
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      major,
+      expected_graduation: expectedGraduation.trim(),
+    };
+
+    if (existing && fromInvite) {
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
+        data: profileData,
+      });
+      setLoading(false);
+      if (updateError) {
+        setMessage({ type: "error", text: updateError.message });
+        return;
+      }
+      onClose();
+      const dest =
+        next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+      router.push(dest);
+      router.refresh();
+      return;
+    }
+
     const redirectTo = `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}`;
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
         emailRedirectTo: redirectTo,
-        data: {
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          major,
-          expected_graduation: expectedGraduation.trim(),
-        },
+        data: profileData,
       },
     });
     setLoading(false);
@@ -180,10 +235,12 @@ export function SignUpModal({
           id="signup-modal-title"
           className="text-2xl font-semibold tracking-tight text-white"
         >
-          Create an account
+          {fromInvite ? "Finish your account" : "Create an account"}
         </h2>
         <p className="mt-1 text-zinc-300">
-          Add your profile details and choose a password.
+          {fromInvite
+            ? "Choose a password and confirm your profile to get started."
+            : "Add your profile details and choose a password."}
         </p>
 
         <form onSubmit={handleSignup} className="mt-6 space-y-4">
@@ -243,7 +300,11 @@ export function SignUpModal({
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              readOnly={fromInvite && !!sessionUserId}
+              aria-readonly={fromInvite && !!sessionUserId}
+              className={`mt-1 block w-full rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                fromInvite && sessionUserId ? "cursor-not-allowed opacity-90" : ""
+              }`}
               placeholder="you@example.com"
             />
           </div>
@@ -338,7 +399,13 @@ export function SignUpModal({
             disabled={loading}
             className="w-full rounded-lg bg-blue-600 py-3 font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
           >
-            {loading ? "Creating account…" : "Sign up"}
+            {loading
+              ? fromInvite
+                ? "Saving…"
+                : "Creating account…"
+              : fromInvite
+                ? "Complete signup"
+                : "Sign up"}
           </button>
         </form>
 

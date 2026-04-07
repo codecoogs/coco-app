@@ -1,5 +1,6 @@
 "use client";
 
+import { sanitizeAuthNextParam } from "@/lib/auth-internal-path";
 import { createClient } from "@/lib/supabase/client";
 import { getSiteUrl } from "@/lib/site-url";
 import { validateEmail } from "@/lib/validation";
@@ -27,7 +28,8 @@ export default function ForgotPasswordPage() {
     }
     setLoading(true);
     setMessage(null);
-    const redirectTo = `${getSiteUrl()}/auth/callback?next=${encodeURIComponent("/reset-password")}`;
+    const next = sanitizeAuthNextParam("/reset-password");
+    const redirectTo = `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}`;
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo,
     });

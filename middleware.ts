@@ -62,6 +62,14 @@ export async function middleware(request: NextRequest) {
   }
 
   if ((pathname === '/' || isAuthPath(pathname)) && user) {
+    // Invite / finish-signup: email link lands with session + signup modal (see lib/auth-internal-path)
+    if (pathname === '/' && request.nextUrl.searchParams.get('modal') === 'signup') {
+      return response
+    }
+    // /signup redirects to ?modal=signup; allow through so invited users are not sent to dashboard first
+    if (pathname === '/signup') {
+      return response
+    }
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
