@@ -34,13 +34,16 @@ export function PointHistoryContent({ initial }: Props) {
 
   const categoryMap = useMemo(
     () => new Map(bundle.categories.map((c) => [c.id, c])),
-    [bundle.categories]
+    [bundle.categories],
   );
 
   const transactions = bundle.transactions;
   const totalPages = Math.ceil(transactions.length / PAGE_SIZE) || 1;
   const start = (page - 1) * PAGE_SIZE;
   const pageTransactions = transactions.slice(start, start + PAGE_SIZE);
+
+  const first = bundle.memberFirstName?.trim();
+  const hasPoints = bundle.totalPoints > 0;
 
   return (
     <div className="space-y-8">
@@ -49,6 +52,42 @@ export function PointHistoryContent({ initial }: Props) {
           {error}
         </div>
       )}
+
+      {hasPoints ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+          <p className="text-base font-medium">
+            Congratulations on {bundle.totalPoints} point
+            {bundle.totalPoints !== 1 ? "s" : ""}
+            {first ? `, ${first}` : ""}!
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50 p-5 text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+          <p className="text-base font-medium">Come out to events to get points!</p>
+          <p className="text-sm opacity-90">
+            No point transactions yet. If you think this is wrong or have questions,
+            reach out to an officer so we can match your account to your membership.
+          </p>
+        </div>
+      )}
+
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="text-sm font-medium text-muted-foreground">
+          Your total points
+        </h2>
+        <p className="mt-1 text-4xl font-bold tabular-nums text-card-foreground">
+          {bundle.totalPoints}
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Total is the sum of every row in your point history (same source as the
+          table below).
+        </p>
+        {bundle.rank != null && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Leaderboard rank #{bundle.rank}
+          </p>
+        )}
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -59,18 +98,6 @@ export function PointHistoryContent({ initial }: Props) {
         >
           {loading ? "Refreshing…" : "Refresh"}
         </button>
-      </div>
-
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="text-sm font-medium text-muted-foreground">Total points</h2>
-        <p className="mt-1 text-3xl font-bold text-card-foreground">
-          {bundle.totalPoints}
-        </p>
-        {bundle.rank != null && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Leaderboard rank #{bundle.rank}
-          </p>
-        )}
       </div>
 
       <section className="rounded-xl border border-border bg-card shadow-sm">
@@ -110,7 +137,9 @@ export function PointHistoryContent({ initial }: Props) {
                 </tr>
               ) : (
                 pageTransactions.map((tx) => {
-                  const cat = tx.category_id ? categoryMap.get(tx.category_id) : undefined;
+                  const cat = tx.category_id
+                    ? categoryMap.get(tx.category_id)
+                    : undefined;
                   const pts = tx.points_earned ?? 0;
                   const created = tx.created_at
                     ? new Date(tx.created_at).toLocaleDateString(undefined, {

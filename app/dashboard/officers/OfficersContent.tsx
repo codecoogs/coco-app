@@ -77,15 +77,25 @@ export function OfficersContent({
   const openAdd = useCallback(async () => {
     setAdding(true);
     setMessage(null);
-    const [titlesRes, usersRes] = await Promise.all([
-      getPositionTitles(),
-      getUsersWithoutPosition(),
-    ]);
-    if (titlesRes.error) setMessage({ type: "error", text: titlesRes.error });
-    else setPositionTitles(titlesRes.data);
-    if (usersRes.error)
-      setMessage((m) => m || { type: "error", text: String(usersRes.error) });
-    else setUsersWithoutPosition(usersRes.data);
+    try {
+      const [titlesRes, usersRes] = await Promise.all([
+        getPositionTitles(),
+        getUsersWithoutPosition(),
+      ]);
+      const errors = [titlesRes.error, usersRes.error].filter(Boolean) as string[];
+      if (errors.length > 0) {
+        setMessage({ type: "error", text: errors.join(" ") });
+      }
+      setPositionTitles(titlesRes.error ? [] : titlesRes.data);
+      setUsersWithoutPosition(usersRes.error ? [] : usersRes.data);
+    } catch (e) {
+      setMessage({
+        type: "error",
+        text: e instanceof Error ? e.message : "Could not load form options.",
+      });
+      setPositionTitles([]);
+      setUsersWithoutPosition([]);
+    }
   }, []);
 
   const openEdit = useCallback(async (id: string) => {
@@ -304,6 +314,18 @@ export function OfficersContent({
               </button>
             </div>
           </form>
+          {!message && usersWithoutPosition.length === 0 && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              User list is empty: everyone may already have a position, or the server could not load members
+              (check SUPABASE_SERVICE_ROLE_KEY and your account&apos;s manage permission).
+            </p>
+          )}
+          {!message && positionTitles.length === 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              No active positions found in <code className="rounded bg-muted px-1">positions</code>. Add or
+              activate positions under the Officer roles tab.
+            </p>
+          )}
         </section>
       )}
 

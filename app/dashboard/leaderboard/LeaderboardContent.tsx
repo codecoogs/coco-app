@@ -16,6 +16,17 @@ function displayName(row: LeaderboardRow): string {
   const last = u?.last_name?.trim() ?? "";
   const full = [first, last].filter(Boolean).join(" ");
   if (full) return full;
+
+  const email = u?.email?.trim() ?? "";
+  if (email) {
+    const at = email.indexOf("@");
+    if (at > 0) return email.slice(0, at);
+    return email;
+  }
+
+  const discord = u?.discord?.trim() ?? "";
+  if (discord) return discord;
+
   return "Member";
 }
 
@@ -85,7 +96,7 @@ export function LeaderboardContent({ initialRows, currentUserId }: Props) {
                   Rank
                 </th>
                 <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
-                  Member
+                  Name
                 </th>
                 <th className="bg-muted px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                   Points

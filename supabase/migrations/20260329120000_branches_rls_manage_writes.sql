@@ -1,5 +1,5 @@
 -- Branches: INSERT, UPDATE, DELETE for holders of manage_branch (SELECT already in 20260329100000).
--- REST "POST" / create maps to INSERT; reads to SELECT.
+-- manage_branch may be granted via position_permissions or role_permissions (current_user_has_permission).
 
 UPDATE public.permissions
 SET description = 'Full CRUD on public.branches (SELECT, INSERT, UPDATE, DELETE).'

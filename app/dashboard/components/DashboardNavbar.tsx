@@ -20,13 +20,32 @@ function isWelcomeBack(
 export function DashboardNavbar() {
   const { user, profile, loading } = useProfile();
 
-  if (!user) return null;
-  if (loading) {
+  // If auth is still syncing and we have no user yet, show a shell (layout usually passes initialUser).
+  if (loading && !user) {
     return (
       <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
         <div className="min-w-0" />
         <nav className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">Loading…</span>
+          <form action="/auth/signout" method="POST">
+            <button
+              type="submit"
+              className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+            >
+              Sign out
+            </button>
+          </form>
+        </nav>
+      </header>
+    );
+  }
+
+  if (!user) {
+    return (
+      <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
+        <div className="min-w-0" />
+        <nav className="flex items-center gap-4">
+          <span className="text-sm text-muted-foreground">Session unavailable</span>
           <form action="/auth/signout" method="POST">
             <button
               type="submit"

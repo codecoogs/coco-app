@@ -13,7 +13,14 @@ function emptyBundle(): PointHistoryBundle {
     rank: null,
     transactions: [],
     categories: [],
+    memberFirstName: null,
   };
+}
+
+function sumPointsFromTransactions(
+  rows: { points_earned: number | null }[]
+): number {
+  return rows.reduce((s, t) => s + (Number(t.points_earned) || 0), 0);
 }
 
 /**
@@ -54,10 +61,10 @@ async function fetchPointHistoryViaRls(
   supabase: SupabaseClient,
   appUserId: string
 ): Promise<{ data: PointHistoryBundle; error: string | null }> {
-  const [lbRes, txRes, catRes] = await Promise.all([
+  const [lbRes, txRes, catRes, userRes] = await Promise.all([
     supabase
       .from("leaderboard")
-      .select("total_points, current_rank")
+      .select("current_rank")
       .eq("user_id", appUserId)
       .maybeSingle(),
     supabase
@@ -66,18 +73,24 @@ async function fetchPointHistoryViaRls(
       .eq("user_id", appUserId)
       .order("created_at", { ascending: false }),
     supabase.from("point_categories").select("id, name, points_value").order("name"),
+    supabase.from("users").select("first_name").eq("id", appUserId).maybeSingle(),
   ]);
 
   if (lbRes.error) return { data: emptyBundle(), error: lbRes.error.message };
   if (txRes.error) return { data: emptyBundle(), error: txRes.error.message };
   if (catRes.error) return { data: emptyBundle(), error: catRes.error.message };
+  if (userRes.error) return { data: emptyBundle(), error: userRes.error.message };
+
+  const transactions = (txRes.data ?? []) as PointHistoryTransaction[];
+  const fn = userRes.data?.first_name?.trim() ?? null;
 
   return {
     data: {
-      totalPoints: lbRes.data?.total_points ?? 0,
+      totalPoints: sumPointsFromTransactions(transactions),
       rank: lbRes.data?.current_rank ?? null,
-      transactions: (txRes.data ?? []) as PointHistoryTransaction[],
+      transactions,
       categories: (catRes.data ?? []) as PointHistoryCategory[],
+      memberFirstName: fn || null,
     },
     error: null,
   };
@@ -130,7 +143,7 @@ export async function fetchPointHistoryForSignedInUser(
       .select("id, category_id, points_earned, created_at")
       .in("user_id", userIds)
       .order("created_at", { ascending: false }),
-    admin.from("leaderboard").select("user_id, total_points, current_rank").in("user_id", userIds),
+    admin.from("leaderboard").select("user_id, current_rank").in("user_id", userIds),
     supabase.from("point_categories").select("id, name, points_value").order("name"),
   ]);
 
@@ -144,8 +157,22 @@ export async function fetchPointHistoryForSignedInUser(
     return { data: emptyBundle(), error: catRes.error.message, hasLinkedProfile: true };
   }
 
+  const { data: userRows, error: userErr } = await admin
+    .from("users")
+    .select("first_name")
+    .in("id", userIds);
+
+  if (userErr) {
+    return { data: emptyBundle(), error: userErr.message, hasLinkedProfile: true };
+  }
+
+  const memberFirstName =
+    userRows?.find((r) => r.first_name?.trim())?.first_name?.trim() ?? null;
+
+  const transactions = (txRes.data ?? []) as PointHistoryTransaction[];
+  const totalPoints = sumPointsFromTransactions(transactions);
+
   const lbRows = lbRes.data ?? [];
-  const totalPoints = lbRows.reduce((s, r) => s + (r.total_points ?? 0), 0);
   const ranks = lbRows
     .map((r) => r.current_rank)
     .filter((n): n is number => n != null && Number.isFinite(n));
@@ -155,8 +182,9 @@ export async function fetchPointHistoryForSignedInUser(
     data: {
       totalPoints,
       rank,
-      transactions: (txRes.data ?? []) as PointHistoryTransaction[],
+      transactions,
       categories: (catRes.data ?? []) as PointHistoryCategory[],
+      memberFirstName,
     },
     error: null,
     hasLinkedProfile: true,

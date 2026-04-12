@@ -68,6 +68,7 @@ export function isTeamAllowed(profile: UserProfile | null): boolean {
  * Convention:
  * - view_*: can see the tab/page (read-only).
  * - manage_*: can create, edit, and set is_active (or equivalent) for that resource.
+ * - DB may use singular names (e.g. manage_officer); hasPermission() accepts both for officers.
  * - view_events / manage_events: events page (view_any) vs create/edit/cancel.
  * - view_point_categories / manage_point_categories: read vs edit point_categories (RLS).
  */
@@ -92,6 +93,27 @@ export type PermissionName = (typeof PERMISSION_NAMES)[number];
  * Returns true if the user's profile has the given permission.
  * Admins (is_admin) are treated as having all permissions.
  */
+/** DB may store singular names (e.g. manage_officer) while the app uses manage_officers. */
+function profileHasPermissionName(
+  list: readonly string[],
+  permission: PermissionName
+): boolean {
+  if (list.includes(permission)) return true;
+  if (permission === "manage_officers") {
+    return list.includes("manage_officer");
+  }
+  if (permission === "view_officers") {
+    return list.includes("view_officer");
+  }
+  if (permission === "view_branch") {
+    return list.includes("view_branches");
+  }
+  if (permission === "manage_branch") {
+    return list.includes("manage_branches");
+  }
+  return false;
+}
+
 export function hasPermission(
   profile: UserProfile | null,
   permission: PermissionName
@@ -99,7 +121,7 @@ export function hasPermission(
   if (!profile) return false;
   if (profile.is_admin) return true;
   const list = profile.permissions ?? [];
-  return list.includes(permission);
+  return profileHasPermissionName(list, permission);
 }
 
 /**
@@ -112,7 +134,7 @@ export function hasAnyPermission(
   if (!profile) return false;
   if (profile.is_admin) return true;
   const list = profile.permissions ?? [];
-  return permissions.some((p) => list.includes(p));
+  return permissions.some((p) => profileHasPermissionName(list, p));
 }
 
 /**
@@ -125,5 +147,5 @@ export function hasAllPermissions(
   if (!profile) return false;
   if (profile.is_admin) return true;
   const list = profile.permissions ?? [];
-  return permissions.every((p) => list.includes(p));
+  return permissions.every((p) => profileHasPermissionName(list, p));
 }

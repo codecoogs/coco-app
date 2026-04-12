@@ -1,5 +1,7 @@
 -- Branches: SELECT for holders of view_branch or manage_branch.
--- Requires public.current_user_has_permission(text) from 20260325120000_point_categories_rls_permissions.sql.
+-- Requires public.current_user_has_permission(text) (extends with role_permissions in
+-- 20260406120000; branch name aliases in 20260406200000). Grants may live in
+-- public.position_permissions or public.role_permissions.
 
 INSERT INTO public.permissions (name, description)
 VALUES

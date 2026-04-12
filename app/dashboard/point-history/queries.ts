@@ -14,8 +14,10 @@ export type PointHistoryTransaction = {
 };
 
 export type PointHistoryBundle = {
+  /** Sum of `points_earned` from `point_transactions` for this member. */
   totalPoints: number;
   rank: number | null;
   transactions: PointHistoryTransaction[];
   categories: PointHistoryCategory[];
+  memberFirstName: string | null;
 };

@@ -1,7 +1,8 @@
 import { sanitizeAuthNextParam } from "@/lib/auth-internal-path";
 import { getSiteUrl } from "@/lib/site-url";
+import { supabaseServerCookieOptions } from "@/lib/supabase/cookie-options";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/public-env";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -17,15 +18,15 @@ export async function GET(request: Request) {
       getSupabaseUrl(),
       getSupabaseAnonKey(),
       {
+        cookieOptions: supabaseServerCookieOptions,
         cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
+          getAll() {
+            return cookieStore.getAll();
           },
-          set(name: string, value: string, options: CookieOptions) {
-            cookieStore.set(name, value, options);
-          },
-          remove(name: string, options: CookieOptions) {
-            cookieStore.set(name, "", options);
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
           },
         },
       }

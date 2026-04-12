@@ -19,7 +19,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <ProfileProvider>
+    <ProfileProvider initialUser={user}>
       <div className="flex min-h-screen bg-background">
         <DashboardSidebar />
         <div className="flex flex-1 flex-col">

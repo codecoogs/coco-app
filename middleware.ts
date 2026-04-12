@@ -1,5 +1,5 @@
-import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/public-env";
-import { createServerClient } from "@supabase/ssr";
+import { createMiddlewareSupabaseClient } from "@/lib/supabase/middleware-client";
+import { forwardSessionCookies } from "@/lib/supabase/forward-session-cookies";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
@@ -26,23 +26,9 @@ function isAuthPath(pathname: string) {
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request })
 
-  const supabase = createServerClient(
-    getSupabaseUrl(),
-    getSupabaseAnonKey(),
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+  const supabase = createMiddlewareSupabaseClient(request, response)
 
+  // Refreshes expired access tokens (refresh token rotation) and writes updated cookies.
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -53,7 +39,9 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('next', pathname)
-    return NextResponse.redirect(url)
+    const redirect = NextResponse.redirect(url)
+    forwardSessionCookies(response, redirect)
+    return redirect
   }
 
   // Let users on reset-password through so they can set a new password after the email link
@@ -72,7 +60,9 @@ export async function middleware(request: NextRequest) {
     }
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+    const redirect = NextResponse.redirect(url)
+    forwardSessionCookies(response, redirect)
+    return redirect
   }
 
   return response

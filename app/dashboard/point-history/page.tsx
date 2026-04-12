@@ -13,13 +13,11 @@ export default async function PointHistoryPage() {
     redirect("/login?next=/dashboard/point-history");
   }
 
-  const { data, error, hasLinkedProfile } = await fetchPointHistoryForSignedInUser(
-    supabase,
-    {
+  const { data, error, hasLinkedProfile } =
+    await fetchPointHistoryForSignedInUser(supabase, {
       id: user.id,
       email: user.email,
-    }
-  );
+    });
 
   if (!hasLinkedProfile) {
     return (
@@ -31,9 +29,10 @@ export default async function PointHistoryPage() {
           </p>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-          We could not match your login to a member profile (by account link or email).
-          After signing up, your profile should appear here. If you expect to see points,
-          contact an officer to verify your email matches your membership record.
+          We could not match your login to a member profile (by account link or
+          email). After signing up, your profile should appear here. If you
+          expect to see points, contact an officer to verify your email matches
+          your membership record.
         </div>
       </div>
     );
@@ -60,7 +59,7 @@ export default async function PointHistoryPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Point history</h1>
         <p className="mt-1 text-muted-foreground">
-          View your total points and how they were awarded.
+          Your total is the sum of your rows in point_transactions (listed below).
         </p>
       </div>
       <PointHistoryContent initial={data} />

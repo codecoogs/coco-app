@@ -1,11 +1,18 @@
 "use server";
 
-import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchUserProfile } from "@/lib/supabase/profile";
+import { getServiceRoleClient } from "@/lib/supabase/service-role";
 import { getCurrentAppUserId } from "@/lib/supabase/get-current-app-user";
 import { createClient } from "@/lib/supabase/server";
-import { hasPermission } from "@/lib/types/rbac";
+import {
+  hasAnyPermission,
+  hasPermission,
+  type UserProfile,
+} from "@/lib/types/rbac";
 import { revalidatePath } from "next/cache";
+
+const SERVICE_ROLE_ERROR =
+  "SUPABASE_SERVICE_ROLE_KEY is not set on the server. Officer admin needs the service role key to load users and positions.";
 
 export type OfficerRow = {
   id: string;
@@ -67,7 +74,10 @@ export async function getOfficers(): Promise<
     return { data: [], error: "You do not have permission to view officers." };
   }
 
-  const admin = createAdminClient();
+  const admin = getServiceRoleClient();
+  if (!admin) {
+    return { data: [], error: SERVICE_ROLE_ERROR };
+  }
   const { data: rows, error } = await admin
     .from("user_positions")
     .select(
@@ -149,7 +159,10 @@ export async function getPositionTitles(): Promise<
     return { data: [], error: "No permission." };
   }
 
-  const admin = createAdminClient();
+  const admin = getServiceRoleClient();
+  if (!admin) {
+    return { data: [], error: SERVICE_ROLE_ERROR };
+  }
   const { data, error } = await admin
     .from("positions")
     .select("title")
@@ -178,7 +191,10 @@ export async function getUsersWithoutPosition(): Promise<
     return { data: [], error: "No permission." };
   }
 
-  const admin = createAdminClient();
+  const admin = getServiceRoleClient();
+  if (!admin) {
+    return { data: [], error: SERVICE_ROLE_ERROR };
+  }
   const { data: assigned } = await admin
     .from("user_positions")
     .select("user_id");
@@ -221,7 +237,8 @@ export async function createOfficer(
   const appUserId = await getCurrentAppUserId(supabase);
   if (!appUserId) return { error: "Could not resolve your user account." };
 
-  const admin = createAdminClient();
+  const admin = getServiceRoleClient();
+  if (!admin) return { error: SERVICE_ROLE_ERROR };
   const { error } = await admin.from("user_positions").insert({
     user_id,
     positionTitle: positionTitle || null,
@@ -258,7 +275,8 @@ export async function updateOfficer(
   if (updates.positionTitle !== undefined) payload.positionTitle = updates.positionTitle;
   if (updates.is_active !== undefined) payload.is_active = updates.is_active;
 
-  const admin = createAdminClient();
+  const admin = getServiceRoleClient();
+  if (!admin) return { error: SERVICE_ROLE_ERROR };
   const { error } = await admin
     .from("user_positions")
     .update(payload)
@@ -290,7 +308,10 @@ export async function getPositionsForManage(): Promise<{
     return { data: [], error: "You do not have permission to manage officer roles." };
   }
 
-  const admin = createAdminClient();
+  const admin = getServiceRoleClient();
+  if (!admin) {
+    return { data: [], error: SERVICE_ROLE_ERROR };
+  }
   const { data: rows, error } = await admin
     .from("positions")
     .select("id, title, description, is_active, branch_id, role_id, branches(name), roles(name)")
@@ -328,7 +349,21 @@ export async function getPositionsForManage(): Promise<{
   return { data, error: null };
 }
 
-/** All branches (active and inactive) for manage_officers Branches tab. */
+/** Branch read: RLS on public.branches (view_branch / manage_branch; manage_officers via app_permission_matches). */
+function canReadBranches(profile: UserProfile | null) {
+  return hasAnyPermission(profile, [
+    "view_branch",
+    "manage_branch",
+    "manage_officers",
+  ]);
+}
+
+/** Branch writes: RLS requires manage_branch (manage_officers satisfies in DB when migration applied). */
+function canManageBranches(profile: UserProfile | null) {
+  return hasAnyPermission(profile, ["manage_branch", "manage_officers"]);
+}
+
+/** All branches (active and inactive) for manage_officers Branches tab. Uses session client + RLS. */
 export async function getBranchesForManage(): Promise<{
   data: BranchManageRow[];
   error: string | null;
@@ -340,12 +375,11 @@ export async function getBranchesForManage(): Promise<{
   if (!authUser?.id) return { data: [], error: "Not signed in." };
 
   const profile = await fetchUserProfile(supabase, authUser.id);
-  if (!hasPermission(profile, "manage_officers")) {
+  if (!canReadBranches(profile)) {
     return { data: [], error: "No permission." };
   }
 
-  const admin = createAdminClient();
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from("branches")
     .select("id, name, description, is_active, created_at, updated_at")
     .order("name");
@@ -365,12 +399,11 @@ export async function getBranchOptions(): Promise<{
   if (!authUser?.id) return { data: [], error: "Not signed in." };
 
   const profile = await fetchUserProfile(supabase, authUser.id);
-  if (!hasPermission(profile, "manage_officers")) {
+  if (!canReadBranches(profile)) {
     return { data: [], error: "No permission." };
   }
 
-  const admin = createAdminClient();
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from("branches")
     .select("id, name")
     .eq("is_active", true)
@@ -395,7 +428,10 @@ export async function getRoleOptions(): Promise<{
     return { data: [], error: "No permission." };
   }
 
-  const admin = createAdminClient();
+  const admin = getServiceRoleClient();
+  if (!admin) {
+    return { data: [], error: SERVICE_ROLE_ERROR };
+  }
   const { data, error } = await admin.from("roles").select("id, name").order("name");
 
   if (error) return { data: [], error: error.message };
@@ -426,7 +462,8 @@ export async function updatePosition(
   const appUserId = await getCurrentAppUserId(supabase);
   if (!appUserId) return { error: "Could not resolve your user account." };
 
-  const admin = createAdminClient();
+  const admin = getServiceRoleClient();
+  if (!admin) return { error: SERVICE_ROLE_ERROR };
   const { error } = await admin
     .from("positions")
     .update({
@@ -456,7 +493,7 @@ export async function createBranch(
   if (!authUser?.id) return { error: "Not signed in." };
 
   const profile = await fetchUserProfile(supabase, authUser.id);
-  if (!hasPermission(profile, "manage_officers")) {
+  if (!canManageBranches(profile)) {
     return { error: "You do not have permission to manage branches." };
   }
 
@@ -466,8 +503,7 @@ export async function createBranch(
   const appUserId = await getCurrentAppUserId(supabase);
   if (!appUserId) return { error: "Could not resolve your user account." };
 
-  const admin = createAdminClient();
-  const { error } = await admin.from("branches").insert({
+  const { error } = await supabase.from("branches").insert({
     name: trimmed,
     description: description?.trim() || null,
     is_active,
@@ -491,7 +527,7 @@ export async function updateBranch(
   if (!authUser?.id) return { error: "Not signed in." };
 
   const profile = await fetchUserProfile(supabase, authUser.id);
-  if (!hasPermission(profile, "manage_officers")) {
+  if (!canManageBranches(profile)) {
     return { error: "You do not have permission to manage branches." };
   }
 
@@ -501,8 +537,7 @@ export async function updateBranch(
   const appUserId = await getCurrentAppUserId(supabase);
   if (!appUserId) return { error: "Could not resolve your user account." };
 
-  const admin = createAdminClient();
-  const { error } = await admin
+  const { error } = await supabase
     .from("branches")
     .update({
       name: trimmed,
