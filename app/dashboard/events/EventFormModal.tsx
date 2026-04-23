@@ -18,16 +18,20 @@ function toDatetimeLocalValue(iso: string | null | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function pickCategoryId(
+function pickPointCategoryName(
   row: EventRow | null,
   categories: PointCategoryOption[],
 ): string {
   if (!categories.length) return "";
-  if (!row?.point_category?.trim()) {
-    return categories[0].id;
+  const key = row?.point_category?.trim();
+  if (!key) {
+    return categories[0].name;
   }
-  const match = categories.find((c) => c.id === row.point_category);
-  return match?.id ?? categories[0].id;
+  const byName = categories.find((c) => c.name === key);
+  if (byName) return byName.name;
+  // Legacy DB rows: point_category was once point_categories.id
+  const byId = categories.find((c) => c.id === key);
+  return byId?.name ?? categories[0].name;
 }
 
 type Props = {
@@ -52,8 +56,8 @@ export function EventFormModal({
     text: string;
   } | null>(null);
 
-  const defaultCategoryId = useMemo(
-    () => pickCategoryId(event, categories),
+  const defaultPointCategoryName = useMemo(
+    () => pickPointCategoryName(event, categories),
     [event, categories],
   );
 
@@ -94,8 +98,8 @@ export function EventFormModal({
       .value;
     const endRaw = (form.elements.namedItem("end_time") as HTMLInputElement)
       .value;
-    const categoryId = (
-      form.elements.namedItem("category_id") as HTMLSelectElement
+    const pointCategoryName = (
+      form.elements.namedItem("point_category") as HTMLSelectElement
     ).value;
     const is_public = (form.elements.namedItem("is_public") as HTMLInputElement)
       .checked;
@@ -122,7 +126,7 @@ export function EventFormModal({
       return;
     }
 
-    const cat = categories.find((c) => c.id === categoryId);
+    const cat = categories.find((c) => c.name === pointCategoryName);
     if (!cat) {
       setMessage({ type: "error", text: "Select a points category." });
       return;
@@ -145,7 +149,7 @@ export function EventFormModal({
       location: location || null,
       start_time,
       end_time,
-      point_category: categoryId,
+      point_category: cat.name,
       flyer_url,
       is_public,
     };
@@ -294,13 +298,13 @@ export function EventFormModal({
               Points category
             </label>
             <select
-              name="category_id"
+              name="point_category"
               required
-              defaultValue={defaultCategoryId}
+              defaultValue={defaultPointCategoryName}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground"
             >
               {categories.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={c.id} value={c.name}>
                   {c.name} ({c.points_value} pts)
                 </option>
               ))}

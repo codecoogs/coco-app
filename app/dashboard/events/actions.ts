@@ -15,9 +15,9 @@ export type EventRow = {
   location: string | null;
   start_time: string | null;
   end_time: string | null;
-  /** `point_categories.id` — used when editing the event. */
+  /** `point_categories.name` (FK) — not the category row id. */
   point_category: string | null;
-  /** From joined `point_categories`; null if missing or unknown id. */
+  /** Redundant with `point_category` when the FK is by name; kept for the UI. */
   point_category_name: string | null;
   point_category_points: number | null;
   flyer_url: string | null;
@@ -148,38 +148,24 @@ export async function getEvents(): Promise<{
     "point_category_name" | "point_category_points"
   >[];
 
-  const categoryIds = [
-    ...new Set(
-      raw
-        .map((r) => r.point_category)
-        .filter((id): id is string => Boolean(id?.trim()))
-    ),
-  ];
+  const { data: allCats, error: catErr } = await supabase
+    .from("point_categories")
+    .select("id, name, points_value")
+    .order("name");
 
-  const categoryById = new Map<
-    string,
-    { name: string; points_value: number }
-  >();
+  if (catErr) return { data: [], error: catErr.message };
 
-  if (categoryIds.length > 0) {
-    const { data: cats, error: catErr } = await supabase
-      .from("point_categories")
-      .select("id, name, points_value")
-      .in("id", categoryIds);
-
-    if (catErr) return { data: [], error: catErr.message };
-
-    for (const c of cats ?? []) {
-      categoryById.set(c.id, {
-        name: c.name,
-        points_value: c.points_value,
-      });
-    }
+  const byName = new Map<string, PointCategoryOption>();
+  const byId = new Map<string, PointCategoryOption>();
+  for (const c of (allCats ?? []) as PointCategoryOption[]) {
+    byName.set(c.name, c);
+    byId.set(c.id, c);
   }
 
   const data: EventRow[] = raw.map((r) => {
-    const cat = r.point_category
-      ? categoryById.get(r.point_category)
+    const key = r.point_category?.trim() || null;
+    const cat = key
+      ? (byName.get(key) ?? byId.get(key))
       : undefined;
     return {
       ...r,
