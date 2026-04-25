@@ -14,6 +14,7 @@ export type Theme =
   | "light"
   | "dark"
   | "latte"
+  | "pink-sorbet"
   | "frappe"
   | "macchiato"
   | "mocha";
@@ -53,6 +54,7 @@ function readThemeFromCookie(): Theme | null {
     value === "light" ||
     value === "dark" ||
     value === "latte" ||
+    value === "pink-sorbet" ||
     value === "frappe" ||
     value === "macchiato" ||
     value === "mocha"
@@ -68,6 +70,7 @@ function readThemeFromStorage(): Theme | null {
       stored === "light" ||
       stored === "dark" ||
       stored === "latte" ||
+      stored === "pink-sorbet" ||
       stored === "frappe" ||
       stored === "macchiato" ||
       stored === "mocha"
@@ -102,6 +105,7 @@ function applyThemeToDocument(theme: Theme, resolved: ResolvedTheme) {
   const root = document.documentElement;
   root.classList.toggle("dark", resolved === "dark");
   root.classList.toggle("theme-latte", theme === "latte");
+  root.classList.toggle("theme-pink-sorbet", theme === "pink-sorbet");
   root.classList.toggle("theme-frappe", theme === "frappe");
   root.classList.toggle("theme-macchiato", theme === "macchiato");
   root.classList.toggle("theme-mocha", theme === "mocha");
@@ -131,6 +135,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       "system",
       "light",
       "latte",
+      "pink-sorbet",
       "frappe",
       "macchiato",
       "mocha",

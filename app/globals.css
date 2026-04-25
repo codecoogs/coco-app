@@ -33,6 +33,16 @@
   --card-foreground: #4c4f69; /* Text */
 }
 
+.theme-pink-sorbet {
+  --background: #fef8f9; /* soft_blush 900 */
+  --foreground: #520c15; /* soft_blush 100 */
+  --muted: #fdf1f2; /* soft_blush 800 */
+  --muted-foreground: #a3182b; /* soft_blush 200 */
+  --border: #ffcad4; /* pastel_pink 500 */
+  --card: #fef8f9;
+  --card-foreground: #520c15;
+}
+
 .theme-frappe {
   --background: #303446; /* Base */
   --foreground: #c6d0f5; /* Text */

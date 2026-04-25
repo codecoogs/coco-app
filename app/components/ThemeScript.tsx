@@ -13,6 +13,7 @@ export function ThemeScript() {
   var root = document.documentElement;
   root.classList.toggle('dark', resolved === 'dark');
   root.classList.toggle('theme-latte', theme === 'latte');
+  root.classList.toggle('theme-pink-sorbet', theme === 'pink-sorbet');
   root.classList.toggle('theme-frappe', theme === 'frappe');
   root.classList.toggle('theme-macchiato', theme === 'macchiato');
   root.classList.toggle('theme-mocha', theme === 'mocha');
