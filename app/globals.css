@@ -22,6 +22,57 @@
   --card-foreground: #fafafa;
 }
 
+/* Catppuccin themes (Latte = light, Mocha = dark). */
+.theme-latte {
+  --background: #eff1f5; /* Base */
+  --foreground: #4c4f69; /* Text */
+  --muted: #e6e9ef; /* Mantle */
+  --muted-foreground: #6c6f85; /* Subtext 0 */
+  --border: #ccd0da; /* Surface 0 */
+  --card: #eff1f5; /* Base */
+  --card-foreground: #4c4f69; /* Text */
+}
+
+.theme-pink-sorbet {
+  --background: #fef8f9; /* soft_blush 900 */
+  --foreground: #520c15; /* soft_blush 100 */
+  --muted: #fdf1f2; /* soft_blush 800 */
+  --muted-foreground: #a3182b; /* soft_blush 200 */
+  --border: #ffcad4; /* pastel_pink 500 */
+  --card: #fef8f9;
+  --card-foreground: #520c15;
+}
+
+.theme-frappe {
+  --background: #303446; /* Base */
+  --foreground: #c6d0f5; /* Text */
+  --muted: #292c3c; /* Mantle */
+  --muted-foreground: #a5adce; /* Subtext 0 */
+  --border: #414559; /* Surface 0 */
+  --card: #303446; /* Base */
+  --card-foreground: #c6d0f5; /* Text */
+}
+
+.theme-macchiato {
+  --background: #24273a; /* Base */
+  --foreground: #cad3f5; /* Text */
+  --muted: #1e2030; /* Mantle */
+  --muted-foreground: #a5adcb; /* Subtext 0 */
+  --border: #363a4f; /* Surface 0 */
+  --card: #24273a; /* Base */
+  --card-foreground: #cad3f5; /* Text */
+}
+
+.theme-mocha {
+  --background: #1e1e2e; /* Base */
+  --foreground: #cdd6f4; /* Text */
+  --muted: #181825; /* Mantle */
+  --muted-foreground: #a6adc8; /* Subtext 0 */
+  --border: #313244; /* Surface 0 */
+  --card: #1e1e2e; /* Base */
+  --card-foreground: #cdd6f4; /* Text */
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -38,6 +89,29 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Global affordances: make interactive elements feel clickable. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Theme-consistent checkbox/radio styling (uses CSS variable tokens). */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--foreground);
+  cursor: pointer;
+}
+
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled {
+  cursor: not-allowed;
 }
 
 @keyframes float {
