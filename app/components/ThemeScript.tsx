@@ -8,9 +8,15 @@ export function ThemeScript() {
 (function() {
   var cookie = document.cookie.split('; ').find(function(r) { return r.startsWith('coco-theme='); });
   var theme = cookie ? cookie.split('=')[1] : 'system';
-  var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.classList.toggle('dark', isDark);
-  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var resolved = (theme === 'system') ? (systemDark ? 'dark' : 'light') : (theme === 'dark' || theme === 'frappe' || theme === 'macchiato' || theme === 'mocha') ? 'dark' : 'light';
+  var root = document.documentElement;
+  root.classList.toggle('dark', resolved === 'dark');
+  root.classList.toggle('theme-latte', theme === 'latte');
+  root.classList.toggle('theme-frappe', theme === 'frappe');
+  root.classList.toggle('theme-macchiato', theme === 'macchiato');
+  root.classList.toggle('theme-mocha', theme === 'mocha');
+  root.setAttribute('data-theme', theme);
 })();
 `;
   return <script dangerouslySetInnerHTML={{ __html: script }} />;

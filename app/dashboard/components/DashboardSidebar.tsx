@@ -200,7 +200,11 @@ const navItems: NavItem[] = [
   },
 ];
 
-function ThemeIcon({ theme }: { theme: "light" | "dark" | "system" }) {
+function ThemeIcon({
+  theme,
+}: {
+  theme: "light" | "dark" | "system" | "latte" | "frappe" | "macchiato" | "mocha";
+}) {
   if (theme === "system") {
     return (
       <svg
@@ -219,7 +223,7 @@ function ThemeIcon({ theme }: { theme: "light" | "dark" | "system" }) {
       </svg>
     );
   }
-  if (theme === "light") {
+  if (theme === "light" || theme === "latte") {
     return (
       <svg
         className="h-5 w-5 shrink-0"
