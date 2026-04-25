@@ -28,6 +28,48 @@ export function DashboardNavbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("avatar_url")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (error) return;
+      const url =
+        (data as { avatar_url: string | null } | null)?.avatar_url?.trim() ??
+        null;
+      setAvatarUrl(url || null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, user?.id]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = menuRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    const onDocKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onDocKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onDocKeyDown);
+    };
+  }, [menuOpen]);
+
   // If auth is still syncing and we have no user yet, show a shell (layout usually passes initialUser).
   if (loading && !user) {
     return (
@@ -53,7 +95,9 @@ export function DashboardNavbar() {
       <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
         <div className="min-w-0" />
         <nav className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">Session unavailable</span>
+          <span className="text-sm text-muted-foreground">
+            Session unavailable
+          </span>
           <form action="/auth/signout" method="POST">
             <button
               type="submit"
@@ -75,47 +119,6 @@ export function DashboardNavbar() {
 
   const positionTitle = profile?.positionTitle?.trim() ?? "";
   const roleName = profile?.roleName?.trim() ?? "";
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("users")
-        .select("avatar_url")
-        .eq("auth_id", user.id)
-        .maybeSingle();
-
-      if (cancelled) return;
-      if (error) return;
-      const url =
-        (data as { avatar_url: string | null } | null)?.avatar_url?.trim() ??
-        null;
-      setAvatarUrl(url || null);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase, user.id]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onDocMouseDown = (e: MouseEvent) => {
-      const el = menuRef.current;
-      if (!el) return;
-      if (e.target instanceof Node && !el.contains(e.target)) {
-        setMenuOpen(false);
-      }
-    };
-    const onDocKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onDocMouseDown);
-    document.addEventListener("keydown", onDocKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onDocMouseDown);
-      document.removeEventListener("keydown", onDocKeyDown);
-    };
-  }, [menuOpen]);
 
   return (
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
