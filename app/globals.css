@@ -91,6 +91,29 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+/* Global affordances: make interactive elements feel clickable. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Theme-consistent checkbox/radio styling (uses CSS variable tokens). */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--foreground);
+  cursor: pointer;
+}
+
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled {
+  cursor: not-allowed;
+}
+
 @keyframes float {
   0%,
   100% {
