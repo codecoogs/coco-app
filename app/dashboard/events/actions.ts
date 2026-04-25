@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { fetchUserProfile } from "@/lib/supabase/profile";
+import { getServiceRoleClient } from "@/lib/supabase/service-role";
 import { hasAnyPermission, hasPermission } from "@/lib/types/rbac";
 import { revalidatePath } from "next/cache";
 
@@ -30,6 +31,31 @@ export type PointCategoryOption = {
   id: string;
   name: string;
   points_value: number;
+};
+
+/** One check-in row for the events attendance UI (flattened from Supabase embed). */
+export type EventAttendanceBulkRow = {
+  id: string;
+  event_id: number;
+  user_id: string;
+  attended_at: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  /** From `users.email` for search / display. */
+  email: string | null;
+};
+
+/** Attendee present in CSV import but not matched to `public.users` at import time. */
+export type UnassignedAttendanceRow = {
+  id: string;
+  event_id: number;
+  first_name: string;
+  last_name: string;
+  discord: string | null;
+  personal_email: string | null;
+  cougarnet_email: string | null;
+  is_user: boolean;
+  attended_at: string | null;
 };
 
 export type EventFormInput = {
@@ -177,6 +203,79 @@ export async function getEvents(): Promise<{
   return { data, error: null };
 }
 
+export async function getEventsAttendanceBulk(): Promise<{
+  data: EventAttendanceBulkRow[];
+  error: string | null;
+}> {
+  const gate = await requireViewOrManageEvents();
+  if (!gate.ok) return { data: [], error: gate.error };
+
+  const supabase = await createClient();
+  const { data: rows, error } = await supabase
+    .from("events_attendance")
+    .select(
+      "id, event_id, user_id, attended_at, users!events_attended_user_id_fkey (first_name, last_name, email)"
+    )
+    .order("attended_at", { ascending: false, nullsFirst: false });
+
+  if (error) return { data: [], error: error.message };
+
+  type Raw = {
+    id: string;
+    event_id: number;
+    user_id: string;
+    attended_at: string | null;
+    users:
+      | { first_name: string | null; last_name: string | null; email: string | null }
+      | {
+          first_name: string | null;
+          last_name: string | null;
+          email: string | null;
+        }[]
+      | null;
+  };
+
+  const data: EventAttendanceBulkRow[] = ((rows ?? []) as unknown as Raw[]).map(
+    (r) => {
+      const u = Array.isArray(r.users) ? r.users[0] : r.users;
+      return {
+        id: r.id,
+        event_id: r.event_id,
+        user_id: r.user_id,
+        attended_at: r.attended_at,
+        first_name: u?.first_name ?? null,
+        last_name: u?.last_name ?? null,
+        email: u?.email ?? null,
+      };
+    }
+  );
+
+  return { data, error: null };
+}
+
+export async function getUnassignedAttendanceBulk(): Promise<{
+  data: UnassignedAttendanceRow[];
+  error: string | null;
+}> {
+  const gate = await requireViewOrManageEvents();
+  if (!gate.ok) return { data: [], error: gate.error };
+
+  const supabase = await createClient();
+  const { data: rows, error } = await supabase
+    .from("unassigned_attendance")
+    .select(
+      "id, event_id, first_name, last_name, discord, personal_email, cougarnet_email, is_user, attended_at"
+    )
+    .order("attended_at", { ascending: false, nullsFirst: false });
+
+  if (error) return { data: [], error: error.message };
+
+  return {
+    data: (rows ?? []) as UnassignedAttendanceRow[],
+    error: null,
+  };
+}
+
 export async function getPointCategories(): Promise<{
   data: PointCategoryOption[];
   error: string | null;
@@ -315,4 +414,173 @@ export async function cancelEvent(id: number): Promise<{ error: string | null }>
   if (error) return { error: error.message };
   revalidatePath("/dashboard/events");
   return { error: null };
+}
+
+const ATTENDANCE_SERVICE_ROLE_ERROR =
+  "Server configuration is missing the service role key, which is required to look up members for attendance.";
+
+function escapeIlike(value: string): string {
+  return `%${value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
+}
+
+/** Member row for the attendance add flow (search by name, email, or Discord). */
+export type UserSearchResult = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  discord: string | null;
+};
+
+/**
+ * Fuzzy search on `public.users` for event managers. Uses the service role so search is not
+ * limited to leaderboard-visible profiles (see RLS on `public.users`).
+ */
+export async function searchUsersForAttendance(
+  query: string
+): Promise<{ data: UserSearchResult[]; error: string | null }> {
+  const gate = await requireManageEvents();
+  if (!gate.ok) return { data: [], error: gate.error };
+
+  const q = query.trim();
+  if (q.length < 1) {
+    return { data: [], error: null };
+  }
+  if (q.length > 200) {
+    return { data: [], error: "Search is too long." };
+  }
+
+  const admin = getServiceRoleClient();
+  if (!admin) {
+    return { data: [], error: ATTENDANCE_SERVICE_ROLE_ERROR };
+  }
+
+  const pattern = escapeIlike(q);
+  const sel = "id, first_name, last_name, email, discord";
+  const limit = 20;
+
+  const [em, fn, ln, dc] = await Promise.all([
+    admin.from("users").select(sel).ilike("email", pattern).limit(limit),
+    admin.from("users").select(sel).ilike("first_name", pattern).limit(limit),
+    admin.from("users").select(sel).ilike("last_name", pattern).limit(limit),
+    admin.from("users").select(sel).ilike("discord", pattern).limit(limit),
+  ]);
+
+  const err =
+    em.error?.message ||
+    fn.error?.message ||
+    ln.error?.message ||
+    dc.error?.message;
+  if (err) return { data: [], error: err };
+
+  const merged = new Map<string, UserSearchResult>();
+  for (const row of [em.data, fn.data, ln.data, dc.data]) {
+    for (const r of (row ?? []) as UserSearchResult[]) {
+      if (r?.id) merged.set(r.id, r);
+    }
+  }
+  return { data: [...merged.values()].slice(0, 25), error: null };
+}
+
+export async function recordEventAttendance(
+  eventId: number,
+  userId: string
+): Promise<{ error: string | null }> {
+  const gate = await requireManageEvents();
+  if (!gate.ok) return { error: gate.error };
+
+  const admin = getServiceRoleClient();
+  if (!admin) {
+    return { error: ATTENDANCE_SERVICE_ROLE_ERROR };
+  }
+
+  const { data: existing, error: exErr } = await admin
+    .from("events_attendance")
+    .select("id")
+    .eq("event_id", eventId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (exErr) return { error: exErr.message };
+  if (existing) {
+    return { error: "This member is already recorded for this event." };
+  }
+
+  const { error } = await admin.from("events_attendance").insert({
+    event_id: eventId,
+    user_id: userId,
+  });
+
+  if (error) return { error: error.message };
+  revalidatePath("/dashboard/events");
+  return { error: null };
+}
+
+export type AttendanceCsvRow = {
+  first_name: string;
+  last_name: string;
+  discord: string | null;
+  personal_email: string | null;
+  cougarnet_email: string | null;
+  attended_at?: string | null;
+};
+
+export async function importEventAttendanceCsv(
+  eventId: number,
+  rows: AttendanceCsvRow[]
+): Promise<
+  | { ok: true; inserted_events_attendance: number; inserted_unassigned: number }
+  | { ok: false; error: string }
+> {
+  const gate = await requireManageEvents();
+  if (!gate.ok) return { ok: false, error: gate.error };
+
+  // Use the session-carrying server client so the SQL function can enforce manage_events
+  // via current_user_has_permission() + auth.uid().
+  const supabase = await createClient();
+
+  if (!Number.isFinite(eventId) || eventId <= 0) {
+    return { ok: false, error: "Invalid event id." };
+  }
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { ok: false, error: "No CSV rows to import." };
+  }
+  if (rows.length > 5000) {
+    return { ok: false, error: "CSV import is limited to 5000 rows per upload." };
+  }
+
+  const payload = rows.map((r) => ({
+    first_name: String(r.first_name ?? "").trim(),
+    last_name: String(r.last_name ?? "").trim(),
+    discord: r.discord ? String(r.discord).trim() : null,
+    personal_email: r.personal_email ? String(r.personal_email).trim() : null,
+    cougarnet_email: r.cougarnet_email ? String(r.cougarnet_email).trim() : null,
+    attended_at: r.attended_at ? String(r.attended_at).trim() : null,
+  }));
+
+  const { data, error } = await supabase.rpc(
+    "import_event_attendance_from_json",
+    {
+      p_event_id: eventId,
+      p_attendees: payload,
+    }
+  );
+
+  if (error) return { ok: false, error: error.message };
+
+  const first = Array.isArray(data) ? data[0] : data;
+  const inserted_events_attendance = Number(
+    (first as { inserted_events_attendance?: unknown } | null)
+      ?.inserted_events_attendance ?? 0
+  );
+  const inserted_unassigned = Number(
+    (first as { inserted_unassigned?: unknown } | null)?.inserted_unassigned ?? 0
+  );
+
+  revalidatePath("/dashboard/events");
+  return {
+    ok: true,
+    inserted_events_attendance,
+    inserted_unassigned,
+  };
 }

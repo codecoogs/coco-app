@@ -4,10 +4,10 @@ import { supabaseServerCookieOptions } from "./cookie-options";
 import { getSupabaseAnonKey, getSupabaseUrl } from "./public-env";
 
 /**
- * Supabase client for root middleware: reads request cookies, writes refreshed session
+ * Supabase client for root proxy: reads request cookies, writes refreshed session
  * onto the response (access/refresh tokens via chunked cookies, httpOnly on server).
  */
-export function createMiddlewareSupabaseClient(
+export function createProxySupabaseClient(
   request: NextRequest,
   response: NextResponse
 ) {

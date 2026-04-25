@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { LeaderboardRow } from "./queries";
 import { fetchLeaderboardWithMembers } from "./queries";
+import Image from "next/image";
 
 type Props = {
   initialRows: LeaderboardRow[];
@@ -118,6 +119,7 @@ export function LeaderboardContent({ initialRows, currentUserId }: Props) {
                   const rank =
                     row.current_rank != null ? row.current_rank : index + 1;
                   const isYou = currentUserId != null && row.user_id === currentUserId;
+                  const avatarUrl = row.users?.avatar_url?.trim() || null;
                   return (
                     <tr
                       key={row.user_id}
@@ -129,12 +131,35 @@ export function LeaderboardContent({ initialRows, currentUserId }: Props) {
                         {rank}
                       </td>
                       <td className="px-4 py-3 text-sm text-card-foreground sm:px-6">
-                        <span className="font-medium">{displayName(row)}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                            {avatarUrl ? (
+                              <Image
+                                src={avatarUrl}
+                                alt=""
+                                width={32}
+                                height={32}
+                                unoptimized
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div
+                                className="flex h-full w-full items-center justify-center text-[10px] font-medium text-muted-foreground"
+                                aria-hidden
+                              >
+                                {displayName(row).slice(0, 1).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="font-medium">{displayName(row)}</span>
                         {isYou && (
                           <span className="ml-2 text-xs font-medium text-blue-600 dark:text-blue-400">
                             You
                           </span>
                         )}
+                          </div>
+                        </div>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-card-foreground sm:px-6">
                         {row.total_points ?? 0}

@@ -1,12 +1,8 @@
-import { createMiddlewareSupabaseClient } from "@/lib/supabase/middleware-client";
+import { createProxySupabaseClient } from "@/lib/supabase/proxy-client";
 import { forwardSessionCookies } from "@/lib/supabase/forward-session-cookies";
 import { NextResponse, type NextRequest } from "next/server";
 
-/**
- * Node.js runtime so `fetch` to local Supabase (e.g. http://127.0.0.1:54321) works in dev.
- * Edge/Turbopack sandbox often throws "Error: fetch failed" for localhost Auth refresh.
- */
-export const runtime = 'nodejs'
+// Proxy always runs on Node.js in Next.js 16+, so local Supabase (e.g. 127.0.0.1:54321) refresh works in dev.
 
 const PROTECTED_PATHS = ['/dashboard']
 const AUTH_PATHS = ['/login', '/signup', '/auth/team', '/forgot-password']
@@ -23,10 +19,10 @@ function isAuthPath(pathname: string) {
   )
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request })
 
-  const supabase = createMiddlewareSupabaseClient(request, response)
+  const supabase = createProxySupabaseClient(request, response)
 
   // Refreshes expired access tokens (refresh token rotation) and writes updated cookies.
   const {

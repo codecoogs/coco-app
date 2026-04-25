@@ -20,11 +20,13 @@ export default async function DashboardLayout({
 
   return (
     <ProfileProvider initialUser={user}>
-      <div className="flex min-h-screen bg-background">
+      <div className="flex h-dvh min-h-0 overflow-hidden bg-background">
         <DashboardSidebar />
-        <div className="flex flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <DashboardNavbar />
-          <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">{children}</main>
+          <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-6 lg:px-8">
+            {children}
+          </main>
         </div>
       </div>
     </ProfileProvider>

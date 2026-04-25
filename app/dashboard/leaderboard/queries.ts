@@ -5,6 +5,7 @@ export type LeaderboardMemberProfile = {
   last_name: string | null;
   email: string | null;
   discord: string | null;
+  avatar_url: string | null;
 };
 
 export type LeaderboardRow = {
@@ -28,6 +29,7 @@ function normalizeUsersEmbed(raw: Record<string, unknown>): LeaderboardMemberPro
     last_name: o.last_name ?? null,
     email: o.email ?? null,
     discord: o.discord ?? null,
+    avatar_url: o.avatar_url ?? null,
   };
 }
 
@@ -37,7 +39,7 @@ export async function fetchLeaderboardWithMembers(
   const { data, error } = await supabase
     .from("leaderboard")
     .select(
-      "user_id, total_points, current_rank, users!leaderboard_user_id_fkey(first_name, last_name, email, discord)"
+      "user_id, total_points, current_rank, users!leaderboard_user_id_fkey(first_name, last_name, email, discord, avatar_url)"
     )
     .order("total_points", { ascending: false, nullsFirst: false });
 

@@ -18,7 +18,7 @@ import type {
 } from "./actions";
 import { BranchesPanel } from "./BranchesPanel";
 import { OfficerRolesPanel } from "./OfficerRolesPanel";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 function formatDate(iso: string | null) {
   if (!iso) return "—";
@@ -36,6 +36,44 @@ function displayName(row: OfficerRow): string {
   const first = row.user_first_name?.trim() ?? "";
   const last = row.user_last_name?.trim() ?? "";
   return [first, last].filter(Boolean).join(" ") || row.user_email || "—";
+}
+
+function userOptionLabel(u: {
+  email: string;
+  first_name: string;
+  last_name: string;
+}): string {
+  const name = [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
+  return name ? `${name} (${u.email})` : u.email;
+}
+
+function filterUsersWithoutPosition(
+  users: { id: string; email: string; first_name: string; last_name: string }[],
+  query: string,
+  limit = 40
+) {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) return [];
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
+  const scored = users.filter((u) => {
+    const name = [u.first_name, u.last_name].filter(Boolean).join(" ").toLowerCase();
+    const email = u.email.toLowerCase();
+    const haystack = `${name} ${email}`;
+    return tokens.every((t) => haystack.includes(t));
+  });
+  return scored.slice(0, limit);
+}
+
+function filterPositionTitles(titles: PositionTitleOption[], query: string, limit = 40) {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) return [];
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
+  return titles
+    .filter((p) => {
+      const t = p.title.toLowerCase();
+      return tokens.every((tok) => t.includes(tok));
+    })
+    .slice(0, limit);
 }
 
 type Props = {
@@ -71,10 +109,18 @@ export function OfficersContent({
   const [usersWithoutPosition, setUsersWithoutPosition] = useState<
     { id: string; email: string; first_name: string; last_name: string }[]
   >([]);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [positionSearchQuery, setPositionSearchQuery] = useState("");
+  const [selectedPositionTitle, setSelectedPositionTitle] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "ok"; text: string } | null>(null);
 
   const openAdd = useCallback(async () => {
+    setUserSearchQuery("");
+    setSelectedUserId(null);
+    setPositionSearchQuery("");
+    setSelectedPositionTitle(null);
     setAdding(true);
     setMessage(null);
     try {
@@ -109,10 +155,17 @@ export function OfficersContent({
   const handleCreate = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      const form = e.currentTarget;
-      const user_id = (form.elements.namedItem("user_id") as HTMLSelectElement).value;
-      const positionTitle = (form.elements.namedItem("positionTitle") as HTMLSelectElement).value;
-      if (!user_id || !positionTitle) return;
+      const user_id = selectedUserId;
+      const positionTitle = selectedPositionTitle;
+      if (!user_id || !positionTitle) {
+        setMessage({
+          type: "error",
+          text: !user_id
+            ? "Search and select a user."
+            : "Search and select a position.",
+        });
+        return;
+      }
       setBusy(true);
       setMessage(null);
       const { error } = await createOfficer(user_id, positionTitle);
@@ -127,7 +180,7 @@ export function OfficersContent({
       setOfficers(data);
       await refetchProfile?.();
     },
-    [refetchProfile]
+    [refetchProfile, selectedUserId, selectedPositionTitle]
   );
 
   const handleUpdate = useCallback(
@@ -171,6 +224,21 @@ export function OfficersContent({
   }, [refetchProfile]);
 
   const editingRow = editingId ? officers.find((o) => o.id === editingId) : null;
+
+  const selectedPickerUser = useMemo(
+    () => usersWithoutPosition.find((u) => u.id === selectedUserId) ?? null,
+    [usersWithoutPosition, selectedUserId]
+  );
+
+  const userSearchMatches = useMemo(
+    () => filterUsersWithoutPosition(usersWithoutPosition, userSearchQuery),
+    [usersWithoutPosition, userSearchQuery]
+  );
+
+  const positionSearchMatches = useMemo(
+    () => filterPositionTitles(positionTitles, positionSearchQuery),
+    [positionTitles, positionSearchQuery]
+  );
 
   return (
     <div className="space-y-6">
@@ -261,43 +329,161 @@ export function OfficersContent({
       {showAssignments && adding && (
         <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-card-foreground">Add officer</h2>
-          <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <label className="mb-1 block text-sm font-medium text-muted-foreground">
-                User
-              </label>
-              <select
-                name="user_id"
-                required
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-foreground"
-              >
-                <option value="">Select user…</option>
-                {usersWithoutPosition.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {[u.first_name, u.last_name].filter(Boolean).join(" ") || u.email} (
-                    {u.email})
-                  </option>
-                ))}
-              </select>
+          <form
+            onSubmit={handleCreate}
+            className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:gap-x-4"
+          >
+            <label className="text-sm font-medium text-muted-foreground sm:col-start-1 sm:row-start-1">
+              User
+            </label>
+            <label className="text-sm font-medium text-muted-foreground sm:col-start-2 sm:row-start-1">
+              Position
+            </label>
+            <div
+              className="hidden sm:col-start-3 sm:row-start-1 sm:block sm:text-sm sm:font-medium sm:text-transparent sm:select-none"
+              aria-hidden
+            >
+              .
             </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-sm font-medium text-muted-foreground">
-                Position
-              </label>
-              <select
-                name="positionTitle"
-                required
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-foreground"
-              >
-                <option value="">Select position…</option>
-                {positionTitles.map((p) => (
-                  <option key={p.title} value={p.title}>
-                    {p.title}
-                  </option>
-                ))}
-              </select>
+
+            <div className="relative min-w-0 sm:col-start-1 sm:row-start-2">
+              {selectedPickerUser ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                  <span className="text-sm text-card-foreground">
+                    {userOptionLabel(selectedPickerUser)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserId(null);
+                      setUserSearchQuery("");
+                    }}
+                    className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="search"
+                    autoComplete="off"
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    placeholder="Search by first name, last name, or email…"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-foreground placeholder:text-muted-foreground"
+                    aria-label="Search users without a position"
+                  />
+                  {userSearchQuery.trim() ? (
+                    <ul
+                      className="absolute left-0 right-0 z-20 mt-1 max-h-52 overflow-auto rounded-lg border border-border bg-card py-1 shadow-md"
+                      role="listbox"
+                      aria-label="Matching users"
+                    >
+                      {userSearchMatches.length === 0 ? (
+                        <li className="px-3 py-2 text-sm text-muted-foreground">
+                          No users match that search.
+                        </li>
+                      ) : (
+                        userSearchMatches.map((u) => (
+                          <li key={u.id}>
+                            <button
+                              type="button"
+                              role="option"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                              onClick={() => {
+                                setSelectedUserId(u.id);
+                                setUserSearchQuery("");
+                              }}
+                            >
+                              <span className="font-medium text-card-foreground">
+                                {[u.first_name, u.last_name].filter(Boolean).join(" ") ||
+                                  "—"}
+                              </span>
+                              <span className="mt-0.5 block text-xs text-muted-foreground">
+                                {u.email}
+                              </span>
+                            </button>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  ) : (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {usersWithoutPosition.length} member
+                      {usersWithoutPosition.length !== 1 ? "s" : ""} without a position — type
+                      to narrow the list.
+                    </p>
+                  )}
+                </>
+              )}
             </div>
-            <div className="flex gap-2">
+
+            <div className="relative min-w-0 sm:col-start-2 sm:row-start-2">
+              {selectedPositionTitle ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                  <span className="text-sm text-card-foreground">{selectedPositionTitle}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPositionTitle(null);
+                      setPositionSearchQuery("");
+                    }}
+                    className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="search"
+                    autoComplete="off"
+                    value={positionSearchQuery}
+                    onChange={(e) => setPositionSearchQuery(e.target.value)}
+                    placeholder="Search position title…"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-foreground placeholder:text-muted-foreground"
+                    aria-label="Search position titles"
+                  />
+                  {positionSearchQuery.trim() ? (
+                    <ul
+                      className="absolute left-0 right-0 z-10 mt-1 max-h-52 overflow-auto rounded-lg border border-border bg-card py-1 shadow-md"
+                      role="listbox"
+                      aria-label="Matching positions"
+                    >
+                      {positionSearchMatches.length === 0 ? (
+                        <li className="px-3 py-2 text-sm text-muted-foreground">
+                          No positions match that search.
+                        </li>
+                      ) : (
+                        positionSearchMatches.map((p) => (
+                          <li key={p.title}>
+                            <button
+                              type="button"
+                              role="option"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                              onClick={() => {
+                                setSelectedPositionTitle(p.title);
+                                setPositionSearchQuery("");
+                              }}
+                            >
+                              <span className="font-medium text-card-foreground">{p.title}</span>
+                            </button>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  ) : (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {positionTitles.length} active position
+                      {positionTitles.length !== 1 ? "s" : ""} — type to narrow the list.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 sm:col-start-3 sm:row-start-2 sm:self-start">
               <button
                 type="submit"
                 disabled={busy}
@@ -307,7 +493,13 @@ export function OfficersContent({
               </button>
               <button
                 type="button"
-                onClick={() => setAdding(false)}
+                onClick={() => {
+                  setAdding(false);
+                  setUserSearchQuery("");
+                  setSelectedUserId(null);
+                  setPositionSearchQuery("");
+                  setSelectedPositionTitle(null);
+                }}
                 className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-card-foreground hover:bg-muted"
               >
                 Cancel
