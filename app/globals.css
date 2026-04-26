@@ -9,6 +9,10 @@
   --border: #e4e4e7; /* zinc-200 */
   --card: #ffffff;
   --card-foreground: #18181b;
+  /* Accent used for active nav, links, etc. */
+  --accent: #2563eb; /* blue-600 */
+  --accent-soft: rgba(37, 99, 235, 0.10);
+  --accent-border: rgba(37, 99, 235, 0.25);
 }
 
 /* Dark: soft gray background (not pure black), high-contrast text. */
@@ -20,6 +24,9 @@
   --border: #3f3f46; /* zinc-700 */
   --card: #18181b;
   --card-foreground: #fafafa;
+  --accent: #60a5fa; /* blue-400 */
+  --accent-soft: rgba(96, 165, 250, 0.20);
+  --accent-border: rgba(96, 165, 250, 0.30);
 }
 
 /* Catppuccin themes (Latte = light, Mocha = dark). */
@@ -31,6 +38,9 @@
   --border: #ccd0da; /* Surface 0 */
   --card: #eff1f5; /* Base */
   --card-foreground: #4c4f69; /* Text */
+  --accent: #7287fd; /* Latte lavender */
+  --accent-soft: rgba(114, 135, 253, 0.18);
+  --accent-border: rgba(114, 135, 253, 0.30);
 }
 
 .theme-pink-sorbet {
@@ -41,6 +51,9 @@
   --border: #ffcad4; /* pastel_pink 500 */
   --card: #fef8f9;
   --card-foreground: #520c15;
+  --accent: #ff5d8f; /* wild_strawberry 500 */
+  --accent-soft: rgba(255, 93, 143, 0.18);
+  --accent-border: rgba(255, 93, 143, 0.30);
 }
 
 .theme-frappe {
@@ -51,6 +64,9 @@
   --border: #414559; /* Surface 0 */
   --card: #303446; /* Base */
   --card-foreground: #c6d0f5; /* Text */
+  --accent: #babbf1; /* Frappé lavender */
+  --accent-soft: rgba(186, 187, 241, 0.18);
+  --accent-border: rgba(186, 187, 241, 0.30);
 }
 
 .theme-macchiato {
@@ -61,6 +77,9 @@
   --border: #363a4f; /* Surface 0 */
   --card: #24273a; /* Base */
   --card-foreground: #cad3f5; /* Text */
+  --accent: #b7bdf8; /* Macchiato lavender */
+  --accent-soft: rgba(183, 189, 248, 0.18);
+  --accent-border: rgba(183, 189, 248, 0.30);
 }
 
 .theme-mocha {
@@ -71,6 +90,16 @@
   --border: #313244; /* Surface 0 */
   --card: #1e1e2e; /* Base */
   --card-foreground: #cdd6f4; /* Text */
+  --accent: #b4befe; /* Mocha lavender */
+  --accent-soft: rgba(180, 190, 254, 0.18);
+  --accent-border: rgba(180, 190, 254, 0.30);
+}
+
+/* Accent-based navigation utility (used in dashboard sidebar). */
+.nav-accent-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-border);
 }
 
 @theme inline {

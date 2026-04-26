@@ -1,9 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { fetchUserProfile } from "@/lib/supabase/profile";
-import { hasAnyPermission, hasPermission } from "@/lib/types/rbac";
 import { redirect } from "next/navigation";
-import { getEvents, getPointCategories } from "./actions";
-import { EventsManagementContent } from "./EventsManagementContent";
+import { EventsPageContent, type EventsPublicRow } from "./EventsPageContent";
 
 export default async function EventsPage() {
   const supabase = await createClient();
@@ -15,38 +12,25 @@ export default async function EventsPage() {
     redirect("/login?next=/dashboard/events");
   }
 
-  const profile = await fetchUserProfile(supabase, authUser.id);
-  if (!hasAnyPermission(profile, ["view_events", "manage_events"])) {
-    redirect("/dashboard");
+  // RLS handles visibility:
+  // - members see public events
+  // - view/manage_events see all events
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      "id, title, description, location, start_time, end_time, flyer_url, is_public, status",
+    )
+    .order("start_time", { ascending: true, nullsFirst: false });
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
+        {error.message}
+      </div>
+    );
   }
 
-  const [eventsRes, catRes] = await Promise.all([
-    getEvents(),
-    getPointCategories(),
-  ]);
-
-  const canManage = hasPermission(profile, "manage_events");
-
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Event management</h1>
-        <p className="mt-1 text-muted-foreground">
-          Create and edit events, upload flyers, and sync with Google Calendar.
-        </p>
-      </div>
-
-      {eventsRes.error || catRes.error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
-          {eventsRes.error ?? catRes.error}
-        </div>
-      ) : (
-        <EventsManagementContent
-          initialEvents={eventsRes.data}
-          categories={catRes.data}
-          canManage={canManage}
-        />
-      )}
-    </div>
+    <EventsPageContent initialEvents={(data ?? []) as EventsPublicRow[]} />
   );
 }
