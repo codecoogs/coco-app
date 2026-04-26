@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDashboardShellOptional } from "./DashboardShell";
 
 const POSITION_BADGE_COLOR = "#04495d";
 
@@ -27,6 +28,7 @@ export function DashboardNavbar() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const shell = useDashboardShellOptional();
 
   useEffect(() => {
     if (!user?.id) return;
@@ -73,9 +75,9 @@ export function DashboardNavbar() {
   // If auth is still syncing and we have no user yet, show a shell (layout usually passes initialUser).
   if (loading && !user) {
     return (
-      <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
+      <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-3 sm:px-6">
         <div className="min-w-0" />
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-3 sm:gap-4">
           <span className="text-sm text-muted-foreground">Loading…</span>
           <form action="/auth/signout" method="POST">
             <button
@@ -92,9 +94,9 @@ export function DashboardNavbar() {
 
   if (!user) {
     return (
-      <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
+      <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-3 sm:px-6">
         <div className="min-w-0" />
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-3 sm:gap-4">
           <span className="text-sm text-muted-foreground">
             Session unavailable
           </span>
@@ -121,22 +123,50 @@ export function DashboardNavbar() {
   const roleName = profile?.roleName?.trim() ?? "";
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
+    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-3 sm:px-6">
       <div className="flex min-w-0 items-center gap-2">
-        {positionTitle && (
+        <button
+          type="button"
+          onClick={() => shell?.openMobileSidebar()}
+          className="mr-1 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground sm:hidden"
+          aria-label="Open sidebar"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+        {positionTitle ? (
           <span
-            className="rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+            className="inline-flex max-w-52 items-center truncate rounded-full px-2 py-0.5 text-[11px] font-medium text-white sm:max-w-none sm:px-2.5 sm:text-xs"
             style={{ backgroundColor: POSITION_BADGE_COLOR }}
+            title={positionTitle}
           >
             {positionTitle}
           </span>
+        ) : (
+          <span className="text-xs text-muted-foreground"> </span>
         )}
-        {roleName && (
-          <span className="text-xs text-muted-foreground">{roleName}</span>
-        )}
+        {roleName ? (
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            {roleName}
+          </span>
+        ) : null}
       </div>
-      <nav className="flex items-center gap-3 sm:gap-4">
-        <span className="text-sm text-foreground">
+
+      <nav className="flex items-center gap-2 sm:gap-4">
+        {/* Mobile: keep the top bar clean like Discord; put identity text in the menu instead. */}
+        <span className="hidden text-sm text-foreground sm:inline">
           {showWelcomeBack ? "Welcome back" : "Welcome"}, {displayName}!
         </span>
         <div className="relative" ref={menuRef}>
@@ -193,6 +223,10 @@ export function DashboardNavbar() {
               <div className="border-b border-border px-3 py-2">
                 <p className="truncate text-sm font-medium text-card-foreground">
                   {user.email ?? "Account"}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {showWelcomeBack ? "Welcome back" : "Welcome"},{" "}
+                  {user.user_metadata?.full_name ?? (user.email ?? "there")}
                 </p>
                 {positionTitle || roleName ? (
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">

@@ -326,7 +326,7 @@ export async function createEvent(
   });
 
   if (error) return { error: error.message };
-  revalidatePath("/dashboard/events");
+  revalidatePath("/dashboard/events/manage");
   return { error: null };
 }
 
@@ -372,7 +372,7 @@ export async function updateEvent(
     .eq("id", id);
 
   if (error) return { error: error.message };
-  revalidatePath("/dashboard/events");
+  revalidatePath("/dashboard/events/manage");
   return { error: null };
 }
 
@@ -398,7 +398,7 @@ export async function toggleEventPublic(
     .eq("id", id);
 
   if (error) return { error: error.message };
-  revalidatePath("/dashboard/events");
+  revalidatePath("/dashboard/events/manage");
   return { error: null };
 }
 
@@ -412,7 +412,7 @@ export async function cancelEvent(id: number): Promise<{ error: string | null }>
     .eq("id", id);
 
   if (error) return { error: error.message };
-  revalidatePath("/dashboard/events");
+  revalidatePath("/dashboard/events/manage");
   return { error: null };
 }
 
@@ -512,7 +512,7 @@ export async function recordEventAttendance(
   });
 
   if (error) return { error: error.message };
-  revalidatePath("/dashboard/events");
+  revalidatePath("/dashboard/events/manage");
   return { error: null };
 }
 
@@ -577,7 +577,7 @@ export async function importEventAttendanceCsv(
     (first as { inserted_unassigned?: unknown } | null)?.inserted_unassigned ?? 0
   );
 
-  revalidatePath("/dashboard/events");
+  revalidatePath("/dashboard/events/manage");
   return {
     ok: true,
     inserted_events_attendance,

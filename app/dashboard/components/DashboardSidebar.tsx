@@ -6,6 +6,7 @@ import { hasAnyPermission, type PermissionName } from "@/lib/types/rbac";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useDashboardShellOptional } from "./DashboardShell";
 
 type NavItem = {
   href: string;
@@ -33,31 +34,6 @@ const navItems: NavItem[] = [
           strokeLinejoin="round"
           strokeWidth={2}
           d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-        />
-      </svg>
-    ),
-  },
-  {
-    href: "/dashboard/settings",
-    label: "Settings",
-    icon: (
-      <svg
-        className="h-5 w-5 shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-        />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
         />
       </svg>
     ),
@@ -122,7 +98,6 @@ const navItems: NavItem[] = [
   {
     href: "/dashboard/events",
     label: "Events",
-    requiredAnyPermissions: ["view_events", "manage_events"],
     icon: (
       <svg
         className="h-5 w-5 shrink-0"
@@ -135,46 +110,6 @@ const navItems: NavItem[] = [
           strokeLinejoin="round"
           strokeWidth={2}
           d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-        />
-      </svg>
-    ),
-  },
-  {
-    href: "/dashboard/officers",
-    label: "Officers",
-    requiredPermission: "view_officers",
-    icon: (
-      <svg
-        className="h-5 w-5 shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-        />
-      </svg>
-    ),
-  },
-  {
-    href: "/dashboard/memberships",
-    label: "Member memberships",
-    requiredPermission: "view_memberships",
-    icon: (
-      <svg
-        className="h-5 w-5 shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
         />
       </svg>
     ),
@@ -270,10 +205,16 @@ function ThemeIcon({
 export function DashboardSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [managementOpen, setManagementOpen] = useState(false);
+  const [otherOpen, setOtherOpen] = useState(false);
   const themeContext = useThemeOptional();
   const profileContext = useProfileOptional();
   const can = profileContext?.can ?? (() => false);
   const profile = profileContext?.profile ?? null;
+  const shell = useDashboardShellOptional();
+  const mobileOpen = shell?.mobileSidebarOpen ?? false;
+
+  const closeMobile = () => shell?.closeMobileSidebar();
 
   const visibleNavItems = useMemo(
     () =>
@@ -289,7 +230,15 @@ export function DashboardSidebar() {
     [can, profile]
   );
 
-  return (
+  const canSeeManagement = useMemo(() => {
+    return (
+      hasAnyPermission(profile, ["view_events", "manage_events"]) ||
+      can("view_officers") ||
+      can("view_memberships")
+    );
+  }, [can, profile]);
+
+  const content = (
     <aside
       className={`flex h-full min-h-0 shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ${
         collapsed ? "w-18" : "w-56"
@@ -337,16 +286,17 @@ export function DashboardSidebar() {
         aria-label="Dashboard navigation"
       >
         {visibleNavItems.map(({ href, label, icon }) => {
-          const isActive = pathname === href;
+          const isActive = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
               key={href}
               href={href}
+              onClick={closeMobile}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                 isActive
-                  ? "bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-400"
+                  ? "nav-accent-active border shadow-sm"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              } ${collapsed ? "justify-center px-2" : ""}`}
+              } ${collapsed ? "justify-center px-2" : ""} border border-transparent`}
               title={collapsed ? label : undefined}
             >
               {icon}
@@ -355,6 +305,234 @@ export function DashboardSidebar() {
           );
         })}
       </nav>
+
+      {canSeeManagement ? (
+        <div className="shrink-0 border-t border-border p-2">
+          <button
+            type="button"
+            onClick={() => setManagementOpen((v) => !v)}
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground ${
+              collapsed ? "justify-center px-2" : ""
+            }`}
+            aria-expanded={managementOpen}
+            aria-controls="sidebar-management-group"
+          >
+            <svg
+              className="h-5 w-5 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+              />
+            </svg>
+            {!collapsed && (
+              <>
+                <span className="flex-1 text-left">Management</span>
+                <svg
+                  className={`h-4 w-4 transition-transform ${
+                    managementOpen ? "rotate-180" : ""
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </>
+            )}
+          </button>
+
+          {managementOpen && (
+            <div
+              id="sidebar-management-group"
+              className={`mt-1 space-y-0.5 ${collapsed ? "hidden" : ""}`}
+            >
+              {hasAnyPermission(profile, ["view_events", "manage_events"]) ? (
+                <Link
+                  href="/dashboard/events/manage"
+                  onClick={closeMobile}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    pathname.startsWith("/dashboard/events/manage")
+                      ? "nav-accent-active border shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  } border border-transparent`}
+                >
+                  <svg
+                    className="h-5 w-5 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <span>Events management</span>
+                </Link>
+              ) : null}
+
+              {can("view_officers") ? (
+                <Link
+                  href="/dashboard/officers"
+                  onClick={closeMobile}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    pathname.startsWith("/dashboard/officers")
+                      ? "nav-accent-active border shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  } border border-transparent`}
+                >
+                  <svg
+                    className="h-5 w-5 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                    />
+                  </svg>
+                  <span>Officers</span>
+                </Link>
+              ) : null}
+
+              {can("view_memberships") ? (
+                <Link
+                  href="/dashboard/memberships"
+                  onClick={closeMobile}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    pathname.startsWith("/dashboard/memberships")
+                      ? "nav-accent-active border shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  } border border-transparent`}
+                >
+                  <svg
+                    className="h-5 w-5 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                  <span>Member memberships</span>
+                </Link>
+              ) : null}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      <div className="shrink-0 border-t border-border p-2">
+        <button
+          type="button"
+          onClick={() => setOtherOpen((v) => !v)}
+          className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground ${
+            collapsed ? "justify-center px-2" : ""
+          }`}
+          aria-expanded={otherOpen}
+          aria-controls="sidebar-other-group"
+        >
+          <svg
+            className="h-5 w-5 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 6v.01M12 12v.01M12 18v.01"
+            />
+          </svg>
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left">Other</span>
+              <svg
+                className={`h-4 w-4 transition-transform ${
+                  otherOpen ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </>
+          )}
+        </button>
+
+        {otherOpen && (
+          <div
+            id="sidebar-other-group"
+            className={`mt-1 space-y-0.5 ${collapsed ? "hidden" : ""}`}
+          >
+            <Link
+              href="/dashboard/settings"
+              onClick={closeMobile}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                pathname === "/dashboard/settings"
+                  ? "nav-accent-active border shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              } border border-transparent`}
+            >
+              <svg
+                className="h-5 w-5 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              <span>Settings</span>
+            </Link>
+          </div>
+        )}
+      </div>
 
       {themeContext && (
         <div className="shrink-0 border-t border-border p-2">
@@ -375,5 +553,32 @@ export function DashboardSidebar() {
         </div>
       )}
     </aside>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar (in layout flow). */}
+      <div className="hidden h-full sm:block">{content}</div>
+
+      {/* Mobile drawer sidebar (overlays content). */}
+      <div className="sm:hidden">
+        {mobileOpen ? (
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            onClick={closeMobile}
+            className="fixed inset-0 z-40 bg-black/40"
+          />
+        ) : null}
+        <div
+          className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ${
+            mobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          {/* Ensure the drawer has its own background. */}
+          <div className="h-dvh bg-card shadow-xl">{content}</div>
+        </div>
+      </div>
+    </>
   );
 }
