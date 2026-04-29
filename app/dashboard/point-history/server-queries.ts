@@ -57,6 +57,26 @@ async function resolveUserIdsForPointHistory(
   return [...ids];
 }
 
+/**
+ * All linked `public.users.id` values for this auth login (matches point-history resolution).
+ */
+export async function getLinkedAppUserIds(
+  supabase: SupabaseClient,
+  authUser: { id: string; email?: string | null }
+): Promise<string[]> {
+  let admin: SupabaseClient | null = null;
+  try {
+    admin = createAdminClient();
+  } catch {
+    admin = null;
+  }
+  if (!admin) {
+    const appUserId = await getCurrentAppUserId(supabase);
+    return appUserId ? [appUserId] : [];
+  }
+  return resolveUserIdsForPointHistory(admin, authUser.id, authUser.email);
+}
+
 async function fetchPointHistoryViaRls(
   supabase: SupabaseClient,
   appUserId: string

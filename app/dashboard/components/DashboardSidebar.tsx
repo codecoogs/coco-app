@@ -40,7 +40,7 @@ const navItems: NavItem[] = [
   },
   {
     href: "/dashboard/point-history",
-    label: "Point history",
+    label: "My Points",
     icon: (
       <svg
         className="h-5 w-5 shrink-0"
@@ -72,25 +72,6 @@ const navItems: NavItem[] = [
           strokeLinejoin="round"
           strokeWidth={2}
           d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-        />
-      </svg>
-    ),
-  },
-  {
-    href: "/dashboard/point-information",
-    label: "Point information",
-    icon: (
-      <svg
-        className="h-5 w-5 shrink-0"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
         />
       </svg>
     ),
@@ -133,7 +114,53 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
+  {
+    href: "/dashboard/teams",
+    label: "Teams",
+    icon: (
+      <svg
+        className="h-5 w-5 shrink-0"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20h10M12 12a4 4 0 100-8 4 4 0 000 8z"
+        />
+      </svg>
+    ),
+  },
+  {
+    href: "/dashboard/my-team",
+    label: "My team",
+    icon: (
+      <svg
+        className="h-5 w-5 shrink-0"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M19 21V7a2 2 0 00-2-2h-3V3H10v2H7a2 2 0 00-2 2v14m14 0H5m14 0h2M5 21H3m6-6h6"
+        />
+      </svg>
+    ),
+  },
 ];
+
+/** Root `/dashboard` must not use prefix matching, or every child route (e.g. `/dashboard/point-history`) looks active too. */
+function isMainNavActive(pathname: string, href: string): boolean {
+  if (href === "/dashboard") {
+    return pathname === "/dashboard" || pathname === "/dashboard/";
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 function ThemeIcon({
   theme,
@@ -205,7 +232,16 @@ function ThemeIcon({
 export function DashboardSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [managementOpen, setManagementOpen] = useState(false);
+  const [managementOpen, setManagementOpen] = useState(
+    () =>
+      pathname.startsWith("/dashboard/events/manage") ||
+      pathname.startsWith("/dashboard/officers") ||
+      pathname.startsWith("/dashboard/permissions") ||
+      pathname.startsWith("/dashboard/memberships") ||
+      pathname.startsWith("/dashboard/team-management") ||
+      pathname.startsWith("/dashboard/ticket-management") ||
+      pathname.startsWith("/dashboard/point-management")
+  );
   const [otherOpen, setOtherOpen] = useState(false);
   const themeContext = useThemeOptional();
   const profileContext = useProfileOptional();
@@ -215,6 +251,19 @@ export function DashboardSidebar() {
   const mobileOpen = shell?.mobileSidebarOpen ?? false;
 
   const closeMobile = () => shell?.closeMobileSidebar();
+
+  const hasAtLeastIntern = useMemo(() => {
+    if (!profile) return false;
+    if (profile.is_admin) return true;
+
+    const roleText = `${profile.positionTitle ?? ""} ${profile.roleName ?? ""}`.toLowerCase();
+    return (
+      roleText.includes("intern") ||
+      roleText.includes("officer") ||
+      roleText.includes("executive") ||
+      roleText.includes("admin")
+    );
+  }, [profile]);
 
   const visibleNavItems = useMemo(
     () =>
@@ -230,13 +279,41 @@ export function DashboardSidebar() {
     [can, profile]
   );
 
+  const canSeeTeamManagement = useMemo(
+    () => hasAnyPermission(profile, ["manage_officers", "manage_teams"]),
+    [profile]
+  );
+
   const canSeeManagement = useMemo(() => {
+    if (!hasAtLeastIntern) return false;
+
     return (
-      hasAnyPermission(profile, ["view_events", "manage_events"]) ||
-      can("view_officers") ||
-      can("view_memberships")
+      hasAnyPermission(profile, ["manage_events"]) ||
+      hasAnyPermission(profile, ["manage_tickets"]) ||
+      hasAnyPermission(profile, ["manage_point_categories", "manage_points"]) ||
+      hasAnyPermission(profile, ["manage_officers"]) ||
+      hasAnyPermission(profile, ["manage_memberships"]) ||
+      canSeeTeamManagement
     );
-  }, [can, profile]);
+  }, [hasAtLeastIntern, profile, canSeeTeamManagement]);
+
+  const canSeePointManagement = useMemo(
+    () =>
+      hasAnyPermission(profile, [
+        "manage_point_categories",
+        "manage_points",
+      ]),
+    [profile]
+  );
+
+  const canSeePointInformationInOther = useMemo(
+    () =>
+      hasAnyPermission(profile, [
+        "view_point_categories",
+        "manage_point_categories",
+      ]) && !canSeePointManagement,
+    [profile, canSeePointManagement]
+  );
 
   const content = (
     <aside
@@ -286,7 +363,7 @@ export function DashboardSidebar() {
         aria-label="Dashboard navigation"
       >
         {visibleNavItems.map(({ href, label, icon }) => {
-          const isActive = pathname === href || pathname.startsWith(`${href}/`);
+          const isActive = isMainNavActive(pathname, href);
           return (
             <Link
               key={href}
@@ -359,7 +436,7 @@ export function DashboardSidebar() {
               id="sidebar-management-group"
               className={`mt-1 space-y-0.5 ${collapsed ? "hidden" : ""}`}
             >
-              {hasAnyPermission(profile, ["view_events", "manage_events"]) ? (
+              {hasAnyPermission(profile, ["manage_events"]) ? (
                 <Link
                   href="/dashboard/events/manage"
                   onClick={closeMobile}
@@ -387,7 +464,7 @@ export function DashboardSidebar() {
                 </Link>
               ) : null}
 
-              {can("view_officers") ? (
+              {can("manage_officers") ? (
                 <Link
                   href="/dashboard/officers"
                   onClick={closeMobile}
@@ -415,7 +492,125 @@ export function DashboardSidebar() {
                 </Link>
               ) : null}
 
-              {can("view_memberships") ? (
+              {can("manage_officers") ? (
+                <Link
+                  href="/dashboard/permissions"
+                  onClick={closeMobile}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    pathname.startsWith("/dashboard/permissions")
+                      ? "nav-accent-active border shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  } border border-transparent`}
+                >
+                  <svg
+                    className="h-5 w-5 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V6m0 12v-2m8-4a8 8 0 11-16 0 8 8 0 0116 0z"
+                    />
+                  </svg>
+                  <span>Permissions</span>
+                </Link>
+              ) : null}
+
+              {canSeeTeamManagement ? (
+                <Link
+                  href="/dashboard/team-management"
+                  onClick={closeMobile}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    pathname.startsWith("/dashboard/team-management")
+                      ? "nav-accent-active border shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  } border border-transparent`}
+                >
+                  <svg
+                    className="h-5 w-5 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                  <span>Team management</span>
+                </Link>
+              ) : null}
+
+              {can("manage_tickets") ? (
+                <Link
+                  href="/dashboard/ticket-management"
+                  onClick={closeMobile}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    pathname.startsWith("/dashboard/ticket-management")
+                      ? "nav-accent-active border shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  } border border-transparent`}
+                >
+                  <svg
+                    className="h-5 w-5 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 11l3 3L22 4"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"
+                    />
+                  </svg>
+                  <span>Ticket management</span>
+                </Link>
+              ) : null}
+
+              {canSeePointManagement ? (
+                <Link
+                  href="/dashboard/point-management"
+                  onClick={closeMobile}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                    pathname.startsWith("/dashboard/point-management")
+                      ? "nav-accent-active border shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  } border border-transparent`}
+                >
+                  <svg
+                    className="h-5 w-5 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                    />
+                  </svg>
+                  <span>Point management</span>
+                </Link>
+              ) : null}
+
+              {can("manage_memberships") ? (
                 <Link
                   href="/dashboard/memberships"
                   onClick={closeMobile}
@@ -499,6 +694,66 @@ export function DashboardSidebar() {
             id="sidebar-other-group"
             className={`mt-1 space-y-0.5 ${collapsed ? "hidden" : ""}`}
           >
+            <Link
+              href="/dashboard/tickets"
+              onClick={closeMobile}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                pathname === "/dashboard/tickets"
+                  ? "nav-accent-active border shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              } border border-transparent`}
+            >
+              <svg
+                className="h-5 w-5 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 11l3 3L22 4"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"
+                />
+              </svg>
+              <span>Tickets</span>
+            </Link>
+
+            {canSeePointInformationInOther ? (
+              <Link
+                href="/dashboard/point-information"
+                onClick={closeMobile}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                  pathname === "/dashboard/point-information"
+                    ? "nav-accent-active border shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                } border border-transparent`}
+              >
+                <svg
+                  className="h-5 w-5 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                  />
+                </svg>
+                <span>Point Infomation</span>
+              </Link>
+            ) : null}
+
             <Link
               href="/dashboard/settings"
               onClick={closeMobile}

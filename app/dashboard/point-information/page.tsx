@@ -24,7 +24,7 @@ export default async function PointInformationPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">
-          Point information
+          Point Infomation
         </h1>
         <p className="mt-1 text-muted-foreground">
           Point values by category. Everyone signed in can view; only members

@@ -35,6 +35,7 @@ export type PositionManageRow = {
   title: string;
   description: string | null;
   is_active: boolean;
+  is_admin: boolean | null;
   branch_id: number | null;
   branch_name: string | null;
   role_id: number | null;
@@ -54,6 +55,13 @@ export type BranchManageRow = {
 };
 
 export type RoleOption = { id: number; name: string };
+
+/** Full row for the Roles tab (manage_officers). */
+export type RoleManageRow = {
+  id: number;
+  name: string;
+  description: string | null;
+};
 
 export type PositionTitleOption = { title: string };
 
@@ -177,9 +185,16 @@ export async function getPositionTitles(): Promise<
 }
 
 /** Users that do not yet have a position (for "Add officer" form). */
-export async function getUsersWithoutPosition(): Promise<
-  { data: { id: string; email: string; first_name: string; last_name: string }[]; error: string | null }
-> {
+export async function getUsersWithoutPosition(): Promise<{
+  data: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    discord: string;
+  }[];
+  error: string | null;
+}> {
   const supabase = await createClient();
   const {
     data: { user: authUser },
@@ -202,7 +217,7 @@ export async function getUsersWithoutPosition(): Promise<
 
   const { data: users, error } = await admin
     .from("users")
-    .select("id, email, first_name, last_name");
+    .select("id, email, first_name, last_name, discord");
 
   if (error) return { data: [], error: error.message };
 
@@ -213,6 +228,7 @@ export async function getUsersWithoutPosition(): Promise<
       email: u.email ?? "",
       first_name: u.first_name ?? "",
       last_name: u.last_name ?? "",
+      discord: typeof u.discord === "string" ? u.discord : "",
     })),
     error: null,
   };
@@ -314,7 +330,9 @@ export async function getPositionsForManage(): Promise<{
   }
   const { data: rows, error } = await admin
     .from("positions")
-    .select("id, title, description, is_active, branch_id, role_id, branches(name), roles(name)")
+    .select(
+      "id, title, description, is_active, is_admin, branch_id, role_id, branches(name), roles(name)"
+    )
     .order("title");
 
   if (error) return { data: [], error: error.message };
@@ -325,6 +343,7 @@ export async function getPositionsForManage(): Promise<{
       title: string;
       description: string | null;
       is_active: boolean;
+      is_admin: boolean | null;
       branch_id: number | null;
       role_id: number | null;
       branches: { name: string } | { name: string }[] | null;
@@ -339,6 +358,7 @@ export async function getPositionsForManage(): Promise<{
       title: row.title,
       description: row.description,
       is_active: row.is_active,
+      is_admin: row.is_admin ?? null,
       branch_id: row.branch_id,
       branch_name: branchName ?? null,
       role_id: row.role_id,
@@ -438,12 +458,120 @@ export async function getRoleOptions(): Promise<{
   return { data: (data ?? []) as RoleOption[], error: null };
 }
 
+/** All roles for the Roles management tab (linked from positions.role_id). */
+export async function getRolesForManage(): Promise<{
+  data: RoleManageRow[];
+  error: string | null;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { data: [], error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { data: [], error: "No permission." };
+  }
+
+  const admin = getServiceRoleClient();
+  if (!admin) {
+    return { data: [], error: SERVICE_ROLE_ERROR };
+  }
+  const { data, error } = await admin
+    .from("roles")
+    .select("id, name, description")
+    .order("name");
+
+  if (error) return { data: [], error: error.message };
+  return { data: (data ?? []) as RoleManageRow[], error: null };
+}
+
+export async function createRole(
+  name: string,
+  description: string | null
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { error: "You do not have permission to manage roles." };
+  }
+
+  const trimmed = name.trim();
+  if (!trimmed) return { error: "Name is required." };
+
+  const admin = getServiceRoleClient();
+  if (!admin) return { error: SERVICE_ROLE_ERROR };
+
+  const { error } = await admin.from("roles").insert({
+    name: trimmed,
+    description: description?.trim() || null,
+  });
+
+  if (error) {
+    // Sequence drift: next generated id already exists (manual inserts / restore).
+    if (
+      error.code === "23505" &&
+      /duplicate key.*roles/i.test(error.message) &&
+      /pkey|primary key/i.test(error.message)
+    ) {
+      return {
+        error:
+          "Could not create this role: the database ID sequence for roles is out of sync with existing rows. Run the SQL fix in migration 20260428180000_fix_roles_id_sequence.sql (or in Supabase SQL: set public.roles_id_seq to MAX(id) from public.roles), then try again.",
+      };
+    }
+    return { error: error.message };
+  }
+  revalidatePath("/dashboard/officers");
+  return { error: null };
+}
+
+export async function updateRole(
+  id: number,
+  updates: { name: string; description: string | null }
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { error: "You do not have permission to manage roles." };
+  }
+
+  const trimmed = updates.name.trim();
+  if (!trimmed) return { error: "Name is required." };
+
+  const admin = getServiceRoleClient();
+  if (!admin) return { error: SERVICE_ROLE_ERROR };
+
+  const { error } = await admin
+    .from("roles")
+    .update({
+      name: trimmed,
+      description: updates.description?.trim() || null,
+    })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/dashboard/officers");
+  return { error: null };
+}
+
 /** Update a position definition (not title — FK from user_positions). */
 export async function updatePosition(
   id: number,
   updates: {
     description: string | null;
     is_active: boolean;
+    is_admin?: boolean | null;
     branch_id: number | null;
     role_id: number | null;
   }
@@ -469,6 +597,7 @@ export async function updatePosition(
     .update({
       description: updates.description?.trim() || null,
       is_active: updates.is_active,
+      is_admin: updates.is_admin ?? null,
       branch_id: updates.branch_id,
       role_id: updates.role_id,
       updated_by: appUserId,
@@ -477,6 +606,75 @@ export async function updatePosition(
     .eq("id", id);
 
   if (error) return { error: error.message };
+  revalidatePath("/dashboard/officers");
+  return { error: null };
+}
+
+export async function createPosition(input: {
+  title: string;
+  description: string | null;
+  is_active: boolean;
+  is_admin: boolean | null;
+  branch_id: number | null;
+  role_id: number | null;
+}): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { error: "You do not have permission to manage positions." };
+  }
+
+  const trimmed = input.title.trim();
+  if (!trimmed) return { error: "Title is required." };
+
+  const appUserId = await getCurrentAppUserId(supabase);
+  if (!appUserId) return { error: "Could not resolve your user account." };
+
+  const admin = getServiceRoleClient();
+  if (!admin) return { error: SERVICE_ROLE_ERROR };
+
+  const now = new Date().toISOString();
+  const { error } = await admin.from("positions").insert({
+    title: trimmed,
+    description: input.description?.trim() || null,
+    is_active: input.is_active,
+    is_admin: input.is_admin ?? null,
+    branch_id: input.branch_id,
+    role_id: input.role_id,
+    created_by: appUserId,
+    updated_by: appUserId,
+    created_at: now,
+    updated_at: now,
+    updated_on: now,
+  });
+
+  if (error) return { error: error.message };
+  revalidatePath("/dashboard/officers");
+  return { error: null };
+}
+
+export async function deletePosition(id: number): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  if (!hasPermission(profile, "manage_officers")) {
+    return { error: "You do not have permission to manage positions." };
+  }
+
+  const admin = getServiceRoleClient();
+  if (!admin) return { error: SERVICE_ROLE_ERROR };
+  const { error } = await admin.from("positions").delete().eq("id", id);
+  if (error) return { error: error.message };
+
   revalidatePath("/dashboard/officers");
   return { error: null };
 }

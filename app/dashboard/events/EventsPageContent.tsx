@@ -1,8 +1,6 @@
 "use client";
 
-import { compareAsc, isPast, parseISO } from "date-fns";
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export type EventsPublicRow = {
   id: number;
@@ -16,18 +14,31 @@ export type EventsPublicRow = {
   status: string;
 };
 
-const PAGE_SIZE = 10;
-
 function formatWhen(iso: string | null) {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
     });
   } catch {
     return "—";
   }
+}
+
+function statusTone(status: string | null | undefined) {
+  const v = (status ?? "").trim().toLowerCase();
+  if (v === "cancelled") {
+    return "border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300";
+  }
+  if (v === "scheduled") {
+    return "border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300";
+  }
+  return "border-border bg-muted text-muted-foreground";
 }
 
 export function EventsPageContent({
@@ -35,195 +46,212 @@ export function EventsPageContent({
 }: {
   initialEvents: EventsPublicRow[];
 }) {
-  const [q, setQ] = useState("");
-  const [hidePast, setHidePast] = useState(false);
-  const [page, setPage] = useState(0);
+  const events = initialEvents;
+  const [index, setIndex] = useState(0);
 
-  const filtered = useMemo(() => {
-    let list = [...initialEvents];
-    if (hidePast) {
-      list = list.filter((e) => {
-        if (!e.start_time) return true;
-        return !isPast(parseISO(e.start_time));
-      });
-    }
-    const s = q.trim().toLowerCase();
-    if (s) {
-      list = list.filter((e) => {
-        return (
-          (e.title ?? "").toLowerCase().includes(s) ||
-          (e.location ?? "").toLowerCase().includes(s) ||
-          (e.description ?? "").toLowerCase().includes(s)
-        );
-      });
-    }
-    list.sort((a, b) => {
-      if (!a.start_time && !b.start_time) return 0;
-      if (!a.start_time) return 1;
-      if (!b.start_time) return -1;
-      return compareAsc(parseISO(a.start_time), parseISO(b.start_time));
-    });
-    return list;
-  }, [hidePast, initialEvents, q]);
+  useEffect(() => {
+    setIndex((i) => (events.length === 0 ? 0 : Math.min(i, events.length - 1)));
+  }, [events.length]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE) || 1);
-  const safePage = Math.min(page, pageCount - 1);
-  const slice = useMemo(() => {
-    const start = safePage * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, safePage]);
+  const current = events[index] ?? null;
+
+  const go = useCallback(
+    (delta: number) => {
+      if (events.length === 0) return;
+      const n = events.length;
+      setIndex((i) => (((i + delta) % n) + n) % n);
+    },
+    [events.length],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") go(-1);
+      if (e.key === "ArrowRight") go(1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [go]);
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Events</h1>
-          <p className="mt-1 text-muted-foreground">
-            Upcoming events, flyers, and details.
-          </p>
-        </div>
-        <Link
-          href="/dashboard/events/manage"
-          className="text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          Events management →
-        </Link>
+    <div className="flex flex-col gap-6 lg:gap-5">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Events</h1>
+        <p className="mt-1 text-muted-foreground">
+          Upcoming public events — arrows, dots, or keyboard (← →).
+        </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="w-full max-w-md">
-          <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Search
-          </label>
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(0);
-            }}
-            placeholder="Title, location, description…"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-          />
-        </div>
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={hidePast}
-            onChange={(e) => {
-              setHidePast(e.target.checked);
-              setPage(0);
-            }}
-            className="rounded border-border"
-          />
-          Hide past events
-        </label>
-      </div>
-
-      <section className="rounded-xl border border-border bg-card shadow-sm">
-        <div className="border-b border-border px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-card-foreground">
-            Event list
-          </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {filtered.length} event{filtered.length !== 1 ? "s" : ""} found
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border">
-            <thead>
-              <tr>
-                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
-                  Title
-                </th>
-                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
-                  Start
-                </th>
-                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
-                  Location
-                </th>
-                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
-                  Flyer
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border bg-card">
-              {slice.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-4 py-8 text-center text-muted-foreground sm:px-6"
-                  >
-                    No events match.
-                  </td>
-                </tr>
-              ) : (
-                slice.map((e) => (
-                  <tr key={e.id} className="hover:bg-muted">
-                    <td className="px-4 py-3 text-sm text-card-foreground sm:px-6">
-                      <div className="font-medium">{e.title}</div>
-                      {e.status === "cancelled" ? (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          Cancelled
-                        </div>
-                      ) : null}
-                      {!e.is_public ? (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          Private
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground sm:px-6">
-                      {formatWhen(e.start_time)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground sm:px-6">
-                      {e.location || "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6">
-                      {e.flyer_url ? (
-                        <a
-                          href={e.flyer_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline dark:text-blue-400"
-                        >
-                          View
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3 sm:px-6">
-          <p className="text-sm text-muted-foreground">
-            Page {safePage + 1} of {pageCount}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={safePage <= 0}
-              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-              disabled={safePage >= pageCount - 1}
-              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-            >
-              Next
-            </button>
+      {events.length === 0 ? (
+        <div className="flex min-h-[32vh] flex-col items-center justify-center px-4 text-center lg:min-h-[28vh]">
+          <div className="max-w-md rounded-2xl border border-border bg-card px-8 py-12 shadow-sm">
+            <p className="text-lg font-medium text-card-foreground">
+              No upcoming public events
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              When new events are announced, they&apos;ll show up here with a
+              poster if one is available.
+            </p>
           </div>
         </div>
-      </section>
+      ) : (
+        <div className="flex w-full flex-col items-center px-4 pb-0 sm:px-6">
+          <div className="w-full max-w-sm">
+            <article
+              className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg"
+              aria-roledescription="carousel"
+              aria-label="Public events carousel"
+            >
+              {/* Meta on top */}
+              <header className="border-b border-border bg-muted/40 px-4 py-4 sm:px-5">
+                <h2 className="text-center text-xl font-semibold tracking-tight text-card-foreground sm:text-2xl">
+                  {current?.title ?? "Event"}
+                </h2>
+                <div className="mt-3 flex justify-center">
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${statusTone(
+                      current?.status,
+                    )}`}
+                  >
+                    {(current?.status ?? "scheduled").replaceAll("_", " ")}
+                  </span>
+                </div>
+                <p className="mt-2 text-center text-sm text-muted-foreground">
+                  {formatWhen(current?.start_time ?? null)}
+                </p>
+                <p className="mt-2 text-center text-sm font-medium text-foreground">
+                  <span className="text-muted-foreground">Where: </span>
+                  {(current?.location ?? "").trim() || (
+                    <span className="font-normal text-muted-foreground">
+                      Location to be announced
+                    </span>
+                  )}
+                </p>
+              </header>
+
+              {/* Poster — movie poster ratio */}
+              <div className="relative aspect-2/3 w-full overflow-hidden bg-muted">
+                {current?.flyer_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- Flyer URLs come from storage / external hosts
+                  <img
+                    src={current.flyer_url}
+                    alt=""
+                    className="h-full w-full object-cover object-center"
+                  />
+                ) : (
+                  <PosterPlaceholder title={current?.title ?? "Event"} />
+                )}
+              </div>
+            </article>
+
+            <div className="mt-3 flex items-center justify-between gap-2 sm:gap-4">
+              <button
+                type="button"
+                aria-label="Previous event"
+                onClick={() => go(-1)}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium shadow-sm transition hover:bg-muted sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm"
+              >
+                <ChevronLeftIcon />
+                Previous
+              </button>
+              <button
+                type="button"
+                aria-label="Next event"
+                onClick={() => go(1)}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium shadow-sm transition hover:bg-muted sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm"
+              >
+                Next
+                <ChevronRightIcon />
+              </button>
+            </div>
+
+            {/* Dots */}
+            <div
+              className="mt-4 flex flex-wrap justify-center gap-2"
+              role="tablist"
+              aria-label="Event slides"
+            >
+              {events.map((e, i) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={i === index}
+                  aria-label={`Show event: ${e.title}`}
+                  onClick={() => setIndex(i)}
+                  className={`h-2 rounded-full transition-all ${
+                    i === index
+                      ? "w-8 bg-accent"
+                      : "w-2 bg-muted-foreground/35 hover:bg-muted-foreground/60"
+                  }`}
+                />
+              ))}
+            </div>
+
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Nearest upcoming first · {index + 1} of {events.length}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
+function PosterPlaceholder({ title }: { title: string }) {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-linear-to-br from-muted to-muted/60 px-6 text-center">
+      <div className="rounded-xl border border-dashed border-muted-foreground/25 bg-background/70 px-4 py-3 shadow-inner">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          No poster uploaded
+        </p>
+        <p className="mt-1 text-sm font-medium leading-snug text-foreground">
+          A flyer will appear here once it&apos;s added for this event.
+        </p>
+      </div>
+      <p className="line-clamp-2 max-w-48 text-xs font-medium text-muted-foreground">
+        {title}
+      </p>
+    </div>
+  );
+}
+
+function ChevronLeftIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-foreground"
+      aria-hidden
+    >
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-foreground"
+      aria-hidden
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}

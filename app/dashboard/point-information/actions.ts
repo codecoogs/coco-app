@@ -78,6 +78,7 @@ export async function createPointCategory(input: {
 
   if (error) return { error: error.message };
   revalidatePath("/dashboard/point-information");
+  revalidatePath("/dashboard/point-management");
   return { error: null };
 }
 
@@ -109,6 +110,7 @@ export async function updatePointCategory(
 
   if (error) return { error: error.message };
   revalidatePath("/dashboard/point-information");
+  revalidatePath("/dashboard/point-management");
   return { error: null };
 }
 
@@ -125,5 +127,6 @@ export async function deletePointCategory(id: string): Promise<{
 
   if (error) return { error: error.message };
   revalidatePath("/dashboard/point-information");
+  revalidatePath("/dashboard/point-management");
   return { error: null };
 }
