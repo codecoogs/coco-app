@@ -8,6 +8,7 @@ import {
   getOfficers,
   getPositionsForManage,
   getRoleOptions,
+  getRolesForManage,
 } from "./actions";
 import { OfficersContent } from "./OfficersContent";
 
@@ -22,7 +23,7 @@ export default async function OfficersPage() {
   }
 
   const profile = await fetchUserProfile(supabase, authUser.id);
-  if (!hasPermission(profile, "view_officers")) {
+  if (!hasPermission(profile, "manage_officers")) {
     redirect("/dashboard");
   }
 
@@ -33,22 +34,27 @@ export default async function OfficersPage() {
   let branchesForManage: Awaited<ReturnType<typeof getBranchesForManage>>["data"] = [];
   let branchOptions: Awaited<ReturnType<typeof getBranchOptions>>["data"] = [];
   let roleOptions: Awaited<ReturnType<typeof getRoleOptions>>["data"] = [];
+  let rolesForManage: Awaited<ReturnType<typeof getRolesForManage>>["data"] = [];
   let positionsLoadError: string | null = null;
   let branchesLoadError: string | null = null;
+  let rolesLoadError: string | null = null;
 
   if (canManage) {
-    const [pr, br, rr, bmr] = await Promise.all([
+    const [pr, br, rr, bmr, rmr] = await Promise.all([
       getPositionsForManage(),
       getBranchOptions(),
       getRoleOptions(),
       getBranchesForManage(),
+      getRolesForManage(),
     ]);
     positionsForManage = pr.data;
     branchOptions = br.data;
     roleOptions = rr.data;
     branchesForManage = bmr.data;
+    rolesForManage = rmr.data;
     positionsLoadError = pr.error ?? br.error ?? rr.error;
     branchesLoadError = bmr.error;
+    rolesLoadError = rmr.error;
   }
 
   return (
@@ -73,8 +79,10 @@ export default async function OfficersPage() {
           branchesForManage={branchesForManage}
           branchOptions={branchOptions}
           roleOptions={roleOptions}
+          rolesForManage={rolesForManage}
           positionsLoadError={positionsLoadError}
           branchesLoadError={branchesLoadError}
+          rolesLoadError={rolesLoadError}
         />
       )}
     </div>

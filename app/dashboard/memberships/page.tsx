@@ -1,5 +1,9 @@
 import type { UserPaymentInfo } from "@/lib/codecoogs-api";
+import { createClient } from "@/lib/supabase/server";
+import { fetchUserProfile } from "@/lib/supabase/profile";
+import { hasPermission } from "@/lib/types/rbac";
 import { MembershipsContent } from "./MembershipsContent";
+import { redirect } from "next/navigation";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_CODECOOGS_API_URL ?? "https://api.codecoogs.com/v1";
@@ -19,6 +23,20 @@ async function fetchUsersPaymentInfo(): Promise<UserPaymentInfo[]> {
 }
 
 export default async function MembershipsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user?.id) {
+    redirect("/login?next=/dashboard/memberships");
+  }
+
+  const profile = await fetchUserProfile(supabase, user.id);
+  if (!hasPermission(profile, "manage_memberships")) {
+    redirect("/dashboard");
+  }
+
   let users: UserPaymentInfo[] = [];
   let error: string | null = null;
 

@@ -83,6 +83,10 @@ export const PERMISSION_NAMES = [
   "manage_point_categories",
   "view_events",
   "manage_events",
+  "view_tickets",
+  "manage_tickets",
+  "view_teams",
+  "manage_teams",
   "view_branch",
   "manage_branch",
 ] as const;
@@ -110,6 +114,12 @@ function profileHasPermissionName(
   }
   if (permission === "manage_branch") {
     return list.includes("manage_branches");
+  }
+  if (permission === "manage_teams") {
+    return list.includes("manage_team");
+  }
+  if (permission === "view_teams") {
+    return list.includes("view_team");
   }
   return false;
 }

@@ -14,10 +14,12 @@ import type {
   OfficerRow,
   PositionManageRow,
   PositionTitleOption,
+  RoleManageRow,
   RoleOption,
 } from "./actions";
 import { BranchesPanel } from "./BranchesPanel";
-import { OfficerRolesPanel } from "./OfficerRolesPanel";
+import { PositionsPanel } from "./PositionsPanel";
+import { RolesPanel } from "./RolesPanel";
 import { useCallback, useMemo, useState } from "react";
 
 function formatDate(iso: string | null) {
@@ -42,13 +44,23 @@ function userOptionLabel(u: {
   email: string;
   first_name: string;
   last_name: string;
+  discord?: string;
 }): string {
   const name = [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
-  return name ? `${name} (${u.email})` : u.email;
+  let base = name ? `${name} (${u.email})` : u.email;
+  const d = u.discord?.trim();
+  if (d) base += ` · ${d}`;
+  return base;
 }
 
 function filterUsersWithoutPosition(
-  users: { id: string; email: string; first_name: string; last_name: string }[],
+  users: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    discord?: string;
+  }[],
   query: string,
   limit = 40
 ) {
@@ -58,7 +70,8 @@ function filterUsersWithoutPosition(
   const scored = users.filter((u) => {
     const name = [u.first_name, u.last_name].filter(Boolean).join(" ").toLowerCase();
     const email = u.email.toLowerCase();
-    const haystack = `${name} ${email}`;
+    const discord = (u.discord ?? "").toLowerCase();
+    const haystack = `${name} ${email} ${discord}`;
     return tokens.every((t) => haystack.includes(t));
   });
   return scored.slice(0, limit);
@@ -83,8 +96,10 @@ type Props = {
   branchesForManage?: BranchManageRow[];
   branchOptions?: BranchOption[];
   roleOptions?: RoleOption[];
+  rolesForManage?: RoleManageRow[];
   positionsLoadError?: string | null;
   branchesLoadError?: string | null;
+  rolesLoadError?: string | null;
 };
 
 export function OfficersContent({
@@ -94,20 +109,22 @@ export function OfficersContent({
   branchesForManage = [],
   branchOptions = [],
   roleOptions = [],
+  rolesForManage = [],
   positionsLoadError = null,
   branchesLoadError = null,
+  rolesLoadError = null,
 }: Props) {
   const { refetchProfile } = useProfileOptional() ?? {};
-  const [mainTab, setMainTab] = useState<"assignments" | "roles" | "branches">(
-    "assignments"
-  );
+  const [mainTab, setMainTab] = useState<
+    "assignments" | "positions" | "branches" | "roles"
+  >("assignments");
   const showAssignments = !canManage || mainTab === "assignments";
   const [officers, setOfficers] = useState(initialOfficers);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [positionTitles, setPositionTitles] = useState<PositionTitleOption[]>([]);
   const [usersWithoutPosition, setUsersWithoutPosition] = useState<
-    { id: string; email: string; first_name: string; last_name: string }[]
+    { id: string; email: string; first_name: string; last_name: string; discord: string }[]
   >([]);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -277,15 +294,15 @@ export function OfficersContent({
             <button
               type="button"
               role="tab"
-              aria-selected={mainTab === "roles"}
-              onClick={() => setMainTab("roles")}
+              aria-selected={mainTab === "positions"}
+              onClick={() => setMainTab("positions")}
               className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-                mainTab === "roles"
+                mainTab === "positions"
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Officer roles
+              Positions
             </button>
             <button
               type="button"
@@ -300,6 +317,19 @@ export function OfficersContent({
             >
               Branches
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mainTab === "roles"}
+              onClick={() => setMainTab("roles")}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                mainTab === "roles"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Roles
+            </button>
           </div>
           {mainTab === "assignments" && (
             <button
@@ -313,8 +343,8 @@ export function OfficersContent({
         </div>
       )}
 
-      {canManage && mainTab === "roles" && (
-        <OfficerRolesPanel
+      {canManage && mainTab === "positions" && (
+        <PositionsPanel
           initialPositions={positionsForManage}
           branchOptions={branchOptions}
           roleOptions={roleOptions}
@@ -324,6 +354,10 @@ export function OfficersContent({
 
       {canManage && mainTab === "branches" && (
         <BranchesPanel initialBranches={branchesForManage} loadError={branchesLoadError} />
+      )}
+
+      {canManage && mainTab === "roles" && (
+        <RolesPanel initialRoles={rolesForManage} loadError={rolesLoadError} />
       )}
 
       {showAssignments && adding && (
@@ -349,7 +383,7 @@ export function OfficersContent({
             <div className="relative min-w-0 sm:col-start-1 sm:row-start-2">
               {selectedPickerUser ? (
                 <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
-                  <span className="text-sm text-card-foreground">
+                  <span className="block text-sm leading-snug text-card-foreground">
                     {userOptionLabel(selectedPickerUser)}
                   </span>
                   <button
@@ -370,7 +404,7 @@ export function OfficersContent({
                     autoComplete="off"
                     value={userSearchQuery}
                     onChange={(e) => setUserSearchQuery(e.target.value)}
-                    placeholder="Search by first name, last name, or email…"
+                    placeholder="Search by name, email, or Discord…"
                     className="w-full rounded-lg border border-border bg-card px-3 py-2 text-foreground placeholder:text-muted-foreground"
                     aria-label="Search users without a position"
                   />
@@ -403,6 +437,11 @@ export function OfficersContent({
                               <span className="mt-0.5 block text-xs text-muted-foreground">
                                 {u.email}
                               </span>
+                              {(u.discord ?? "").trim() ? (
+                                <span className="mt-0.5 block text-xs text-muted-foreground">
+                                  Discord: {u.discord}
+                                </span>
+                              ) : null}
                             </button>
                           </li>
                         ))
@@ -515,7 +554,7 @@ export function OfficersContent({
           {!message && positionTitles.length === 0 && (
             <p className="mt-2 text-xs text-muted-foreground">
               No active positions found in <code className="rounded bg-muted px-1">positions</code>. Add or
-              activate positions under the Officer roles tab.
+              activate positions under the Positions tab.
             </p>
           )}
         </section>

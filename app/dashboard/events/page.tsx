@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { EventsPageContent, type EventsPublicRow } from "./EventsPageContent";
+import {
+  EventsPageContent,
+  type EventsPublicRow,
+} from "./EventsPageContent";
 
 export default async function EventsPage() {
   const supabase = await createClient();
@@ -12,14 +15,17 @@ export default async function EventsPage() {
     redirect("/login?next=/dashboard/events");
   }
 
-  // RLS handles visibility:
-  // - members see public events
-  // - view/manage_events see all events
+  const nowIso = new Date().toISOString();
+
+  // Main events view: upcoming public listings only (officers manage the full roster elsewhere).
   const { data, error } = await supabase
     .from("events")
     .select(
       "id, title, description, location, start_time, end_time, flyer_url, is_public, status",
     )
+    .eq("is_public", true)
+    .not("start_time", "is", null)
+    .gte("start_time", nowIso)
     .order("start_time", { ascending: true, nullsFirst: false });
 
   if (error) {

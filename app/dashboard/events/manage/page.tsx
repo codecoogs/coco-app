@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { fetchUserProfile } from "@/lib/supabase/profile";
-import { hasAnyPermission, hasPermission } from "@/lib/types/rbac";
+import { hasPermission } from "@/lib/types/rbac";
 import { redirect } from "next/navigation";
 import { getEvents, getPointCategories } from "../actions";
 import { EventsManagementContent } from "../EventsManagementContent";
@@ -16,7 +16,7 @@ export default async function EventsManagementPage() {
   }
 
   const profile = await fetchUserProfile(supabase, authUser.id);
-  if (!hasAnyPermission(profile, ["view_events", "manage_events"])) {
+  if (!hasPermission(profile, "manage_events")) {
     redirect("/dashboard");
   }
 
