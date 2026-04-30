@@ -1,6 +1,8 @@
 "use client";
 
+import { useProfile } from "@/app/contexts/ProfileContext";
 import { sanitizeExpectedGraduationInput } from "@/lib/validation";
+import { useRouter } from "next/navigation";
 import { updateMyProfile } from "./actions";
 import { useCallback, useState } from "react";
 
@@ -19,6 +21,8 @@ type Props = {
 };
 
 export function ProfileDetailsSection({ initial }: Props) {
+  const router = useRouter();
+  const { refetchProfile } = useProfile();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(
     null,
@@ -33,10 +37,13 @@ export function ProfileDetailsSection({ initial }: Props) {
       const formData = new FormData(e.currentTarget);
       const res = await updateMyProfile(formData);
       setBusy(false);
-      if (res.ok) setMessage({ type: "ok", text: "Profile updated." });
-      else setMessage({ type: "error", text: res.error });
+      if (res.ok) {
+        setMessage({ type: "ok", text: "Profile updated." });
+        await refetchProfile();
+        router.refresh();
+      } else setMessage({ type: "error", text: res.error });
     },
-    [],
+    [refetchProfile, router],
   );
 
   return (

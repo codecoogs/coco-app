@@ -145,9 +145,17 @@ export function SignUpModal({
         password,
         data: profileData,
       });
-      setLoading(false);
       if (updateError) {
+        setLoading(false);
         setMessage({ type: "error", text: updateError.message });
+        return;
+      }
+      const { error: syncError } = await supabase.rpc(
+        "sync_my_signup_profile_from_auth",
+      );
+      setLoading(false);
+      if (syncError) {
+        setMessage({ type: "error", text: syncError.message });
         return;
       }
       onClose();
@@ -167,12 +175,20 @@ export function SignUpModal({
         data: profileData,
       },
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       setMessage({ type: "error", text: error.message });
       return;
     }
     if (data.session) {
+      const { error: syncError } = await supabase.rpc(
+        "sync_my_signup_profile_from_auth",
+      );
+      setLoading(false);
+      if (syncError) {
+        setMessage({ type: "error", text: syncError.message });
+        return;
+      }
       onClose();
       const dest =
         next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
@@ -180,6 +196,7 @@ export function SignUpModal({
       router.refresh();
       return;
     }
+    setLoading(false);
     setMessage({
       type: "success",
       text: "Check your email for the confirmation link.",
