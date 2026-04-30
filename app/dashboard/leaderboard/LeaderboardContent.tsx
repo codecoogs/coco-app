@@ -64,8 +64,9 @@ export function LeaderboardContent({
 
   const showingFrom =
     rows.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const count = totalCount ?? 0;
   const showingTo =
-    totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
+    count === 0 ? 0 : Math.min(page * pageSize, count);
 
   const refresh = useCallback(async () => {
     setLoading(true);
