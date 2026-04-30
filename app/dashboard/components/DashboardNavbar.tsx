@@ -1,10 +1,13 @@
 "use client";
 
-import { useProfile } from "@/app/contexts/ProfileContext";
-import { createClient } from "@/lib/supabase/client";
+import {
+  type MemberPublicSnapshot,
+  useProfile,
+} from "@/app/contexts/ProfileContext";
+import type { User } from "@supabase/supabase-js";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDashboardShellOptional } from "./DashboardShell";
 
 const POSITION_BADGE_COLOR = "#04495d";
@@ -22,35 +25,39 @@ function isWelcomeBack(
   return last - created >= WELCOME_BACK_THRESHOLD_MS;
 }
 
+/** Prefer membership names, then auth metadata from signup, then email. */
+function welcomeDisplayName(
+  user: User,
+  member: MemberPublicSnapshot | null,
+): string {
+  const fromMember = [member?.firstName?.trim(), member?.lastName?.trim()]
+    .filter(Boolean)
+    .join(" ");
+  if (fromMember) return fromMember;
+
+  const meta = user.user_metadata as Record<string, unknown> | undefined;
+  const mf =
+    typeof meta?.first_name === "string" ? meta.first_name.trim() : "";
+  const ml =
+    typeof meta?.last_name === "string" ? meta.last_name.trim() : "";
+  const fromMeta = [mf, ml].filter(Boolean).join(" ");
+  if (fromMeta) return fromMeta;
+
+  const full =
+    typeof meta?.full_name === "string" ? meta.full_name.trim() : "";
+  if (full) return full;
+
+  const email = user.email?.trim();
+  if (email) return email;
+
+  return "there";
+}
+
 export function DashboardNavbar() {
-  const { user, profile, loading } = useProfile();
-  const supabase = useMemo(() => createClient(), []);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const { user, profile, memberPublic, loading } = useProfile();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const shell = useDashboardShellOptional();
-
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("users")
-        .select("avatar_url")
-        .eq("auth_id", user.id)
-        .maybeSingle();
-
-      if (cancelled) return;
-      if (error) return;
-      const url =
-        (data as { avatar_url: string | null } | null)?.avatar_url?.trim() ??
-        null;
-      setAvatarUrl(url || null);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase, user?.id]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -113,7 +120,10 @@ export function DashboardNavbar() {
     );
   }
 
-  const displayName = user.user_metadata?.full_name ?? user.email ?? "there";
+  const displayName = welcomeDisplayName(user, memberPublic);
+  const accountEmail = user.email?.trim() ?? "";
+  const menuSubtitleEmail =
+    accountEmail && displayName !== accountEmail ? accountEmail : null;
   const showWelcomeBack = isWelcomeBack(
     user.created_at,
     user.last_sign_in_at ?? undefined,
@@ -178,9 +188,9 @@ export function DashboardNavbar() {
             className="flex items-center gap-2 rounded-lg border border-border bg-card px-2 py-1.5 text-sm font-medium text-card-foreground hover:bg-muted"
           >
             <span className="relative h-8 w-8 overflow-hidden rounded-full border border-border bg-muted">
-              {avatarUrl ? (
+              {memberPublic?.avatarUrl ? (
                 <Image
-                  src={avatarUrl}
+                  src={memberPublic.avatarUrl}
                   alt=""
                   width={32}
                   height={32}
@@ -222,12 +232,13 @@ export function DashboardNavbar() {
             >
               <div className="border-b border-border px-3 py-2">
                 <p className="truncate text-sm font-medium text-card-foreground">
-                  {user.email ?? "Account"}
+                  {displayName}
                 </p>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {showWelcomeBack ? "Welcome back" : "Welcome"},{" "}
-                  {user.user_metadata?.full_name ?? (user.email ?? "there")}
-                </p>
+                {menuSubtitleEmail ? (
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {menuSubtitleEmail}
+                  </p>
+                ) : null}
                 {positionTitle || roleName ? (
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     {[positionTitle, roleName].filter(Boolean).join(" · ")}

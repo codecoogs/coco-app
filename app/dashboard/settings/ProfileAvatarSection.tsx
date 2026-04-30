@@ -1,8 +1,10 @@
 "use client";
 
+import { useProfileOptional } from "@/app/contexts/ProfileContext";
 import { validateAvatarFileClient } from "@/lib/avatar/validate-client";
 import { uploadProfileAvatar } from "./actions";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 type Props = {
@@ -10,6 +12,8 @@ type Props = {
 };
 
 export function ProfileAvatarSection({ initialAvatarUrl }: Props) {
+  const router = useRouter();
+  const refetchProfile = useProfileOptional()?.refetchProfile;
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{
@@ -39,11 +43,13 @@ export function ProfileAvatarSection({ initialAvatarUrl }: Props) {
       if (res.ok) {
         setAvatarUrl(res.avatarUrl);
         setMessage({ type: "ok", text: "Profile picture updated." });
+        await refetchProfile?.();
+        router.refresh();
       } else {
         setMessage({ type: "error", text: res.error });
       }
     },
-    []
+    [refetchProfile, router],
   );
 
   return (

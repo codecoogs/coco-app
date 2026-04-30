@@ -16,7 +16,7 @@ export default async function SettingsPage() {
   const { data: row } = await supabase
     .from("users")
     .select(
-      "avatar_url, first_name, last_name, phone, classification, expected_graduation, major, discord",
+      "avatar_url, first_name, last_name, phone, classification, expected_graduation, major, discord, updated",
     )
     .eq("auth_id", user.id)
     .maybeSingle();
@@ -31,10 +31,12 @@ export default async function SettingsPage() {
         expected_graduation: string | null;
         major: string | null;
         discord: string | null;
+        updated: string | null;
       }
     | null;
 
   const avatarUrl = u?.avatar_url?.trim() ?? null;
+  const profileSectionKey = u?.updated ?? "no-row";
 
   return (
     <div className="space-y-8">
@@ -45,8 +47,12 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <ProfileAvatarSection initialAvatarUrl={avatarUrl} />
+      <ProfileAvatarSection
+        key={profileSectionKey}
+        initialAvatarUrl={avatarUrl}
+      />
       <ProfileDetailsSection
+        key={profileSectionKey}
         initial={{
           first_name: u?.first_name ?? "",
           last_name: u?.last_name ?? "",

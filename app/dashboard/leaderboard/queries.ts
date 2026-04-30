@@ -12,7 +12,16 @@ export type LeaderboardRow = {
   user_id: string;
   total_points: number | null;
   current_rank: number | null;
+  /** Same as count of members sharing this total_points when DB is current; used for "(tied)". */
+  points_tie_group_size: number | null;
   users: LeaderboardMemberProfile | null;
+};
+
+export const LEADERBOARD_PAGE_SIZE = 20;
+
+export type FetchLeaderboardOptions = {
+  page?: number;
+  pageSize?: number;
 };
 
 function normalizeUsersEmbed(raw: Record<string, unknown>): LeaderboardMemberProfile | null {
@@ -34,26 +43,53 @@ function normalizeUsersEmbed(raw: Record<string, unknown>): LeaderboardMemberPro
 }
 
 export async function fetchLeaderboardWithMembers(
-  supabase: SupabaseClient
-): Promise<{ data: LeaderboardRow[]; error: string | null }> {
-  const { data, error } = await supabase
+  supabase: SupabaseClient,
+  options?: FetchLeaderboardOptions
+): Promise<{
+  data: LeaderboardRow[];
+  totalCount: number | null;
+  error: string | null;
+}> {
+  const rawSize = options?.pageSize ?? LEADERBOARD_PAGE_SIZE;
+  const pageSize = Math.min(Math.max(rawSize, 1), 100);
+  const page = Math.max(options?.page ?? 1, 1);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const { data, error, count } = await supabase
     .from("leaderboard")
     .select(
-      "user_id, total_points, current_rank, users!leaderboard_user_id_fkey(first_name, last_name, email, discord, avatar_url)"
+      "user_id, total_points, current_rank, points_tie_group_size, users!leaderboard_user_id_fkey(first_name, last_name, email, discord, avatar_url)",
+      { count: "exact" }
     )
-    .order("total_points", { ascending: false, nullsFirst: false });
+    .order("total_points", { ascending: false, nullsFirst: false })
+    .order("user_id", { ascending: true })
+    .range(from, to);
 
-  if (error) return { data: [], error: error.message };
+  if (error) return { data: [], totalCount: null, error: error.message };
 
   const rows = (data ?? []).map((raw) => {
     const row = raw as Record<string, unknown>;
     const users = normalizeUsersEmbed(row);
+    const t = row.points_tie_group_size;
+    const tieSz =
+      typeof t === "number" && Number.isFinite(t) && t >= 1
+        ? Math.trunc(t)
+        : typeof t === "string" && /^\d+$/.test(t.trim())
+          ? parseInt(t.trim(), 10)
+          : null;
+
     return {
       user_id: row.user_id as string,
       total_points: (row.total_points as number | null) ?? null,
       current_rank: (row.current_rank as number | null) ?? null,
+      points_tie_group_size: tieSz != null && tieSz >= 1 ? tieSz : null,
       users,
     } as LeaderboardRow;
   });
-  return { data: rows, error: null };
+  return {
+    data: rows,
+    totalCount: typeof count === "number" ? count : null,
+    error: null,
+  };
 }
