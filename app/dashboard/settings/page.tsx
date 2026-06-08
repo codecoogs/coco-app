@@ -48,11 +48,11 @@ export default async function SettingsPage() {
       </div>
 
       <ProfileAvatarSection
-        key={profileSectionKey}
+        key={`avatar-${profileSectionKey}`}
         initialAvatarUrl={avatarUrl}
       />
       <ProfileDetailsSection
-        key={profileSectionKey}
+        key={`details-${profileSectionKey}`}
         initial={{
           first_name: u?.first_name ?? "",
           last_name: u?.last_name ?? "",
