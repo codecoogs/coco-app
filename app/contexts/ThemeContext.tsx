@@ -113,11 +113,16 @@ function applyThemeToDocument(theme: Theme, resolved: ResolvedTheme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("system");
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
+  const [theme, setThemeState] = useState<Theme>(
+    () => readThemeFromCookie() ?? readThemeFromStorage() ?? "system",
+  );
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() =>
     getSystemTheme(),
   );
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
+    const stored = readThemeFromCookie() ?? readThemeFromStorage() ?? "system";
+    return themeToResolved(stored, getSystemTheme());
+  });
 
   const setTheme = useCallback(
     (next: Theme) => {
@@ -146,15 +151,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(next);
   }, [theme, setTheme]);
 
-  // Hydrate from cookie/storage and listen to system preference
+  // Apply theme to DOM on mount (state already initialized from cookie/storage above).
   useEffect(() => {
-    const stored = readThemeFromCookie() ?? readThemeFromStorage() ?? "system";
-    setThemeState(stored);
-    const sys = getSystemTheme();
-    const resolved = themeToResolved(stored, sys);
-    setResolvedTheme(resolved);
-    setSystemTheme(sys);
-    applyThemeToDocument(stored, resolved);
+    applyThemeToDocument(theme, resolvedTheme);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync system theme when preference is "system"

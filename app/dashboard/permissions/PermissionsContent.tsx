@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createPermission,
   getPermissionsForManage,
@@ -113,7 +113,7 @@ export function PermissionsContent({
     router.refresh();
   }, [router]);
 
-  const roles = rolePermissionsMatrix.roles ?? [];
+  const roles = useMemo(() => rolePermissionsMatrix.roles ?? [], [rolePermissionsMatrix.roles]);
   const permissionsForMatrix = rolePermissionsMatrix.permissions ?? [];
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(
     roles.length ? roles[0]?.id ?? null : null
@@ -178,7 +178,7 @@ export function PermissionsContent({
     [refresh, selectedRoleId]
   );
 
-  const positions = positionMatrix ?? [];
+  const positions = useMemo(() => positionMatrix ?? [], [positionMatrix]);
   const [selectedPositionId, setSelectedPositionId] = useState<number | null>(
     positions.length ? positions[0]?.position_id ?? null : null
   );
@@ -201,9 +201,6 @@ export function PermissionsContent({
     positions.find((p) => p.position_id === selectedPositionId) ?? null;
   const directNameSet = new Set<string>(selectedPosition?.direct_permissions ?? []);
   const inheritedNameSet = new Set<string>(selectedPosition?.inherited_permissions ?? []);
-  const effectiveNameSet = new Set<string>(
-    [...(selectedPosition?.effective_permissions ?? [])]
-  );
 
   const togglePositionPermission = useCallback(
     async (permissionName: string, enabled: boolean) => {

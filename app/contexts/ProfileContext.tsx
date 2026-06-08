@@ -94,7 +94,7 @@ export function ProfileProvider({
   const refetchProfile = useCallback(async () => {
     if (!user?.id) return;
     await loadProfile(user.id);
-  }, [user?.id, loadProfile]);
+  }, [user, loadProfile]);
 
   const can = useCallback(
     (permission: PermissionName) => hasPermission(profile, permission),

@@ -424,6 +424,7 @@ export function OfficersContent({
                             <button
                               type="button"
                               role="option"
+                              aria-selected={u.id === selectedUserId}
                               className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
                               onClick={() => {
                                 setSelectedUserId(u.id);
@@ -500,6 +501,7 @@ export function OfficersContent({
                             <button
                               type="button"
                               role="option"
+                              aria-selected={p.title === selectedPositionTitle}
                               className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
                               onClick={() => {
                                 setSelectedPositionTitle(p.title);
