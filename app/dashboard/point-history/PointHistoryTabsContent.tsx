@@ -63,7 +63,7 @@ export function PointHistoryTabsContent({
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Point Information
+          Point Infomation
         </button>
       </div>
 

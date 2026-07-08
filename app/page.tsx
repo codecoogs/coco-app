@@ -6,7 +6,7 @@ import { TeamSignInModal } from "@/app/components/auth/TeamSignInModal";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 /** Large soft gradients read as blurry color blobs behind content (flat bg stays zinc-900). */
 function HeroBlurBlobs({
@@ -40,10 +40,16 @@ function HeroBlurBlobs({
 
 function HomePageContent() {
   const searchParams = useSearchParams();
-  const modal = searchParams.get("modal");
-  const [signInOpen, setSignInOpen] = useState(() => modal === "signin");
-  const [signUpOpen, setSignUpOpen] = useState(() => modal === "signup");
-  const [teamSignInOpen, setTeamSignInOpen] = useState(() => modal === "team");
+  const [signInOpen, setSignInOpen] = useState(false);
+  const [signUpOpen, setSignUpOpen] = useState(false);
+  const [teamSignInOpen, setTeamSignInOpen] = useState(false);
+
+  useEffect(() => {
+    const modal = searchParams.get("modal");
+    if (modal === "signin") setSignInOpen(true);
+    else if (modal === "signup") setSignUpOpen(true);
+    else if (modal === "team") setTeamSignInOpen(true);
+  }, [searchParams]);
 
   return (
     <>

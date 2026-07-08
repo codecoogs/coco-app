@@ -49,8 +49,11 @@ export function EventsPageContent({
   const events = initialEvents;
   const [index, setIndex] = useState(0);
 
-  const safeIndex = events.length === 0 ? 0 : Math.min(index, events.length - 1);
-  const current = events[safeIndex] ?? null;
+  useEffect(() => {
+    setIndex((i) => (events.length === 0 ? 0 : Math.min(i, events.length - 1)));
+  }, [events.length]);
+
+  const current = events[index] ?? null;
 
   const go = useCallback(
     (delta: number) => {
@@ -173,11 +176,11 @@ export function EventsPageContent({
                   key={e.id}
                   type="button"
                   role="tab"
-                  aria-selected={i === safeIndex}
+                  aria-selected={i === index}
                   aria-label={`Show event: ${e.title}`}
                   onClick={() => setIndex(i)}
                   className={`h-2 rounded-full transition-all ${
-                    i === safeIndex
+                    i === index
                       ? "w-8 bg-accent"
                       : "w-2 bg-muted-foreground/35 hover:bg-muted-foreground/60"
                   }`}
@@ -186,7 +189,7 @@ export function EventsPageContent({
             </div>
 
             <p className="mt-3 text-center text-xs text-muted-foreground">
-              Nearest upcoming first · {safeIndex + 1} of {events.length}
+              Nearest upcoming first · {index + 1} of {events.length}
             </p>
           </div>
         </div>
