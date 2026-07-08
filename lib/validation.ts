@@ -101,7 +101,7 @@ const GRADUATION_REGEX = /^(\d{4})-(0[1-9]|1[0-2])$/;
  * month must use two digits (01–12, never a single digit for month).
  */
 export function sanitizeExpectedGraduationInput(input: string): string {
-  let digits = input.replace(/\D/g, "").slice(0, 6);
+  const digits = input.replace(/\D/g, "").slice(0, 6);
   const y = digits.slice(0, 4);
   let ms = digits.slice(4);
 

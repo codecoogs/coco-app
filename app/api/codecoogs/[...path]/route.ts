@@ -25,7 +25,7 @@ export async function GET(
     });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       { success: false, error: "Proxy request failed" },
       { status: 502 }

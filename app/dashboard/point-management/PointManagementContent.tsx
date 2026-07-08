@@ -154,7 +154,7 @@ export function PointManagementContent({
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          Point Infomation
+          Point Information
         </button>
 
         {canManagePoints ? (
