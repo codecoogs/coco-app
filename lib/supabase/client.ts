@@ -1,14 +1,15 @@
 import { createBrowserClient } from "@supabase/ssr";
-import { supabaseBrowserCookieOptions } from "./cookie-options";
+import { supabaseCookieOptions } from "./cookie-options";
 import { getSupabaseAnonKey, getSupabaseUrl } from "./public-env";
 
 /**
- * Client Components: session in cookies (not localStorage). Tokens readable to JS only
- * when written from the browser (httpOnly: false); server/proxy use httpOnly.
+ * Client Components: session in cookies (not localStorage), via document.cookie.
+ * See supabaseCookieOptions for why httpOnly must stay false and consistent with
+ * the server/proxy clients.
  */
 export function createClient() {
   return createBrowserClient(getSupabaseUrl(), getSupabaseAnonKey(), {
-    cookieOptions: supabaseBrowserCookieOptions,
+    cookieOptions: supabaseCookieOptions,
     auth: {
       // Skip navigator.locks in the browser. Orphaned locks + acquire timeouts surface as
       // AbortError in auth-js (common with React Strict Mode / Turbopack fast refresh).
