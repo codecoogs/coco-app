@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import type { NextRequest, NextResponse } from "next/server";
-import { supabaseServerCookieOptions } from "./cookie-options";
+import { supabaseCookieOptions } from "./cookie-options";
 import { getSupabaseAnonKey, getSupabaseUrl } from "./public-env";
 
 /**
@@ -12,7 +12,7 @@ export function createProxySupabaseClient(
   response: NextResponse
 ) {
   return createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
-    cookieOptions: supabaseServerCookieOptions,
+    cookieOptions: supabaseCookieOptions,
     cookies: {
       getAll() {
         return request.cookies.getAll();

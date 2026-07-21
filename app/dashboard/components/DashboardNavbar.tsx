@@ -99,6 +99,8 @@ export function DashboardNavbar() {
     );
   }
 
+  // ProfileContext redirects to /login as soon as it confirms there's no session; this
+  // covers the brief moment before that redirect lands.
   if (!user) {
     return (
       <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-3 sm:px-6">
@@ -107,14 +109,12 @@ export function DashboardNavbar() {
           <span className="text-sm text-muted-foreground">
             Session unavailable
           </span>
-          <form action="/auth/signout" method="POST">
-            <button
-              type="submit"
-              className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
-            >
-              Sign out
-            </button>
-          </form>
+          <Link
+            href="/login"
+            className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+          >
+            Log back in
+          </Link>
         </nav>
       </header>
     );
