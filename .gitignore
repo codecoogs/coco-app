@@ -9,6 +9,11 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+CLAUDE.md
+SKILLS.md
+AGENTS.md
+OPINIONS.md
+
 
 # testing
 /coverage
