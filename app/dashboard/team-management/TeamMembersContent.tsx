@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { downloadCsv } from "@/lib/csv";
 import {
   addTeamMember,
   getTeamMembersForManage,
@@ -54,23 +55,6 @@ function parseCsv(text: string) {
         "Could not read this CSV. Use UTF-8, comma-separated, with a header row.",
     };
   }
-}
-
-function csvEscapeCell(val: string) {
-  if (/[,"\n\r]/.test(val)) return `"${val.replace(/"/g, '""')}"`;
-  return val;
-}
-
-function downloadCsv(rows: string[][], filename: string) {
-  const text = rows.map((r) => r.map(csvEscapeCell).join(",")).join("\r\n");
-  const bom = "\ufeff";
-  const blob = new Blob([bom + text], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 type Props = {
