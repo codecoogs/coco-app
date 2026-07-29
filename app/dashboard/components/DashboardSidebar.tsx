@@ -204,6 +204,7 @@ function ThemeIcon({
                 aria-hidden
             >
                 <path
+                    suppressHydrationWarning
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
@@ -240,6 +241,7 @@ function ThemeIcon({
             aria-hidden
         >
             <path
+                suppressHydrationWarning
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
