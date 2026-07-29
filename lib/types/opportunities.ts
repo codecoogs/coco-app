@@ -8,6 +8,7 @@ export type OpportunityCategory =
   | "Club Role"
   | "Project"
   | "Sponsor"
+  | "Job"
   | "Other";
 
 export const OPPORTUNITY_CATEGORIES: OpportunityCategory[] = [
@@ -15,6 +16,14 @@ export const OPPORTUNITY_CATEGORIES: OpportunityCategory[] = [
   "Club Role",
   "Project",
   "Sponsor",
+  "Job",
+  "Other",
+];
+
+/** Categories that show company/location/employment-type/salary fields in the builder. */
+export const JOB_SHAPED_CATEGORIES: readonly OpportunityCategory[] = [
+  "Internship",
+  "Job",
   "Other",
 ];
 
@@ -42,6 +51,8 @@ export type Opportunity = {
   salary: string | null;
   source: OpportunitySource;
   external_id: string | null;
+  /** Discipline/search-keyword tag from a CSV import (e.g. "Data Science"). Distinct from category. */
+  field: string | null;
   is_active: boolean;
   display_order: number;
   expires_at: string | null;
@@ -62,6 +73,7 @@ export type ActiveOpportunity = Pick<
   | "location"
   | "employment_type"
   | "salary"
+  | "field"
 >;
 
 export type OpportunityInput = {
@@ -86,4 +98,5 @@ export type CsvOpportunityRow = {
   salary: string | null;
   description: string | null;
   link_url: string;
+  field: string | null;
 };

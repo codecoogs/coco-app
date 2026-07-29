@@ -1,12 +1,49 @@
 "use client";
 
 import { Dropzone, formatFileSize } from "@/app/components/ui/Dropzone";
+import { downloadCsv } from "@/lib/csv";
 import type { CsvOpportunityRow, EmploymentType } from "@/lib/types/opportunities";
 import { EMPLOYMENT_TYPES } from "@/lib/types/opportunities";
 import { useCallback, useState } from "react";
 import { importOpportunitiesCsv } from "../actions";
 
 const PREVIEW_MAX = 10;
+
+const TEMPLATE_HEADERS = [
+  "linkedin_job_id",
+  "category",
+  "search_term",
+  "company_name",
+  "position",
+  "location",
+  "employment_type",
+  "salary",
+  "description",
+  "applicants_count",
+  "company_website",
+  "application_url",
+  "linkedin_url",
+  "posted_date",
+  "date_found",
+];
+
+const TEMPLATE_EXAMPLE_ROW = [
+  "1234567890",
+  "data-science",
+  "Data Science",
+  "Example Corp",
+  "Software Engineering Intern",
+  "Houston, TX",
+  "Internship",
+  "",
+  "Example job description goes here.",
+  "10",
+  "https://example.com",
+  "https://linkedin.com/jobs/view/1234567890",
+  "https://linkedin.com/jobs/view/1234567890",
+  "1/1/26",
+  "1/1/26",
+];
 
 type ParsedCsv = {
   headers: string[];
@@ -92,6 +129,17 @@ function normalizeEmploymentType(raw: string): EmploymentType | null {
   return match ?? null;
 }
 
+/** "data-science" -> "Data Science". Used as a fallback when search_term isn't present. */
+function titleCaseSlug(raw: string): string {
+  if (!raw.trim()) return "";
+  return raw
+    .trim()
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((word) => word[0]!.toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function isCsvFile(file: File): boolean {
   const name = file.name.toLowerCase();
   return (
@@ -151,6 +199,10 @@ export function ImportOpportunitiesModal({ onClose, onImported }: Props) {
     reader.readAsText(file);
   }, []);
 
+  const handleDownloadTemplate = useCallback(() => {
+    downloadCsv([TEMPLATE_HEADERS, TEMPLATE_EXAMPLE_ROW], "opportunities-import-template.csv");
+  }, []);
+
   const handleImport = useCallback(async () => {
     if (!csvText) return;
     setMessage(null);
@@ -185,6 +237,8 @@ export function ImportOpportunitiesModal({ onClose, onImported }: Props) {
     const iEmploymentType = idx(["employment_type"]);
     const iSalary = idx(["salary"]);
     const iDescription = idx(["description"]);
+    const iSearchTerm = idx(["search_term"]);
+    const iCategory = idx(["category"]);
 
     const get = (r: string[], i: number) => (i >= 0 ? (r[i] ?? "").trim() : "");
 
@@ -198,6 +252,7 @@ export function ImportOpportunitiesModal({ onClose, onImported }: Props) {
 
         const rawEmploymentType = get(r, iEmploymentType);
         const rawDescription = get(r, iDescription);
+        const field = get(r, iSearchTerm) || titleCaseSlug(get(r, iCategory)) || null;
 
         return {
           external_id,
@@ -210,6 +265,7 @@ export function ImportOpportunitiesModal({ onClose, onImported }: Props) {
             : null,
           salary: get(r, iSalary) || null,
           description: rawDescription ? decodeHtmlEntities(rawDescription) : null,
+          field,
         };
       })
       .filter((v): v is CsvOpportunityRow => v !== null);
@@ -268,9 +324,19 @@ export function ImportOpportunitiesModal({ onClose, onImported }: Props) {
           <code className="text-xs">location</code>,{" "}
           <code className="text-xs">employment_type</code>,{" "}
           <code className="text-xs">salary</code>,{" "}
-          <code className="text-xs">description</code>. Imported rows land inactive for
-          review — nothing goes live automatically.
+          <code className="text-xs">description</code>,{" "}
+          <code className="text-xs">search_term</code> or{" "}
+          <code className="text-xs">category</code> (discipline tag, e.g.
+          &quot;Data Science&quot;). Imported rows land inactive for review —
+          nothing goes live automatically.
         </p>
+        <button
+          type="button"
+          onClick={handleDownloadTemplate}
+          className="mt-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-card-foreground hover:bg-muted"
+        >
+          Download CSV template
+        </button>
 
         {message && (
           <div

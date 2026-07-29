@@ -2,6 +2,7 @@
 
 import {
   EMPLOYMENT_TYPES,
+  JOB_SHAPED_CATEGORIES,
   OPPORTUNITY_CATEGORIES,
   type EmploymentType,
   type Opportunity,
@@ -29,7 +30,9 @@ export function OpportunityFormModal({ mode, opportunity, onClose, onSaved }: Pr
     opportunity?.category ?? ""
   );
 
-  const showJobFields = category === "Internship" || category === "Other";
+  const showJobFields = category
+    ? JOB_SHAPED_CATEGORIES.includes(category)
+    : false;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

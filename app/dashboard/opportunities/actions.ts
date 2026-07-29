@@ -34,7 +34,7 @@ async function requireManageOpportunities(): Promise<
 }
 
 const OPPORTUNITY_COLUMNS =
-  "id, title, description, link_url, category, icon_url, company_name, location, employment_type, salary, source, external_id, is_active, display_order, expires_at, created_at, updated_at";
+  "id, title, description, link_url, category, icon_url, company_name, location, employment_type, salary, source, external_id, field, is_active, display_order, expires_at, created_at, updated_at";
 
 // ---------------------------------------------------------------------------
 // Member-facing
@@ -48,7 +48,7 @@ export async function getActiveOpportunities(): Promise<{
   const { data, error } = await supabase
     .from("active_opportunities")
     .select(
-      "id, title, description, link_url, category, icon_url, company_name, location, employment_type, salary"
+      "id, title, description, link_url, category, icon_url, company_name, location, employment_type, salary, field"
     )
     .order("display_order", { ascending: true });
 
@@ -163,6 +163,25 @@ export async function setOpportunityActive(
   return { error: null };
 }
 
+export async function bulkSetOpportunitiesActive(
+  ids: string[],
+  isActive: boolean
+): Promise<{ error: string | null; updated: number }> {
+  const gate = await requireManageOpportunities();
+  if (!gate.ok) return { error: gate.error, updated: 0 };
+  if (!ids.length) return { error: null, updated: 0 };
+
+  const { error } = await gate.supabase
+    .from("opportunities")
+    .update({ is_active: isActive, updated_by: gate.appUserId })
+    .in("id", ids);
+
+  if (error) return { error: error.message, updated: 0 };
+  revalidatePath("/dashboard/opportunities/manage");
+  revalidatePath("/dashboard/opportunities");
+  return { error: null, updated: ids.length };
+}
+
 export async function deleteOpportunity(id: string): Promise<{ error: string | null }> {
   const gate = await requireManageOpportunities();
   if (!gate.ok) return { error: gate.error };
@@ -214,9 +233,10 @@ export async function importOpportunitiesCsv(rows: CsvOpportunityRow[]): Promise
       employment_type: r.employment_type,
       salary: r.salary,
       external_id: r.external_id,
+      field: r.field,
       source: "csv_import",
       is_active: false,
-      category: null,
+      category: "Job",
       created_by: gate.appUserId,
     }))
   );

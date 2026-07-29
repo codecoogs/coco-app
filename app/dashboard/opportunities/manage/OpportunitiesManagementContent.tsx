@@ -3,6 +3,7 @@
 import { OPPORTUNITY_CATEGORIES, type Opportunity } from "@/lib/types/opportunities";
 import { useCallback, useMemo, useState } from "react";
 import {
+  bulkSetOpportunitiesActive,
   deleteOpportunity,
   getOpportunitiesForManage,
   setOpportunityActive,
@@ -58,6 +59,30 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
     () => opportunities.filter((o) => o.source === "csv_import" && !o.is_active).length,
     [opportunities]
   );
+
+  const inactiveFilteredIds = useMemo(
+    () => filtered.filter((o) => !o.is_active).map((o) => o.id),
+    [filtered]
+  );
+
+  const handleActivateAll = useCallback(async () => {
+    if (!inactiveFilteredIds.length) return;
+    if (
+      !confirm(
+        `Activate ${inactiveFilteredIds.length} opportunity(ies)? They'll immediately become visible to members.`
+      )
+    )
+      return;
+    setBusy(true);
+    const res = await bulkSetOpportunitiesActive(inactiveFilteredIds, true);
+    setBusy(false);
+    if (res.error) {
+      setMessage({ type: "error", text: res.error });
+      return;
+    }
+    setMessage({ type: "ok", text: `Activated ${res.updated} opportunity(ies).` });
+    await refresh();
+  }, [inactiveFilteredIds, refresh]);
 
   const handleToggleActive = useCallback(
     async (o: Opportunity) => {
@@ -121,6 +146,16 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
           </select>
         </div>
         <div className="flex gap-2">
+          {inactiveFilteredIds.length > 0 && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleActivateAll}
+              className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
+            >
+              Activate all ({inactiveFilteredIds.length})
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setImportOpen(true)}
@@ -163,12 +198,14 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full min-w-[980px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="px-4 py-3 font-medium">Title</th>
                 <th className="px-4 py-3 font-medium">Company</th>
                 <th className="px-4 py-3 font-medium">Category</th>
+                <th className="px-4 py-3 font-medium">Employment type</th>
+                <th className="px-4 py-3 font-medium">Field</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 font-medium">Actions</th>
@@ -183,6 +220,12 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {o.category ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {o.employment_type ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {o.field ?? "—"}
                   </td>
                   <td className="px-4 py-3">
                     <span
