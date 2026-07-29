@@ -1,5 +1,6 @@
 "use client";
 
+import { Dropzone, formatFileSize } from "@/app/components/ui/Dropzone";
 import confetti from "canvas-confetti";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -133,9 +134,10 @@ export function AddEventAttendanceModal({ event, onClose, onRecorded }: Props) {
   } | null>(null);
 
   const [csvName, setCsvName] = useState<string | null>(null);
+  const [csvSizeLabel, setCsvSizeLabel] = useState<string | null>(null);
   const [csvText, setCsvText] = useState<string | null>(null);
   const [csvImportBusy, setCsvImportBusy] = useState(false);
-  const [csvDragActive, setCsvDragActive] = useState(false);
+  const [csvTotalRows, setCsvTotalRows] = useState(0);
   const [csvSummary, setCsvSummary] = useState<{
     inserted_events_attendance: number;
     inserted_unassigned: number;
@@ -196,8 +198,10 @@ export function AddEventAttendanceModal({ event, onClose, onRecorded }: Props) {
 
   const onFile = useCallback((file: File | null) => {
     setCsvName(file?.name ?? null);
+    setCsvSizeLabel(file ? formatFileSize(file.size) : null);
     setCsvText(null);
     setCsvPreview(null);
+    setCsvTotalRows(0);
     setCsvSummary(null);
     if (!file) return;
     if (!isCsvFile(file)) {
@@ -212,6 +216,8 @@ export function AddEventAttendanceModal({ event, onClose, onRecorded }: Props) {
     reader.onload = () => {
       const text = String(reader.result ?? "");
       setCsvText(text);
+      const full = parseCsv(text);
+      setCsvTotalRows(full.rows.length);
       setCsvPreview(parseCsvForPreview(text, PREVIEW_MAX));
     };
     reader.onerror = () => {
@@ -224,18 +230,6 @@ export function AddEventAttendanceModal({ event, onClose, onRecorded }: Props) {
     };
     reader.readAsText(file);
   }, []);
-
-  const onCsvDrop = useCallback(
-    (e: React.DragEvent<HTMLLabelElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setCsvDragActive(false);
-      if (csvImportBusy) return;
-      const file = e.dataTransfer.files?.[0] ?? null;
-      onFile(file);
-    },
-    [csvImportBusy, onFile],
-  );
 
   const importCsv = useCallback(async () => {
     if (!csvText) return;
@@ -466,80 +460,15 @@ export function AddEventAttendanceModal({ event, onClose, onRecorded }: Props) {
               <code className="text-xs">cougarnet_email</code>,{" "}
               <code className="text-xs">attended_at</code>.
             </p>
-            <div>
-              <label
-                htmlFor="attendance-csv"
-                className="mb-1 block text-sm font-medium text-muted-foreground"
-              >
-                File
-              </label>
-              <div className="flex w-full items-center justify-center">
-                <label
-                  htmlFor="attendance-csv"
-                  onDragEnter={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!csvImportBusy) setCsvDragActive(true);
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!csvImportBusy) setCsvDragActive(true);
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCsvDragActive(false);
-                  }}
-                  onDrop={onCsvDrop}
-                  className={`flex h-48 w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed p-4 transition ${
-                    csvDragActive
-                      ? "border-blue-500 bg-blue-500/5"
-                      : "border-border bg-muted/30 hover:bg-muted/40"
-                  } ${csvImportBusy ? "cursor-not-allowed opacity-70" : ""}`}
-                >
-                  <div className="flex flex-col items-center justify-center pt-2 pb-3 text-sm text-muted-foreground">
-                    <svg
-                      className="mb-3 h-8 w-8"
-                      aria-hidden
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M15 17h3a3 3 0 0 0 0-6h-.025a5.56 5.56 0 0 0 .025-.5A5.5 5.5 0 0 0 7.207 9.021C7.137 9.017 7.071 9 7 9a4 4 0 1 0 0 8h2.167M12 19v-9m0 0-2 2m2-2 2 2"
-                      />
-                    </svg>
-                    <p className="mb-1">
-                      <span className="font-semibold text-card-foreground">
-                        Click to upload
-                      </span>{" "}
-                      or drag and drop
-                    </p>
-                    <p className="text-xs">CSV files only</p>
-                  </div>
-                  <input
-                    id="attendance-csv"
-                    type="file"
-                    accept=".csv,text/csv"
-                    disabled={csvImportBusy}
-                    onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </div>
-            {csvName && (
-              <p className="text-xs text-muted-foreground">
-                Selected: {csvName}
-              </p>
-            )}
+            <Dropzone
+              id="attendance-csv"
+              accept=".csv,text/csv"
+              hint="CSV files only"
+              disabled={csvImportBusy}
+              fileName={csvName}
+              fileSizeLabel={csvSizeLabel}
+              onFileSelected={onFile}
+            />
             {csvPreview?.parseError && (
               <p className="text-sm text-red-600 dark:text-red-400">
                 {csvPreview.parseError}
@@ -550,8 +479,8 @@ export function AddEventAttendanceModal({ event, onClose, onRecorded }: Props) {
               csvPreview.headers.length > 0 && (
                 <div>
                   <p className="mb-2 text-sm font-medium text-card-foreground">
-                    Preview (first {Math.min(PREVIEW_MAX, csvPreview.rows.length)}{" "}
-                    data rows)
+                    Preview ({Math.min(PREVIEW_MAX, csvPreview.rows.length)} of{" "}
+                    {csvTotalRows} row{csvTotalRows === 1 ? "" : "s"})
                   </p>
                   <p className="mb-2 text-xs text-muted-foreground">
                     Import destination: matched members →{" "}
@@ -598,7 +527,11 @@ export function AddEventAttendanceModal({ event, onClose, onRecorded }: Props) {
                       disabled={csvImportBusy || !csvText}
                       className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {csvImportBusy ? "Importing…" : "Import"}
+                      {csvImportBusy
+                        ? "Importing…"
+                        : formMessage?.type === "error"
+                          ? "Retry import"
+                          : "Import"}
                     </button>
                     {csvSummary && (
                       <p className="text-sm text-muted-foreground">
