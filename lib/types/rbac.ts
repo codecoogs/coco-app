@@ -89,6 +89,9 @@ export const PERMISSION_NAMES = [
   "manage_teams",
   "view_branch",
   "manage_branch",
+  "view_forms",
+  "manage_forms",
+  "manage_opportunities",
 ] as const;
 
 export type PermissionName = (typeof PERMISSION_NAMES)[number];

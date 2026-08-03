@@ -131,6 +131,24 @@ button:disabled,
   cursor: not-allowed;
 }
 
+/*
+ * Press feedback for every button in the app: shrink slightly while held,
+ * then pop back with a touch of overshoot on release. Applies globally so
+ * existing buttons get this for free with no per-component changes.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: scale(0.96);
+    transition: transform 100ms ease-out;
+  }
+}
+
 /* Theme-consistent checkbox/radio styling (uses CSS variable tokens). */
 input[type="checkbox"],
 input[type="radio"] {

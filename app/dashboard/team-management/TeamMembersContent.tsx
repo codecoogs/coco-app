@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Dropzone, formatFileSize } from "@/app/components/ui/Dropzone";
+import { downloadCsv } from "@/lib/csv";
 import {
   addTeamMember,
   getTeamMembersForManage,
@@ -56,23 +58,6 @@ function parseCsv(text: string) {
   }
 }
 
-function csvEscapeCell(val: string) {
-  if (/[,"\n\r]/.test(val)) return `"${val.replace(/"/g, '""')}"`;
-  return val;
-}
-
-function downloadCsv(rows: string[][], filename: string) {
-  const text = rows.map((r) => r.map(csvEscapeCell).join(",")).join("\r\n");
-  const bom = "\ufeff";
-  const blob = new Blob([bom + text], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 type Props = {
   initialMembers: TeamMemberRow[];
   teams: { id: string; name: string }[];
@@ -102,9 +87,9 @@ export function TeamMembersContent({
   const [searching, setSearching] = useState(false);
 
   const [csvName, setCsvName] = useState<string | null>(null);
+  const [csvSizeLabel, setCsvSizeLabel] = useState<string | null>(null);
   const [csvText, setCsvText] = useState<string | null>(null);
   const [csvBusy, setCsvBusy] = useState(false);
-  const [csvDragging, setCsvDragging] = useState(false);
 
   useEffect(() => {
     setRows(initialMembers);
@@ -246,12 +231,14 @@ export function TeamMembersContent({
       text: `Imported ${res.added} roster row(s). No matching user for ${res.not_found} row(s). ${res.failed_assignment} row(s) could not be assigned (database conflict or constraint).`,
     });
     setCsvName(null);
+    setCsvSizeLabel(null);
     setCsvText(null);
     await refresh();
   }, [csvText, refresh, teamFilterId]);
 
   const onCsvFile = useCallback((file: File | null) => {
     setCsvName(file?.name ?? null);
+    setCsvSizeLabel(file ? formatFileSize(file.size) : null);
     setCsvText(null);
     setMessage(null);
     if (!file) return;
@@ -363,82 +350,26 @@ export function TeamMembersContent({
             <label className="mb-2 block text-sm font-medium text-muted-foreground">
               Upload CSV to import roster
             </label>
-            <div className="flex w-full items-center justify-center">
-              <label
-                htmlFor="team-roster-csv"
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (csvBusy || !teamFilterId) return;
-                  setCsvDragging(true);
-                }}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  if (csvBusy || !teamFilterId) return;
-                  setCsvDragging(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  const rt = e.relatedTarget as Node | null;
-                  if (!rt || !e.currentTarget.contains(rt)) setCsvDragging(false);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (csvBusy || !teamFilterId) return;
-                  setCsvDragging(false);
-                  onCsvFile(e.dataTransfer.files?.[0] ?? null);
-                }}
-                className={`flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition ${
-                  csvBusy || !teamFilterId
-                    ? "cursor-not-allowed border-border bg-muted/30 opacity-60"
-                    : csvDragging
-                      ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/20"
-                      : "border-border bg-card hover:bg-muted/40"
-                }`}
-              >
-                <div className="flex flex-col items-center justify-center pt-2 pb-3 text-sm text-muted-foreground">
-                  <svg
-                    className="mb-3 h-8 w-8"
-                    aria-hidden
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15 17h3a3 3 0 0 0 0-6h-.025a5.56 5.56 0 0 0 .025-.5A5.5 5.5 0 0 0 7.207 9.021C7.137 9.017 7.071 9 7 9a4 4 0 1 0 0 8h2.167M12 19v-9m0 0-2 2m2-2 2 2"
-                    />
-                  </svg>
-                  <p className="mb-1">
-                    <span className="font-semibold text-card-foreground">Click to upload</span>{" "}
-                    or drag and drop
-                  </p>
-                  <p className="text-xs">CSV files only</p>
-                </div>
-                <input
-                  id="team-roster-csv"
-                  type="file"
-                  accept=".csv,text/csv"
-                  disabled={csvBusy || !teamFilterId}
-                  onChange={(e) => onCsvFile(e.target.files?.[0] ?? null)}
-                  className="hidden"
-                />
-              </label>
-            </div>
-            {csvName ? (
-              <p className="mt-2 text-xs text-muted-foreground">Selected: {csvName}</p>
-            ) : null}
+            <Dropzone
+              id="team-roster-csv"
+              accept=".csv,text/csv"
+              hint={teamFilterId ? "CSV files only" : "Select a team above first"}
+              disabled={csvBusy || !teamFilterId}
+              fileName={csvName}
+              fileSizeLabel={csvSizeLabel}
+              onFileSelected={onCsvFile}
+            />
             <button
               type="button"
               disabled={csvBusy || !csvText || !teamFilterId}
               onClick={() => parseAndImportCsv()}
               className="mt-3 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {csvBusy ? "Importing…" : "Import CSV"}
+              {csvBusy
+                ? "Importing…"
+                : message?.type === "error"
+                  ? "Retry import"
+                  : "Import CSV"}
             </button>
           </div>
         </section>

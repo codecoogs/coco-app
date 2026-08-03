@@ -1,6 +1,6 @@
 import { sanitizeAuthNextParam } from "@/lib/auth-internal-path";
 import { getSiteUrl } from "@/lib/site-url";
-import { supabaseServerCookieOptions } from "@/lib/supabase/cookie-options";
+import { supabaseCookieOptions } from "@/lib/supabase/cookie-options";
 import { forwardSessionCookies } from "@/lib/supabase/forward-session-cookies";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/public-env";
 import { createServerClient } from "@supabase/ssr";
@@ -8,8 +8,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Discord (and other) OAuth return URL. exchangeCodeForSession writes chunked
- * httpOnly session cookies; those must be copied onto the redirect response
- * (same pattern as proxy + forwardSessionCookies) or the browser never stores
+ * session cookies; those must be copied onto the redirect response (same
+ * pattern as proxy + forwardSessionCookies) or the browser never stores
  * access/refresh tokens after OAuth.
  */
 export async function GET(request: NextRequest) {
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     getSupabaseUrl(),
     getSupabaseAnonKey(),
     {
-      cookieOptions: supabaseServerCookieOptions,
+      cookieOptions: supabaseCookieOptions,
       cookies: {
         getAll() {
           return request.cookies.getAll();

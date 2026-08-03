@@ -6,6 +6,7 @@ import type { UserProfile } from "@/lib/types/rbac";
 import type { PermissionName } from "@/lib/types/rbac";
 import { hasPermission } from "@/lib/types/rbac";
 import type { User } from "@supabase/supabase-js";
+import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -44,6 +45,8 @@ export function ProfileProvider({
   /** Optional server-passed user to avoid flash; client will still sync with auth. */
   initialUser?: User | null;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -94,7 +97,7 @@ export function ProfileProvider({
   const refetchProfile = useCallback(async () => {
     if (!user?.id) return;
     await loadProfile(user.id);
-  }, [user?.id, loadProfile]);
+  }, [user, loadProfile]);
 
   const can = useCallback(
     (permission: PermissionName) => hasPermission(profile, permission),
@@ -148,6 +151,15 @@ export function ProfileProvider({
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [user?.id, refetchProfile]);
+
+  // Session genuinely unavailable (expired/signed out elsewhere) after the initial
+  // check settled -- point the user back to login instead of leaving a dead-end UI
+  // where the rest of the dashboard still renders but shows no account details.
+  useEffect(() => {
+    if (loading || user) return;
+    const next = pathname ? `?next=${encodeURIComponent(pathname)}` : "";
+    router.replace(`/login${next}`);
+  }, [loading, user, pathname, router]);
 
   const value = useMemo(
     () => ({
