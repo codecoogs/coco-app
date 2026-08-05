@@ -71,6 +71,8 @@ export function isTeamAllowed(profile: UserProfile | null): boolean {
  * - DB may use singular names (e.g. manage_officer); hasPermission() accepts both for officers.
  * - view_events / manage_events: events page (view_any) vs create/edit/cancel.
  * - view_point_categories / manage_point_categories: read vs edit point_categories (RLS).
+ * - view_finances / manage_finances: finance ledger, categories, sponsors, budgets.
+ * - manage_finance_sources: narrower than manage_finances; configuring Stripe/bank accounts only.
  */
 export const PERMISSION_NAMES = [
   "view_officers",
@@ -92,6 +94,9 @@ export const PERMISSION_NAMES = [
   "view_forms",
   "manage_forms",
   "manage_opportunities",
+  "view_finances",
+  "manage_finances",
+  "manage_finance_sources",
 ] as const;
 
 export type PermissionName = (typeof PERMISSION_NAMES)[number];

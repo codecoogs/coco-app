@@ -4,6 +4,7 @@ import { fetchUserProfile } from "@/lib/supabase/profile";
 import { hasPermission } from "@/lib/types/rbac";
 import { MembershipsContent } from "./MembershipsContent";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_CODECOOGS_API_URL ?? "https://api.codecoogs.com/v1";
@@ -57,6 +58,12 @@ export default async function MembershipsPage() {
           View all users with payment and due date info. Filter by active
           membership, paid status, and membership type. For officers and admins.
         </p>
+        <Link
+          href="/dashboard/memberships/plans"
+          className="mt-2 inline-block text-sm font-medium text-accent hover:underline"
+        >
+          Manage membership plans →
+        </Link>
       </div>
 
       {error ? (

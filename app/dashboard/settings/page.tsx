@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { DiscordLinkSection } from "./DiscordLinkSection";
+import { getMembershipPlans, getMyMemberships } from "./membership-actions";
+import { MembershipSection } from "./MembershipSection";
 import { ProfileAvatarSection } from "./ProfileAvatarSection";
 import { ProfileDetailsSection } from "./ProfileDetailsSection";
 
@@ -38,6 +41,11 @@ export default async function SettingsPage() {
   const avatarUrl = u?.avatar_url?.trim() ?? null;
   const profileSectionKey = u?.updated ?? "no-row";
 
+  const [plansRes, membershipsRes] = await Promise.all([
+    getMembershipPlans(),
+    getMyMemberships(),
+  ]);
+
   return (
     <div className="space-y-8">
       <div>
@@ -64,6 +72,12 @@ export default async function SettingsPage() {
         }}
       />
       <DiscordLinkSection />
+      <Suspense fallback={null}>
+        <MembershipSection
+          initialPlans={plansRes.data}
+          initialMemberships={membershipsRes.data}
+        />
+      </Suspense>
     </div>
   );
 }
