@@ -22,6 +22,13 @@ const UNIQUE_VIOLATION = "23505";
  * Every event is recorded in finance_stripe_sync_log first (unique on
  * stripe_event_id) so redelivery is a safe no-op, and so failed ingestion
  * can be diagnosed/replayed from the stored payload.
+ *
+ * Also dispatches membership-relevant events to process_stripe_event, the
+ * SECURITY DEFINER Postgres function that owns the payments/memberships
+ * state machine (see Membership_Stripe_Implementation_Plan.docx). That
+ * function keeps its own separate idempotency log (stripe_events) - a
+ * membership Checkout Session carries metadata.finance_account_type too, so
+ * a single purchase event is intentionally recorded in both audit trails.
  */
 export async function POST(req: Request) {
   const stripe = getStripeClient();
@@ -74,8 +81,30 @@ export async function POST(req: Request) {
     await ingestCheckoutSession(admin, event.data.object as Stripe.Checkout.Session);
   }
 
+  if (MEMBERSHIP_EVENT_TYPES.has(event.type)) {
+    const { error: rpcError } = await admin.rpc("process_stripe_event", {
+      p_event_id: event.id,
+      p_type: event.type,
+      p_payload: event as unknown as Record<string, unknown>,
+    });
+    if (rpcError) {
+      // Not surfaced as a non-2xx response: the event is already durably
+      // logged (finance_stripe_sync_log above, and process_stripe_event logs
+      // to stripe_events before dispatching), so retrying delivery wouldn't
+      // help - it would just repeat the same failure.
+      console.error(`process_stripe_event RPC failed for ${event.id} (${event.type}):`, rpcError);
+    }
+  }
+
   return NextResponse.json({ received: true });
 }
+
+const MEMBERSHIP_EVENT_TYPES = new Set([
+  "checkout.session.completed",
+  "payment_intent.payment_failed",
+  "payment_intent.succeeded",
+  "charge.refunded",
+]);
 
 async function ingestCheckoutSession(
   admin: NonNullable<ReturnType<typeof getServiceRoleClient>>,
