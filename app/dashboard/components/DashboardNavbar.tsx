@@ -255,6 +255,14 @@ export function DashboardNavbar() {
                 >
                   Settings
                 </Link>
+                <Link
+                  href="/dashboard/membership"
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-card-foreground hover:bg-muted"
+                >
+                  Memberships
+                </Link>
               </div>
 
               <div className="border-t border-border p-1">
@@ -262,7 +270,7 @@ export function DashboardNavbar() {
                   <button
                     type="submit"
                     role="menuitem"
-                    className="flex w-full items-center justify-start rounded-lg px-3 py-2 text-sm font-medium text-blue-600 hover:bg-muted hover:underline dark:text-blue-400"
+                    className="flex w-full items-center justify-center rounded-lg border border-red-600 bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-500 dark:border-red-700 dark:bg-red-600 dark:hover:bg-red-500"
                   >
                     Sign out
                   </button>
