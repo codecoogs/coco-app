@@ -72,15 +72,20 @@ create table if not exists public.finance_transactions (
   -- Reserved for the future receipt photo upload feature (Storage object path).
   receipt_path text,
 
-  -- Manual (TDECU) entries start unverified until a second exec checks them
-  -- against the bank statement. Stripe-sourced rows are considered self-verifying.
+  -- Manual (TDECU) entries default to unverified until a second exec checks
+  -- them against the bank statement; the manual-entry action leaves this at
+  -- its default. Stripe-sourced rows are inserted by the webhook with
+  -- status = 'verified' directly, since Stripe itself is the source of truth.
   status text not null default 'unverified',
   constraint finance_transactions_status_check check (status in ('unverified', 'verified')),
   verified_by uuid references public.users (id) on delete set null,
   verified_at timestamptz,
 
-  created_by uuid not null references public.users (id) on delete restrict,
+  -- Null for Stripe-sourced rows (inserted by the webhook, no acting user).
+  created_by uuid references public.users (id) on delete restrict,
   updated_by uuid references public.users (id) on delete set null,
+  constraint finance_transactions_manual_requires_created_by
+    check (source <> 'manual' or created_by is not null),
   created_on timestamptz not null default now(),
   updated_on timestamptz not null default now()
 );

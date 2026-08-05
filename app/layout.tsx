@@ -36,10 +36,12 @@ export default async function RootLayout({
     themeCookie === "dark" ? "dark" : themeCookie === "light" ? "" : undefined;
 
   return (
-    <html lang="en" className={htmlClass} suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} ${htmlClass ?? ""}`}
+      suppressHydrationWarning
+    >
+      <body className="antialiased">
         <ThemeScript />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
