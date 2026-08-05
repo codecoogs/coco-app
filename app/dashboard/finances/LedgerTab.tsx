@@ -172,7 +172,11 @@ export function LedgerTab({
             value={filters.categoryId ?? "all"}
             onValueChange={(v) => updateFilter("categoryId", v === "all" ? undefined : (v as string))}
           >
-            <SelectTrigger id="filter-category"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="filter-category">
+              <SelectValue>
+                {(v: string) => (v === "all" ? "All" : activeCategories.find((c) => c.id === v)?.name ?? "All")}
+              </SelectValue>
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               {activeCategories.map((c) => (

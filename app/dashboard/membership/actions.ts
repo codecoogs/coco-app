@@ -5,26 +5,59 @@ import { getCurrentAppUserId } from "@/lib/supabase/get-current-app-user";
 import { getStripeClient } from "@/lib/stripe/client";
 import { getSiteUrl } from "@/lib/site-url";
 import type {
-  MembershipPlan,
   MembershipPlanKind,
+  MembershipPlanWithPeriod,
   MembershipWithPlan,
 } from "@/lib/types/membership";
 import crypto from "node:crypto";
 
 export async function getMembershipPlans(): Promise<{
-  data: MembershipPlan[];
+  data: MembershipPlanWithPeriod[];
   error: string | null;
 }> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("membership_plans")
     .select(
-      "id, name, kind, stripe_price_id, amount_cents, starts_at, ends_at, is_active, created_at, updated_at"
+      "id, name, kind, stripe_price_id, amount_cents, semester_id, academic_year_id, is_active, created_at, updated_at"
     )
-    .eq("is_active", true)
-    .order("starts_at", { ascending: true });
+    .eq("is_active", true);
   if (error) return { data: [], error: error.message };
-  return { data: data ?? [], error: null };
+  if (!data?.length) return { data: [], error: null };
+
+  const semesterIds = [...new Set(data.map((p) => p.semester_id).filter(Boolean))] as string[];
+  const academicYearIds = [
+    ...new Set(data.map((p) => p.academic_year_id).filter(Boolean)),
+  ] as string[];
+
+  const [{ data: semesters }, { data: academicYears }] = await Promise.all([
+    semesterIds.length
+      ? supabase.from("semesters").select("id, label, start_date, end_date").in("id", semesterIds)
+      : Promise.resolve({ data: [] as { id: string; label: string; start_date: string; end_date: string }[] }),
+    academicYearIds.length
+      ? supabase.from("academic_years").select("id, label, start_date, end_date").in("id", academicYearIds)
+      : Promise.resolve({ data: [] as { id: string; label: string; start_date: string; end_date: string }[] }),
+  ]);
+
+  const semesterMap = new Map((semesters ?? []).map((s) => [s.id, s]));
+  const yearMap = new Map((academicYears ?? []).map((y) => [y.id, y]));
+
+  const result: MembershipPlanWithPeriod[] = data.map((p) => {
+    const period =
+      p.kind === "semester"
+        ? semesterMap.get(p.semester_id ?? "")
+        : yearMap.get(p.academic_year_id ?? "");
+    return {
+      ...p,
+      period_label: period?.label ?? "Unknown period",
+      starts_at: period?.start_date ?? "",
+      ends_at: period?.end_date ?? "",
+    };
+  });
+
+  result.sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+
+  return { data: result, error: null };
 }
 
 export async function getMyMemberships(): Promise<{
@@ -140,8 +173,8 @@ export async function createMembershipCheckoutSession(
       {
         mode: "payment",
         line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
-        success_url: `${siteUrl}/dashboard/settings?membership=success`,
-        cancel_url: `${siteUrl}/dashboard/settings?membership=cancelled`,
+        success_url: `${siteUrl}/dashboard/membership?membership=success`,
+        cancel_url: `${siteUrl}/dashboard/membership?membership=cancelled`,
         metadata: {
           user_id: appUserId,
           plan_id: plan.id,

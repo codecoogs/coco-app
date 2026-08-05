@@ -36,15 +36,12 @@ function welcomeDisplayName(
   if (fromMember) return fromMember;
 
   const meta = user.user_metadata as Record<string, unknown> | undefined;
-  const mf =
-    typeof meta?.first_name === "string" ? meta.first_name.trim() : "";
-  const ml =
-    typeof meta?.last_name === "string" ? meta.last_name.trim() : "";
+  const mf = typeof meta?.first_name === "string" ? meta.first_name.trim() : "";
+  const ml = typeof meta?.last_name === "string" ? meta.last_name.trim() : "";
   const fromMeta = [mf, ml].filter(Boolean).join(" ");
   if (fromMeta) return fromMeta;
 
-  const full =
-    typeof meta?.full_name === "string" ? meta.full_name.trim() : "";
+  const full = typeof meta?.full_name === "string" ? meta.full_name.trim() : "";
   if (full) return full;
 
   const email = user.email?.trim();
@@ -270,7 +267,7 @@ export function DashboardNavbar() {
                   <button
                     type="submit"
                     role="menuitem"
-                    className="flex w-full items-center justify-center rounded-lg border border-destructive bg-destructive px-3 py-2 text-sm font-medium text-destructive-foreground transition hover:bg-destructive/90"
+                    className="flex w-full items-center justify-center rounded-lg border border-destructive/80 bg-destructive/40 px-3 py-2 text-sm font-medium text-card-foreground transition hover:bg-destructive/90"
                   >
                     Sign out
                   </button>

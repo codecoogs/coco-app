@@ -1,14 +1,14 @@
 "use client";
 
 import { formatCents } from "@/lib/finance/format";
-import type { MembershipPlan, MembershipWithPlan } from "@/lib/types/membership";
+import type { MembershipPlanWithPeriod, MembershipWithPlan } from "@/lib/types/membership";
 import { isMembershipCurrent } from "@/lib/types/membership";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createMembershipCheckoutSession } from "./actions";
 
 type Props = {
-  initialPlans: MembershipPlan[];
+  initialPlans: MembershipPlanWithPeriod[];
   initialMemberships: MembershipWithPlan[];
 };
 
