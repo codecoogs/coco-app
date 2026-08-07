@@ -4,11 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import { getCurrentAppUserId } from "@/lib/supabase/get-current-app-user";
 import { hasPermission } from "@/lib/types/rbac";
-import type {
-  ActiveOpportunity,
-  CsvOpportunityRow,
-  Opportunity,
-  OpportunityInput,
+import {
+  OPPORTUNITIES_PAGE_SIZE,
+  type ActiveOpportunity,
+  type CsvOpportunityRow,
+  type Opportunity,
+  type OpportunityInput,
 } from "@/lib/types/opportunities";
 import { revalidatePath } from "next/cache";
 
@@ -36,24 +37,84 @@ async function requireManageOpportunities(): Promise<
 const OPPORTUNITY_COLUMNS =
   "id, title, description, link_url, category, icon_url, company_name, location, employment_type, salary, source, external_id, field, is_active, display_order, expires_at, created_at, updated_at";
 
+function escapeIlike(value: string): string {
+  return `%${value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
+}
+
 // ---------------------------------------------------------------------------
 // Member-facing
 // ---------------------------------------------------------------------------
 
-export async function getActiveOpportunities(): Promise<{
+export type GetActiveOpportunitiesOptions = {
+  page?: number;
+  pageSize?: number;
+  /** Case-insensitive substring match against title. */
+  search?: string;
+  /** Exact match against location (from getOpportunityLocations' distinct list). */
+  location?: string;
+};
+
+export async function getActiveOpportunities(
+  options?: GetActiveOpportunitiesOptions
+): Promise<{
   data: ActiveOpportunity[];
+  totalCount: number;
+  error: string | null;
+}> {
+  const supabase = await createClient();
+
+  const pageSize = Math.min(Math.max(options?.pageSize ?? OPPORTUNITIES_PAGE_SIZE, 1), 100);
+  const page = Math.max(options?.page ?? 1, 1);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from("active_opportunities")
+    .select(
+      "id, title, description, link_url, category, icon_url, company_name, location, employment_type, salary, field",
+      { count: "exact" }
+    );
+
+  const search = options?.search?.trim();
+  if (search) {
+    query = query.ilike("title", escapeIlike(search));
+  }
+
+  const location = options?.location?.trim();
+  if (location) {
+    query = query.eq("location", location);
+  }
+
+  const { data, error, count } = await query
+    .order("display_order", { ascending: true })
+    .range(from, to);
+
+  if (error) return { data: [], totalCount: 0, error: error.message };
+  return { data: (data ?? []) as ActiveOpportunity[], totalCount: count ?? 0, error: null };
+}
+
+/** Distinct, sorted location values (from currently-active opportunities) for the location filter dropdown. */
+export async function getOpportunityLocations(): Promise<{
+  data: string[];
   error: string | null;
 }> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("active_opportunities")
-    .select(
-      "id, title, description, link_url, category, icon_url, company_name, location, employment_type, salary, field"
-    )
-    .order("display_order", { ascending: true });
+    .select("location")
+    .not("location", "is", null);
 
   if (error) return { data: [], error: error.message };
-  return { data: (data ?? []) as ActiveOpportunity[], error: null };
+
+  const unique = [
+    ...new Set(
+      (data ?? [])
+        .map((row) => row.location?.trim())
+        .filter((v): v is string => Boolean(v))
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+
+  return { data: unique, error: null };
 }
 
 // ---------------------------------------------------------------------------
