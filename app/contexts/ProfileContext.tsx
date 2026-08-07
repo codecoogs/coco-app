@@ -28,6 +28,8 @@ type ProfileContextValue = {
   profile: UserProfile | null;
   /** First/last name and avatar from public.users for UI (navbar, etc.). */
   memberPublic: MemberPublicSnapshot | null;
+  /** True if the user has a membership row that's active and not past its end date. */
+  hasActiveMembership: boolean;
   loading: boolean;
   error: string | null;
   refetchProfile: () => Promise<void>;
@@ -53,21 +55,32 @@ export function ProfileProvider({
   const [memberPublic, setMemberPublic] = useState<MemberPublicSnapshot | null>(
     null,
   );
+  const [hasActiveMembership, setHasActiveMembership] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadProfile = useCallback(
     async (uid: string) => {
       setError(null);
-      const [p, usersRes] = await Promise.all([
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const [p, usersRes, membershipsRes] = await Promise.all([
         fetchUserProfile(supabase, uid),
         supabase
           .from("users")
           .select("first_name, last_name, avatar_url")
           .eq("auth_id", uid)
           .maybeSingle(),
+        // RLS (memberships_select_own) already scopes this to the signed-in
+        // user's own rows - just check whether any are currently in force.
+        supabase
+          .from("memberships")
+          .select("id")
+          .eq("status", "active")
+          .gte("ends_at", todayIso)
+          .limit(1),
       ]);
       setProfile(p);
+      setHasActiveMembership(!!membershipsRes.data?.length);
       if (usersRes.error) {
         console.error(
           "Error loading public.users row:",
@@ -119,6 +132,7 @@ export function ProfileProvider({
       } else {
         setProfile(null);
         setMemberPublic(null);
+        setHasActiveMembership(false);
       }
       setLoading(false);
     };
@@ -136,6 +150,7 @@ export function ProfileProvider({
       } else {
         setProfile(null);
         setMemberPublic(null);
+        setHasActiveMembership(false);
       }
     });
 
@@ -166,12 +181,13 @@ export function ProfileProvider({
       user,
       profile,
       memberPublic,
+      hasActiveMembership,
       loading,
       error,
       refetchProfile,
       can,
     }),
-    [user, profile, memberPublic, loading, error, refetchProfile, can],
+    [user, profile, memberPublic, hasActiveMembership, loading, error, refetchProfile, can],
   );
 
   return (

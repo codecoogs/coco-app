@@ -51,7 +51,7 @@ function welcomeDisplayName(
 }
 
 export function DashboardNavbar() {
-  const { user, profile, memberPublic, loading } = useProfile();
+  const { user, profile, memberPublic, hasActiveMembership, loading } = useProfile();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const shell = useDashboardShellOptional();
@@ -128,6 +128,9 @@ export function DashboardNavbar() {
 
   const positionTitle = profile?.positionTitle?.trim() ?? "";
   const roleName = profile?.roleName?.trim() ?? "";
+  // Officer/exec/admin position badges take priority; fall back to a plain
+  // "Member" badge for anyone with an active membership but no position.
+  const badgeLabel = positionTitle || (hasActiveMembership ? "Member" : "");
 
   return (
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-3 sm:px-6">
@@ -153,13 +156,13 @@ export function DashboardNavbar() {
             />
           </svg>
         </button>
-        {positionTitle ? (
+        {badgeLabel ? (
           <span
             className="inline-flex max-w-52 items-center truncate rounded-full px-2 py-0.5 text-[11px] font-medium text-white sm:max-w-none sm:px-2.5 sm:text-xs"
             style={{ backgroundColor: POSITION_BADGE_COLOR }}
-            title={positionTitle}
+            title={badgeLabel}
           >
-            {positionTitle}
+            {badgeLabel}
           </span>
         ) : (
           <span className="text-xs text-muted-foreground"> </span>

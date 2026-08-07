@@ -193,12 +193,60 @@ const navItems: NavItem[] = [
     },
 ];
 
+/**
+ * Every nav href registered across the sidebar (top-level, Management, and
+ * Other groups). Used to resolve which single link should highlight for a
+ * given pathname - see `getActiveHref`.
+ */
+const ALL_NAV_HREFS = [
+    "/dashboard",
+    "/dashboard/point-history",
+    "/dashboard/leaderboard",
+    "/dashboard/events",
+    "/dashboard/events/manage",
+    "/dashboard/opportunities",
+    "/dashboard/opportunities/manage",
+    "/dashboard/forms",
+    "/dashboard/forms/manage",
+    "/dashboard/teams",
+    "/dashboard/my-team",
+    "/dashboard/finances",
+    "/dashboard/officers",
+    "/dashboard/permissions",
+    "/dashboard/team-management",
+    "/dashboard/ticket-management",
+    "/dashboard/point-management",
+    "/dashboard/memberships",
+    "/dashboard/memberships/plans",
+    "/dashboard/tickets",
+    "/dashboard/point-information",
+    "/dashboard/membership",
+    "/dashboard/settings",
+];
+
 /** Root `/dashboard` must not use prefix matching, or every child route (e.g. `/dashboard/point-history`) looks active too. */
-function isMainNavActive(pathname: string, href: string): boolean {
+function hrefMatchesPath(pathname: string, href: string): boolean {
     if (href === "/dashboard") {
         return pathname === "/dashboard" || pathname === "/dashboard/";
     }
     return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/**
+ * Several top-level routes (e.g. `/dashboard/opportunities`) share a path
+ * prefix with a more specific "manage" route nested under them (e.g.
+ * `/dashboard/opportunities/manage`), since both are registered nav links.
+ * Naive prefix matching lights up both at once. Resolve to the single
+ * longest-matching href instead, so only the most specific link is active.
+ */
+function getActiveHref(pathname: string): string | null {
+    let best: string | null = null;
+    for (const href of ALL_NAV_HREFS) {
+        if (hrefMatchesPath(pathname, href)) {
+            if (!best || href.length > best.length) best = href;
+        }
+    }
+    return best;
 }
 
 function ThemeIcon({
@@ -273,6 +321,7 @@ function ThemeIcon({
 
 export function DashboardSidebar() {
     const pathname = usePathname();
+    const activeHref = useMemo(() => getActiveHref(pathname), [pathname]);
     const [collapsed, setCollapsed] = useState(false);
     const [managementOpen, setManagementOpen] = useState(
         () =>
@@ -419,7 +468,7 @@ export function DashboardSidebar() {
                 aria-label="Dashboard navigation"
             >
                 {visibleNavItems.map(({ href, label, icon }) => {
-                    const isActive = isMainNavActive(pathname, href);
+                    const isActive = href === activeHref;
                     return (
                         <Link
                             key={href}
@@ -499,9 +548,7 @@ export function DashboardSidebar() {
                                     href="/dashboard/events/manage"
                                     onClick={closeMobile}
                                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                        pathname.startsWith(
-                                            "/dashboard/events/manage",
-                                        )
+                                        activeHref === "/dashboard/events/manage"
                                             ? "nav-accent-active border shadow-sm"
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     } border border-transparent`}
@@ -529,9 +576,7 @@ export function DashboardSidebar() {
                                     href="/dashboard/officers"
                                     onClick={closeMobile}
                                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                        pathname.startsWith(
-                                            "/dashboard/officers",
-                                        )
+                                        activeHref === "/dashboard/officers"
                                             ? "nav-accent-active border shadow-sm"
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     } border border-transparent`}
@@ -559,9 +604,7 @@ export function DashboardSidebar() {
                                     href="/dashboard/permissions"
                                     onClick={closeMobile}
                                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                        pathname.startsWith(
-                                            "/dashboard/permissions",
-                                        )
+                                        activeHref === "/dashboard/permissions"
                                             ? "nav-accent-active border shadow-sm"
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     } border border-transparent`}
@@ -589,9 +632,7 @@ export function DashboardSidebar() {
                                     href="/dashboard/team-management"
                                     onClick={closeMobile}
                                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                        pathname.startsWith(
-                                            "/dashboard/team-management",
-                                        )
+                                        activeHref === "/dashboard/team-management"
                                             ? "nav-accent-active border shadow-sm"
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     } border border-transparent`}
@@ -619,9 +660,7 @@ export function DashboardSidebar() {
                                     href="/dashboard/ticket-management"
                                     onClick={closeMobile}
                                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                        pathname.startsWith(
-                                            "/dashboard/ticket-management",
-                                        )
+                                        activeHref === "/dashboard/ticket-management"
                                             ? "nav-accent-active border shadow-sm"
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     } border border-transparent`}
@@ -655,9 +694,7 @@ export function DashboardSidebar() {
                                     href="/dashboard/point-management"
                                     onClick={closeMobile}
                                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                        pathname.startsWith(
-                                            "/dashboard/point-management",
-                                        )
+                                        activeHref === "/dashboard/point-management"
                                             ? "nav-accent-active border shadow-sm"
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     } border border-transparent`}
@@ -685,9 +722,7 @@ export function DashboardSidebar() {
                                     href="/dashboard/memberships"
                                     onClick={closeMobile}
                                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                        pathname.startsWith(
-                                            "/dashboard/memberships",
-                                        )
+                                        activeHref === "/dashboard/memberships"
                                             ? "nav-accent-active border shadow-sm"
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     } border border-transparent`}
@@ -715,9 +750,7 @@ export function DashboardSidebar() {
                                     href="/dashboard/memberships/plans"
                                     onClick={closeMobile}
                                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                        pathname.startsWith(
-                                            "/dashboard/memberships/plans",
-                                        )
+                                        activeHref === "/dashboard/memberships/plans"
                                             ? "nav-accent-active border shadow-sm"
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     } border border-transparent`}
@@ -745,9 +778,7 @@ export function DashboardSidebar() {
                                     href="/dashboard/forms/manage"
                                     onClick={closeMobile}
                                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                        pathname.startsWith(
-                                            "/dashboard/forms/manage",
-                                        )
+                                        activeHref === "/dashboard/forms/manage"
                                             ? "nav-accent-active border shadow-sm"
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     } border border-transparent`}
@@ -775,9 +806,7 @@ export function DashboardSidebar() {
                                     href="/dashboard/opportunities/manage"
                                     onClick={closeMobile}
                                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                        pathname.startsWith(
-                                            "/dashboard/opportunities/manage",
-                                        )
+                                        activeHref === "/dashboard/opportunities/manage"
                                             ? "nav-accent-active border shadow-sm"
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     } border border-transparent`}
@@ -860,7 +889,7 @@ export function DashboardSidebar() {
                             href="/dashboard/tickets"
                             onClick={closeMobile}
                             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                pathname === "/dashboard/tickets"
+                                activeHref === "/dashboard/tickets"
                                     ? "nav-accent-active border shadow-sm"
                                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                             } border border-transparent`}
@@ -893,7 +922,7 @@ export function DashboardSidebar() {
                                 href="/dashboard/point-information"
                                 onClick={closeMobile}
                                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    pathname === "/dashboard/point-information"
+                                    activeHref === "/dashboard/point-information"
                                         ? "nav-accent-active border shadow-sm"
                                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                 } border border-transparent`}
@@ -920,7 +949,7 @@ export function DashboardSidebar() {
                             href="/dashboard/membership"
                             onClick={closeMobile}
                             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                pathname === "/dashboard/membership"
+                                activeHref === "/dashboard/membership"
                                     ? "nav-accent-active border shadow-sm"
                                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                             } border border-transparent`}
@@ -946,7 +975,7 @@ export function DashboardSidebar() {
                             href="/dashboard/settings"
                             onClick={closeMobile}
                             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                pathname === "/dashboard/settings"
+                                activeHref === "/dashboard/settings"
                                     ? "nav-accent-active border shadow-sm"
                                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                             } border border-transparent`}

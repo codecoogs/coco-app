@@ -3,7 +3,7 @@ import { fetchUserProfile } from "@/lib/supabase/profile";
 import { hasPermission } from "@/lib/types/rbac";
 import { redirect } from "next/navigation";
 import { getMembershipPlansForManage, getPeriodOptions } from "./actions";
-import { PlansManagementContent } from "./PlansManagementContent";
+import { MembershipsAdminContent } from "./MembershipsAdminContent";
 
 export default async function MembershipPlansPage() {
   const supabase = await createClient();
@@ -30,7 +30,8 @@ export default async function MembershipPlansPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Membership plans</h1>
         <p className="mt-1 text-muted-foreground">
-          Manage the plans members can purchase from Memberships.
+          Manage the plans members can purchase, and the academic years and semesters they&apos;re
+          sold against.
         </p>
       </div>
 
@@ -39,10 +40,10 @@ export default async function MembershipPlansPage() {
           {error || periodOptions.error}
         </div>
       ) : (
-        <PlansManagementContent
+        <MembershipsAdminContent
           initialPlans={data}
-          semesters={periodOptions.semesters}
-          academicYears={periodOptions.academicYears}
+          initialSemesters={periodOptions.semesters}
+          initialAcademicYears={periodOptions.academicYears}
         />
       )}
     </div>
