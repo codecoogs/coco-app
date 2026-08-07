@@ -120,7 +120,9 @@ export function AccountsTab({ accounts, onChange }: Props) {
             <div className="flex flex-col gap-1">
               <Label>Type</Label>
               <Select value={type} onValueChange={(v) => setType(v as FinanceAccountType)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue>{(v: FinanceAccountType) => TYPE_LABELS[v] ?? v}</SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {FINANCE_ACCOUNT_TYPES.map((t) => (
                     <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>

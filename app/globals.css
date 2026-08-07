@@ -25,6 +25,7 @@
   --secondary-foreground: oklch(0.205 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.87 0 0);
@@ -63,6 +64,7 @@
   --secondary-foreground: oklch(0.985 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.87 0 0);
@@ -92,6 +94,8 @@
   --accent: #7287fd; /* Latte lavender */
   --accent-soft: rgba(114, 135, 253, 0.18);
   --accent-border: rgba(114, 135, 253, 0.30);
+  --destructive: #d20f39; /* Latte red */
+  --destructive-foreground: #eff1f5; /* Base */
 }
 
 .theme-pink-sorbet {
@@ -105,6 +109,8 @@
   --accent: #ff5d8f; /* wild_strawberry 500 */
   --accent-soft: rgba(255, 93, 143, 0.18);
   --accent-border: rgba(255, 93, 143, 0.30);
+  --destructive: #d1293d; /* deeper red, distinct from the pink accent */
+  --destructive-foreground: #fef8f9;
 }
 
 .theme-frappe {
@@ -118,6 +124,8 @@
   --accent: #babbf1; /* Frappé lavender */
   --accent-soft: rgba(186, 187, 241, 0.18);
   --accent-border: rgba(186, 187, 241, 0.30);
+  --destructive: #e78284; /* Frappé red */
+  --destructive-foreground: #232634; /* Crust - Frappé's red is light, needs dark text */
 }
 
 .theme-macchiato {
@@ -131,6 +139,8 @@
   --accent: #b7bdf8; /* Macchiato lavender */
   --accent-soft: rgba(183, 189, 248, 0.18);
   --accent-border: rgba(183, 189, 248, 0.30);
+  --destructive: #ed8796; /* Macchiato red */
+  --destructive-foreground: #181926; /* Crust - Macchiato's red is light, needs dark text */
 }
 
 .theme-mocha {
@@ -144,6 +154,8 @@
   --accent: #b4befe; /* Mocha lavender */
   --accent-soft: rgba(180, 190, 254, 0.18);
   --accent-border: rgba(180, 190, 254, 0.30);
+  --destructive: #f38ba8; /* Mocha red */
+  --destructive-foreground: #11111b; /* Crust - Mocha's red is light, needs dark text */
 }
 
 /* Accent-based navigation utility (used in dashboard sidebar). */
@@ -180,6 +192,7 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-secondary-foreground: var(--secondary-foreground);

@@ -1,11 +1,35 @@
 /**
  * Types for the in-app membership Checkout feature (public.membership_plans,
- * public.memberships, extended public.payments).
+ * public.memberships, extended public.payments, public.semesters).
  * See Membership_Stripe_Implementation_Plan.docx and the
- * 20260804140000/150000 migrations for the source of truth.
+ * 20260804140000/150000 and 20260805100000/110000 migrations for the source
+ * of truth. membership_plans has no dates of its own - a 'semester' plan
+ * derives them from its linked semester, a 'yearly' plan from its linked
+ * academic_year, so there's one place to correct a date instead of one per
+ * plan.
  */
 
 export type MembershipPlanKind = "semester" | "yearly";
+
+export type SemesterTerm = "fall" | "spring" | "summer";
+
+export type Semester = {
+  id: string;
+  academic_year_id: string;
+  label: string;
+  term: SemesterTerm;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+};
+
+export type AcademicYear = {
+  id: string;
+  label: string;
+  is_current: boolean;
+  start_date: string;
+  end_date: string;
+};
 
 export type MembershipPlan = {
   id: string;
@@ -13,11 +37,18 @@ export type MembershipPlan = {
   kind: MembershipPlanKind;
   stripe_price_id: string;
   amount_cents: number;
-  starts_at: string;
-  ends_at: string;
+  semester_id: string | null;
+  academic_year_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+/** Plan joined with its period's dates/label, for display. */
+export type MembershipPlanWithPeriod = MembershipPlan & {
+  period_label: string;
+  starts_at: string;
+  ends_at: string;
 };
 
 export type MembershipPlanInput = {
@@ -25,8 +56,8 @@ export type MembershipPlanInput = {
   kind: MembershipPlanKind;
   stripe_price_id: string;
   amount_cents: number;
-  starts_at: string;
-  ends_at: string;
+  semester_id: string | null;
+  academic_year_id: string | null;
 };
 
 export type MembershipStatus = "pending" | "active" | "expired" | "refunded";

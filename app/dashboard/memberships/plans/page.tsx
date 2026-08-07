@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import { hasPermission } from "@/lib/types/rbac";
 import { redirect } from "next/navigation";
-import { getMembershipPlansForManage } from "./actions";
+import { getMembershipPlansForManage, getPeriodOptions } from "./actions";
 import { PlansManagementContent } from "./PlansManagementContent";
 
 export default async function MembershipPlansPage() {
@@ -20,23 +20,30 @@ export default async function MembershipPlansPage() {
     redirect("/dashboard");
   }
 
-  const { data, error } = await getMembershipPlansForManage();
+  const [{ data, error }, periodOptions] = await Promise.all([
+    getMembershipPlansForManage(),
+    getPeriodOptions(),
+  ]);
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Membership plans</h1>
         <p className="mt-1 text-muted-foreground">
-          Manage the plans members can purchase from Settings → Membership.
+          Manage the plans members can purchase from Memberships.
         </p>
       </div>
 
-      {error ? (
+      {error || periodOptions.error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
-          {error}
+          {error || periodOptions.error}
         </div>
       ) : (
-        <PlansManagementContent initialPlans={data} />
+        <PlansManagementContent
+          initialPlans={data}
+          semesters={periodOptions.semesters}
+          academicYears={periodOptions.academicYears}
+        />
       )}
     </div>
   );

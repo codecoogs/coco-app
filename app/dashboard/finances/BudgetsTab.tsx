@@ -89,7 +89,9 @@ export function BudgetsTab({ canManageFinances, academicYears }: Props) {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Select value={yearId} onValueChange={(v) => v && setYearId(v)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue>{(v: string) => academicYears.find((y) => y.id === v)?.label ?? v}</SelectValue>
+          </SelectTrigger>
           <SelectContent>
             {academicYears.map((y) => (
               <SelectItem key={y.id} value={y.id}>{y.label}</SelectItem>

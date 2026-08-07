@@ -1,14 +1,14 @@
 "use client";
 
 import { formatCents } from "@/lib/finance/format";
-import type { MembershipPlan, MembershipWithPlan } from "@/lib/types/membership";
+import type { MembershipPlanWithPeriod, MembershipWithPlan } from "@/lib/types/membership";
 import { isMembershipCurrent } from "@/lib/types/membership";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { createMembershipCheckoutSession } from "./membership-actions";
+import { createMembershipCheckoutSession } from "./actions";
 
 type Props = {
-  initialPlans: MembershipPlan[];
+  initialPlans: MembershipPlanWithPeriod[];
   initialMemberships: MembershipWithPlan[];
 };
 
@@ -54,11 +54,6 @@ export function MembershipSection({ initialPlans, initialMemberships }: Props) {
 
   return (
     <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-card-foreground">Membership</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Join or renew your CodeCoogs membership.
-      </p>
-
       {redirectStatus === "success" && (
         <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950/50 dark:text-green-300">
           Payment received — it may take a moment to finish processing.

@@ -134,7 +134,9 @@ export function TransactionFormDialog({
           <div className="flex flex-col gap-1">
             <Label>Account</Label>
             <Select value={accountId} onValueChange={(v) => v && setAccountId(v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue>{(v: string) => accounts.find((a) => a.id === v)?.name ?? v}</SelectValue>
+              </SelectTrigger>
               <SelectContent>
                 {accounts.map((a) => (
                   <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
@@ -146,7 +148,11 @@ export function TransactionFormDialog({
           <div className="flex flex-col gap-1">
             <Label>Category</Label>
             <Select value={categoryId || "none"} onValueChange={(v) => setCategoryId(v === "none" ? "" : (v as string))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue>
+                  {(v: string) => (v === "none" ? "Uncategorized" : relevantCategories.find((c) => c.id === v)?.name ?? "Uncategorized")}
+                </SelectValue>
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Uncategorized</SelectItem>
                 {relevantCategories.map((c) => (
@@ -160,7 +166,11 @@ export function TransactionFormDialog({
             <div className="flex flex-col gap-1">
               <Label>Sponsor (optional)</Label>
               <Select value={sponsorId || "none"} onValueChange={(v) => setSponsorId(v === "none" ? "" : (v as string))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue>
+                    {(v: string) => (v === "none" ? "None" : sponsors.find((s) => s.id === v)?.name ?? "None")}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
                   {sponsors.map((s) => (
