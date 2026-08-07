@@ -2,12 +2,15 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { fetchUserProfile } from "@/lib/supabase/profile";
+import { getCurrentAppUserId } from "@/lib/supabase/get-current-app-user";
 import { hasPermission } from "@/lib/types/rbac";
 import type {
   AcademicYear,
+  AcademicYearInput,
   MembershipPlanInput,
   MembershipPlanWithPeriod,
   Semester,
+  SemesterInput,
 } from "@/lib/types/membership";
 import { revalidatePath } from "next/cache";
 
@@ -28,6 +31,18 @@ async function requireManageMemberships(): Promise<
     return { ok: false, error: "You do not have permission to manage membership plans." };
   }
   return { ok: true, supabase };
+}
+
+async function requireManageMembershipsWithAppUser(): Promise<
+  | { ok: true; supabase: ServerSupabaseClient; appUserId: string }
+  | { ok: false; error: string }
+> {
+  const auth = await requireManageMemberships();
+  if (!auth.ok) return auth;
+
+  const appUserId = await getCurrentAppUserId(auth.supabase);
+  if (!appUserId) return { ok: false, error: "No profile row for this user." };
+  return { ok: true, supabase: auth.supabase, appUserId };
 }
 
 export async function getMembershipPlansForManage(): Promise<{
@@ -80,7 +95,7 @@ export async function getMembershipPlansForManage(): Promise<{
   return { data: result, error: null };
 }
 
-/** Options for the plan form's period picker - semesters and academic years are managed directly in Supabase. */
+/** Options for the plan form's period picker, and the source data for the Academic periods tab. */
 export async function getPeriodOptions(): Promise<{
   semesters: Semester[];
   academicYears: AcademicYear[];
@@ -152,5 +167,137 @@ export async function setMembershipPlanActive(
 
   revalidatePath("/dashboard/memberships/plans");
   revalidatePath("/dashboard/membership");
+  return { error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Academic years
+// ---------------------------------------------------------------------------
+
+export async function createAcademicYear(
+  input: AcademicYearInput
+): Promise<{ error: string | null }> {
+  const auth = await requireManageMembershipsWithAppUser();
+  if (!auth.ok) return { error: auth.error };
+  const { supabase, appUserId } = auth;
+
+  if (input.is_current) {
+    const { error: clearError } = await supabase
+      .from("academic_years")
+      .update({ is_current: false })
+      .eq("is_current", true);
+    if (clearError) return { error: clearError.message };
+  }
+
+  const { error } = await supabase
+    .from("academic_years")
+    .insert({ ...input, created_by: appUserId, updated_by: appUserId });
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/memberships/plans");
+  return { error: null };
+}
+
+export async function updateAcademicYear(
+  id: string,
+  input: AcademicYearInput
+): Promise<{ error: string | null }> {
+  const auth = await requireManageMembershipsWithAppUser();
+  if (!auth.ok) return { error: auth.error };
+  const { supabase, appUserId } = auth;
+
+  if (input.is_current) {
+    const { error: clearError } = await supabase
+      .from("academic_years")
+      .update({ is_current: false })
+      .eq("is_current", true)
+      .neq("id", id);
+    if (clearError) return { error: clearError.message };
+  }
+
+  const { error } = await supabase
+    .from("academic_years")
+    .update({ ...input, updated_by: appUserId })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/memberships/plans");
+  return { error: null };
+}
+
+export async function deleteAcademicYear(id: string): Promise<{ error: string | null }> {
+  const auth = await requireManageMemberships();
+  if (!auth.ok) return { error: auth.error };
+
+  const { error } = await auth.supabase.from("academic_years").delete().eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/memberships/plans");
+  return { error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Semesters
+// ---------------------------------------------------------------------------
+
+export async function createSemester(
+  input: SemesterInput
+): Promise<{ error: string | null }> {
+  const auth = await requireManageMembershipsWithAppUser();
+  if (!auth.ok) return { error: auth.error };
+  const { supabase, appUserId } = auth;
+
+  if (input.is_current) {
+    const { error: clearError } = await supabase
+      .from("semesters")
+      .update({ is_current: false })
+      .eq("is_current", true);
+    if (clearError) return { error: clearError.message };
+  }
+
+  const { error } = await supabase
+    .from("semesters")
+    .insert({ ...input, created_by: appUserId, updated_by: appUserId });
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/memberships/plans");
+  return { error: null };
+}
+
+export async function updateSemester(
+  id: string,
+  input: SemesterInput
+): Promise<{ error: string | null }> {
+  const auth = await requireManageMembershipsWithAppUser();
+  if (!auth.ok) return { error: auth.error };
+  const { supabase, appUserId } = auth;
+
+  if (input.is_current) {
+    const { error: clearError } = await supabase
+      .from("semesters")
+      .update({ is_current: false })
+      .eq("is_current", true)
+      .neq("id", id);
+    if (clearError) return { error: clearError.message };
+  }
+
+  const { error } = await supabase
+    .from("semesters")
+    .update({ ...input, updated_by: appUserId })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/memberships/plans");
+  return { error: null };
+}
+
+export async function deleteSemester(id: string): Promise<{ error: string | null }> {
+  const auth = await requireManageMemberships();
+  if (!auth.ok) return { error: auth.error };
+
+  const { error } = await auth.supabase.from("semesters").delete().eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/memberships/plans");
   return { error: null };
 }

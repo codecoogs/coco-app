@@ -31,6 +31,22 @@ export type AcademicYear = {
   end_date: string;
 };
 
+export type SemesterInput = {
+  academic_year_id: string;
+  label: string;
+  term: SemesterTerm;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+};
+
+export type AcademicYearInput = {
+  label: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+};
+
 export type MembershipPlan = {
   id: string;
   name: string;

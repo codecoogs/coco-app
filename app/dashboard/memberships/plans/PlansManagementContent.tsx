@@ -283,7 +283,7 @@ export function PlansManagementContent({ initialPlans, semesters, academicYears 
                 <div className="flex flex-col gap-1">
                   <Label>Semester</Label>
                   <Select
-                    value={form.semester_id || undefined}
+                    value={form.semester_id}
                     onValueChange={(v) => v && setForm((f) => ({ ...f, semester_id: v }))}
                   >
                     <SelectTrigger>
@@ -304,7 +304,7 @@ export function PlansManagementContent({ initialPlans, semesters, academicYears 
                 <div className="flex flex-col gap-1">
                   <Label>Academic year</Label>
                   <Select
-                    value={form.academic_year_id || undefined}
+                    value={form.academic_year_id}
                     onValueChange={(v) => v && setForm((f) => ({ ...f, academic_year_id: v }))}
                   >
                     <SelectTrigger>
