@@ -42,9 +42,6 @@ export default async function SettingsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="mt-1 text-muted-foreground">
-          Manage your profile. More options will be available here later.
-        </p>
       </div>
 
       <ProfileAvatarSection

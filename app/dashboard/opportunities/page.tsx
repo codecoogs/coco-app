@@ -1,5 +1,8 @@
+import { fetchUserProfile } from "@/lib/supabase/profile";
 import { createClient } from "@/lib/supabase/server";
+import { hasActiveMembership } from "@/lib/supabase/membership";
 import { OPPORTUNITIES_PAGE_SIZE } from "@/lib/types/opportunities";
+import { canAccessMemberOnlyFeatures } from "@/lib/types/rbac";
 import { redirect } from "next/navigation";
 import { getActiveOpportunities, getOpportunityLocations } from "./actions";
 import { OpportunitiesPageContent } from "./OpportunitiesPageContent";
@@ -16,6 +19,14 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
 
   if (!authUser?.id) {
     redirect("/login?next=/dashboard/opportunities");
+  }
+
+  const [profile, hasMembership] = await Promise.all([
+    fetchUserProfile(supabase, authUser.id),
+    hasActiveMembership(supabase),
+  ]);
+  if (!canAccessMemberOnlyFeatures(profile, hasMembership)) {
+    redirect("/dashboard");
   }
 
   const sp = await searchParams;
@@ -44,9 +55,6 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Opportunities</h1>
-        <p className="mt-1 text-muted-foreground">
-          Jobs, internships, and ways to get involved.
-        </p>
       </div>
 
       {oppsRes.error ? (

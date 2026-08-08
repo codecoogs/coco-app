@@ -167,3 +167,33 @@ export function hasAllPermissions(
   const list = profile.permissions ?? [];
   return permissions.every((p) => profileHasPermissionName(list, p));
 }
+
+/**
+ * True if the user holds any staff-level position (officer/exec/intern/admin).
+ * Staff bypass the paid-membership requirement for member-only features
+ * (Opportunities, Teams) and automatic point awards - matches the heuristic
+ * already used to gate the sidebar's Management nav group.
+ */
+export function isStaffRole(profile: UserProfile | null): boolean {
+  if (!profile) return false;
+  if (profile.is_admin) return true;
+
+  const roleText = `${profile.positionTitle ?? ""} ${profile.roleName ?? ""}`.toLowerCase();
+  return (
+    roleText.includes("intern") ||
+    roleText.includes("officer") ||
+    roleText.includes("executive") ||
+    roleText.includes("admin")
+  );
+}
+
+/**
+ * True if the user can access paid-member-only features: staff bypass,
+ * everyone else needs an active membership (see lib/supabase/membership.ts).
+ */
+export function canAccessMemberOnlyFeatures(
+  profile: UserProfile | null,
+  hasActiveMembership: boolean
+): boolean {
+  return isStaffRole(profile) || hasActiveMembership;
+}

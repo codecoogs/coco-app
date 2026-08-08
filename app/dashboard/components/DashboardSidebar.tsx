@@ -2,7 +2,12 @@
 
 import { useProfileOptional } from "@/app/contexts/ProfileContext";
 import { useThemeOptional } from "@/app/contexts/ThemeContext";
-import { hasAnyPermission, type PermissionName } from "@/lib/types/rbac";
+import {
+    canAccessMemberOnlyFeatures,
+    hasAnyPermission,
+    isStaffRole,
+    type PermissionName,
+} from "@/lib/types/rbac";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -15,6 +20,8 @@ type NavItem = {
     requiredPermission?: PermissionName;
     /** If set, shown when user has any of these permissions (or is_admin). */
     requiredAnyPermissions?: readonly PermissionName[];
+    /** If set, only shown to paid members or staff (officers/execs/admins) - see canAccessMemberOnlyFeatures. */
+    requiresMemberOrStaff?: boolean;
     icon: React.ReactNode;
 };
 
@@ -98,6 +105,7 @@ const navItems: NavItem[] = [
     {
         href: "/dashboard/opportunities",
         label: "Opportunities",
+        requiresMemberOrStaff: true,
         icon: (
             <svg
                 className="h-5 w-5 shrink-0"
@@ -136,6 +144,7 @@ const navItems: NavItem[] = [
     {
         href: "/dashboard/teams",
         label: "Teams",
+        requiresMemberOrStaff: true,
         icon: (
             <svg
                 className="h-5 w-5 shrink-0"
@@ -155,6 +164,7 @@ const navItems: NavItem[] = [
     {
         href: "/dashboard/my-team",
         label: "My team",
+        requiresMemberOrStaff: true,
         icon: (
             <svg
                 className="h-5 w-5 shrink-0"
@@ -330,28 +340,25 @@ export function DashboardSidebar() {
         [profileContext?.can],
     );
     const profile = profileContext?.profile ?? null;
+    const hasActiveMembership = profileContext?.hasActiveMembership ?? false;
     const shell = useDashboardShellOptional();
     const mobileOpen = shell?.mobileSidebarOpen ?? false;
 
     const closeMobile = () => shell?.closeMobileSidebar();
 
-    const hasAtLeastIntern = useMemo(() => {
-        if (!profile) return false;
-        if (profile.is_admin) return true;
+    const hasAtLeastIntern = useMemo(() => isStaffRole(profile), [profile]);
 
-        const roleText =
-            `${profile.positionTitle ?? ""} ${profile.roleName ?? ""}`.toLowerCase();
-        return (
-            roleText.includes("intern") ||
-            roleText.includes("officer") ||
-            roleText.includes("executive") ||
-            roleText.includes("admin")
-        );
-    }, [profile]);
+    const canSeeMemberOnlyNav = useMemo(
+        () => canAccessMemberOnlyFeatures(profile, hasActiveMembership),
+        [profile, hasActiveMembership],
+    );
 
     const visibleNavItems = useMemo(
         () =>
             navItems.filter((item) => {
+                if (item.requiresMemberOrStaff && !canSeeMemberOnlyNav) {
+                    return false;
+                }
                 if (item.requiredAnyPermissions?.length) {
                     return hasAnyPermission(
                         profile,
@@ -363,7 +370,7 @@ export function DashboardSidebar() {
                 }
                 return true;
             }),
-        [can, profile],
+        [can, profile, canSeeMemberOnlyNav],
     );
 
     const canSeeTeamManagement = useMemo(
