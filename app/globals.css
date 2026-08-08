@@ -42,6 +42,46 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Semantic Colors - Success */
+  --success: oklch(0.6 0.15 142.5); /* green-600 */
+  --success-foreground: oklch(0.985 0 0);
+  --success-soft: rgba(34, 197, 94, 0.1);
+  --success-border: rgba(34, 197, 94, 0.25);
+  --success-hover: oklch(0.526 0.15 142.5); /* green-700 */
+  --success-active: oklch(0.487 0.15 142.5); /* green-800 */
+  --success-disabled: oklch(0.84 0.03 142.5); /* green-100 */
+  --success-disabled-foreground: oklch(0.7 0.03 142.5); /* green-300 */
+
+  /* Semantic Colors - Warning */
+  --warning: oklch(0.616 0.192 47.6); /* amber-600 */
+  --warning-foreground: oklch(0.985 0 0);
+  --warning-soft: rgba(245, 158, 11, 0.1);
+  --warning-border: rgba(245, 158, 11, 0.25);
+  --warning-hover: oklch(0.554 0.192 47.6); /* amber-700 */
+  --warning-active: oklch(0.502 0.192 47.6); /* amber-800 */
+  --warning-disabled: oklch(0.895 0.095 48.8); /* amber-100 */
+  --warning-disabled-foreground: oklch(0.795 0.095 48.8); /* amber-300 */
+
+  /* Semantic Colors - Error (same as destructive but with state variations) */
+  --error: oklch(0.577 0.245 27.325); /* red-600 */
+  --error-foreground: oklch(0.985 0 0);
+  --error-soft: rgba(239, 68, 68, 0.1);
+  --error-border: rgba(239, 68, 68, 0.25);
+  --error-hover: oklch(0.520 0.245 27.325); /* red-700 */
+  --error-active: oklch(0.463 0.245 27.325); /* red-800 */
+  --error-disabled: oklch(0.87 0.08 27); /* red-100 */
+  --error-disabled-foreground: oklch(0.75 0.08 27); /* red-300 */
+
+  /* Semantic Colors - Info */
+  --info: oklch(0.532 0.192 259.5); /* blue-600 */
+  --info-foreground: oklch(0.985 0 0);
+  --info-soft: rgba(59, 130, 246, 0.1);
+  --info-border: rgba(59, 130, 246, 0.25);
+  --info-hover: oklch(0.473 0.192 259.5); /* blue-700 */
+  --info-active: oklch(0.425 0.192 259.5); /* blue-800 */
+  --info-disabled: oklch(0.86 0.08 259.5); /* blue-100 */
+  --info-disabled-foreground: oklch(0.74 0.08 259.5); /* blue-300 */
 }
 
 /* Dark: soft gray background (not pure black), high-contrast text. */
@@ -80,6 +120,46 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Dark Mode - Semantic Colors - Success */
+  --success: oklch(0.72 0.12 142.5); /* green-500 */
+  --success-foreground: oklch(0.145 0 0);
+  --success-soft: rgba(34, 197, 94, 0.2);
+  --success-border: rgba(34, 197, 94, 0.35);
+  --success-hover: oklch(0.78 0.13 142.5); /* green-400 */
+  --success-active: oklch(0.68 0.12 142.5); /* green-600 */
+  --success-disabled: oklch(0.35 0.05 142.5); /* green-900 */
+  --success-disabled-foreground: oklch(0.55 0.05 142.5); /* green-700 */
+
+  /* Dark Mode - Semantic Colors - Warning */
+  --warning: oklch(0.72 0.15 47.6); /* amber-500 */
+  --warning-foreground: oklch(0.145 0 0);
+  --warning-soft: rgba(245, 158, 11, 0.2);
+  --warning-border: rgba(245, 158, 11, 0.35);
+  --warning-hover: oklch(0.78 0.16 47.6); /* amber-400 */
+  --warning-active: oklch(0.68 0.15 47.6); /* amber-600 */
+  --warning-disabled: oklch(0.35 0.08 47.6); /* amber-900 */
+  --warning-disabled-foreground: oklch(0.55 0.08 47.6); /* amber-700 */
+
+  /* Dark Mode - Semantic Colors - Error */
+  --error: oklch(0.72 0.19 27.325); /* red-500 */
+  --error-foreground: oklch(0.145 0 0);
+  --error-soft: rgba(239, 68, 68, 0.2);
+  --error-border: rgba(239, 68, 68, 0.35);
+  --error-hover: oklch(0.78 0.20 27.325); /* red-400 */
+  --error-active: oklch(0.68 0.19 27.325); /* red-600 */
+  --error-disabled: oklch(0.35 0.08 27); /* red-900 */
+  --error-disabled-foreground: oklch(0.55 0.08 27); /* red-700 */
+
+  /* Dark Mode - Semantic Colors - Info */
+  --info: oklch(0.66 0.15 259.5); /* blue-500 */
+  --info-foreground: oklch(0.145 0 0);
+  --info-soft: rgba(59, 130, 246, 0.2);
+  --info-border: rgba(59, 130, 246, 0.35);
+  --info-hover: oklch(0.72 0.16 259.5); /* blue-400 */
+  --info-active: oklch(0.60 0.15 259.5); /* blue-600 */
+  --info-disabled: oklch(0.35 0.08 259.5); /* blue-900 */
+  --info-disabled-foreground: oklch(0.55 0.08 259.5); /* blue-700 */
 }
 
 /* Catppuccin themes (Latte = light, Mocha = dark). */
@@ -96,6 +176,43 @@
   --accent-border: rgba(114, 135, 253, 0.30);
   --destructive: #d20f39; /* Latte red */
   --destructive-foreground: #eff1f5; /* Base */
+
+  /* Latte Semantic Colors */
+  --success: #40a02b; /* Latte green */
+  --success-foreground: #eff1f5;
+  --success-soft: rgba(64, 160, 43, 0.12);
+  --success-border: rgba(64, 160, 43, 0.25);
+  --success-hover: #378d2f;
+  --success-active: #2f7a28;
+  --success-disabled: #dae8e1;
+  --success-disabled-foreground: #8ca097;
+
+  --warning: #df8e1d; /* Latte yellow */
+  --warning-foreground: #eff1f5;
+  --warning-soft: rgba(223, 142, 29, 0.12);
+  --warning-border: rgba(223, 142, 29, 0.25);
+  --warning-hover: #c97d1a;
+  --warning-active: #b36c14;
+  --warning-disabled: #eae4d8;
+  --warning-disabled-foreground: #9f8d6f;
+
+  --error: #d20f39; /* Latte red (same as destructive) */
+  --error-foreground: #eff1f5;
+  --error-soft: rgba(210, 15, 57, 0.12);
+  --error-border: rgba(210, 15, 57, 0.25);
+  --error-hover: #a7082f;
+  --error-active: #8a0729;
+  --error-disabled: #f0d7e0;
+  --error-disabled-foreground: #b896a3;
+
+  --info: #1e66f5; /* Latte blue */
+  --info-foreground: #eff1f5;
+  --info-soft: rgba(30, 102, 245, 0.12);
+  --info-border: rgba(30, 102, 245, 0.25);
+  --info-hover: #1959d4;
+  --info-active: #135eb1;
+  --info-disabled: #dae8f0;
+  --info-disabled-foreground: #859dc6;
 }
 
 .theme-pink-sorbet {
@@ -111,6 +228,43 @@
   --accent-border: rgba(255, 93, 143, 0.30);
   --destructive: #d1293d; /* deeper red, distinct from the pink accent */
   --destructive-foreground: #fef8f9;
+
+  /* Pink Sorbet Semantic Colors */
+  --success: #22a94d; /* vibrant green */
+  --success-foreground: #fef8f9;
+  --success-soft: rgba(34, 169, 77, 0.12);
+  --success-border: rgba(34, 169, 77, 0.25);
+  --success-hover: #1d8a3f;
+  --success-active: #166b33;
+  --success-disabled: #e8f3ea;
+  --success-disabled-foreground: #7ca489;
+
+  --warning: #f97316; /* vibrant orange */
+  --warning-foreground: #fef8f9;
+  --warning-soft: rgba(249, 115, 22, 0.12);
+  --warning-border: rgba(249, 115, 22, 0.25);
+  --warning-hover: #d96e0e;
+  --warning-active: #b85909;
+  --warning-disabled: #f5e7d8;
+  --warning-disabled-foreground: #b88d6f;
+
+  --error: #d1293d; /* pink-sorbet red */
+  --error-foreground: #fef8f9;
+  --error-soft: rgba(209, 41, 61, 0.12);
+  --error-border: rgba(209, 41, 61, 0.25);
+  --error-hover: #a72131;
+  --error-active: #811a26;
+  --error-disabled: #f2dfe3;
+  --error-disabled-foreground: #b896a1;
+
+  --info: #0ea5e9; /* vibrant cyan */
+  --info-foreground: #fef8f9;
+  --info-soft: rgba(14, 165, 233, 0.12);
+  --info-border: rgba(14, 165, 233, 0.25);
+  --info-hover: #0c8bbf;
+  --info-active: #0a6f98;
+  --info-disabled: #ddf0f8;
+  --info-disabled-foreground: #7eb3ce;
 }
 
 .theme-frappe {
@@ -126,6 +280,43 @@
   --accent-border: rgba(186, 187, 241, 0.30);
   --destructive: #e78284; /* Frappé red */
   --destructive-foreground: #232634; /* Crust - Frappé's red is light, needs dark text */
+
+  /* Frappé Semantic Colors */
+  --success: #a6d189; /* Frappé green */
+  --success-foreground: #232634;
+  --success-soft: rgba(166, 209, 137, 0.2);
+  --success-border: rgba(166, 209, 137, 0.35);
+  --success-hover: #92c968;
+  --success-active: #7eb857;
+  --success-disabled: #414559;
+  --success-disabled-foreground: #626d82;
+
+  --warning: #f4b41a; /* Frappé yellow */
+  --warning-foreground: #232634;
+  --warning-soft: rgba(244, 180, 26, 0.2);
+  --warning-border: rgba(244, 180, 26, 0.35);
+  --warning-hover: #d9a012;
+  --warning-active: #b8860a;
+  --warning-disabled: #414559;
+  --warning-disabled-foreground: #626d82;
+
+  --error: #e78284; /* Frappé red */
+  --error-foreground: #232634;
+  --error-soft: rgba(231, 130, 132, 0.2);
+  --error-border: rgba(231, 130, 132, 0.35);
+  --error-hover: #d97073;
+  --error-active: #c85d61;
+  --error-disabled: #414559;
+  --error-disabled-foreground: #626d82;
+
+  --info: #99d1db; /* Frappé blue */
+  --info-foreground: #232634;
+  --info-soft: rgba(153, 209, 219, 0.2);
+  --info-border: rgba(153, 209, 219, 0.35);
+  --info-hover: #7ec3cf;
+  --info-active: #63b5c4;
+  --info-disabled: #414559;
+  --info-disabled-foreground: #626d82;
 }
 
 .theme-macchiato {
@@ -141,6 +332,43 @@
   --accent-border: rgba(183, 189, 248, 0.30);
   --destructive: #ed8796; /* Macchiato red */
   --destructive-foreground: #181926; /* Crust - Macchiato's red is light, needs dark text */
+
+  /* Macchiato Semantic Colors */
+  --success: #a6da95; /* Macchiato green */
+  --success-foreground: #181926;
+  --success-soft: rgba(166, 218, 149, 0.2);
+  --success-border: rgba(166, 218, 149, 0.35);
+  --success-hover: #8fd17a;
+  --success-active: #78c961;
+  --success-disabled: #363a4f;
+  --success-disabled-foreground: #5f6679;
+
+  --warning: #eed49f; /* Macchiato yellow */
+  --warning-foreground: #181926;
+  --warning-soft: rgba(238, 212, 159, 0.2);
+  --warning-border: rgba(238, 212, 159, 0.35);
+  --warning-hover: #e3c589;
+  --warning-active: #d8b673;
+  --warning-disabled: #363a4f;
+  --warning-disabled-foreground: #5f6679;
+
+  --error: #ed8796; /* Macchiato red */
+  --error-foreground: #181926;
+  --error-soft: rgba(237, 135, 150, 0.2);
+  --error-border: rgba(237, 135, 150, 0.35);
+  --error-hover: #e6727b;
+  --error-active: #df5c62;
+  --error-disabled: #363a4f;
+  --error-disabled-foreground: #5f6679;
+
+  --info: #91d7e3; /* Macchiato blue */
+  --info-foreground: #181926;
+  --info-soft: rgba(145, 215, 227, 0.2);
+  --info-border: rgba(145, 215, 227, 0.35);
+  --info-hover: #7bcacf;
+  --info-active: #65bdb9;
+  --info-disabled: #363a4f;
+  --info-disabled-foreground: #5f6679;
 }
 
 .theme-mocha {
@@ -156,6 +384,43 @@
   --accent-border: rgba(180, 190, 254, 0.30);
   --destructive: #f38ba8; /* Mocha red */
   --destructive-foreground: #11111b; /* Crust - Mocha's red is light, needs dark text */
+
+  /* Mocha Semantic Colors */
+  --success: #a6e3a1; /* Mocha green */
+  --success-foreground: #11111b;
+  --success-soft: rgba(166, 227, 161, 0.2);
+  --success-border: rgba(166, 227, 161, 0.35);
+  --success-hover: #8fd985;
+  --success-active: #78cb6e;
+  --success-disabled: #313244;
+  --success-disabled-foreground: #5e6b70;
+
+  --warning: #f9e2af; /* Mocha yellow */
+  --warning-foreground: #11111b;
+  --warning-soft: rgba(249, 226, 175, 0.2);
+  --warning-border: rgba(249, 226, 175, 0.35);
+  --warning-hover: #f4d999;
+  --warning-active: #efd085;
+  --warning-disabled: #313244;
+  --warning-disabled-foreground: #5e6b70;
+
+  --error: #f38ba8; /* Mocha red */
+  --error-foreground: #11111b;
+  --error-soft: rgba(243, 139, 168, 0.2);
+  --error-border: rgba(243, 139, 168, 0.35);
+  --error-hover: #f07897;
+  --error-active: #ec6986;
+  --error-disabled: #313244;
+  --error-disabled-foreground: #5e6b70;
+
+  --info: #89dceb; /* Mocha blue */
+  --info-foreground: #11111b;
+  --info-soft: rgba(137, 220, 235, 0.2);
+  --info-border: rgba(137, 220, 235, 0.35);
+  --info-hover: #6fd4dd;
+  --info-active: #55cccf;
+  --info-disabled: #313244;
+  --info-disabled-foreground: #5e6b70;
 }
 
 /* Accent-based navigation utility (used in dashboard sidebar). */
@@ -201,6 +466,44 @@
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
+
+  /* Semantic Colors */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-success-hover: var(--success-hover);
+  --color-success-active: var(--success-active);
+  --color-success-disabled: var(--success-disabled);
+  --color-success-disabled-foreground: var(--success-disabled-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
+  --color-warning-hover: var(--warning-hover);
+  --color-warning-active: var(--warning-active);
+  --color-warning-disabled: var(--warning-disabled);
+  --color-warning-disabled-foreground: var(--warning-disabled-foreground);
+
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+  --color-error-soft: var(--error-soft);
+  --color-error-border: var(--error-border);
+  --color-error-hover: var(--error-hover);
+  --color-error-active: var(--error-active);
+  --color-error-disabled: var(--error-disabled);
+  --color-error-disabled-foreground: var(--error-disabled-foreground);
+
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-info-border: var(--info-border);
+  --color-info-hover: var(--info-hover);
+  --color-info-active: var(--info-active);
+  --color-info-disabled: var(--info-disabled);
+  --color-info-disabled-foreground: var(--info-disabled-foreground);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
