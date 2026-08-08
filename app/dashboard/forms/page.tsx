@@ -19,9 +19,6 @@ export default async function FormsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Forms</h1>
-        <p className="mt-1 text-muted-foreground">
-          Applications and sign-ups open to you.
-        </p>
       </div>
 
       {error ? (

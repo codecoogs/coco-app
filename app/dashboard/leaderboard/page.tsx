@@ -53,9 +53,6 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
       <div className="space-y-8">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Leaderboard</h1>
-          <p className="mt-1 text-muted-foreground">
-            See how you rank against other members.
-          </p>
         </div>
         <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
           {lbRes.error}
@@ -68,9 +65,6 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Leaderboard</h1>
-        <p className="mt-1 text-muted-foreground">
-          See how you rank against other members.
-        </p>
       </div>
       <LeaderboardContent
         key={page}

@@ -13,7 +13,11 @@ function formatEventWhen(iso: string | null) {
   }
 }
 
-type Props = { overview: MemberDashboardOverview };
+type Props = {
+  overview: MemberDashboardOverview;
+  /** False for non-members without an officer/exec/admin role - hides the Opportunities card. */
+  canSeeOpportunities: boolean;
+};
 
 function softCardTone(seed: string) {
   const accent = `color-mix(in oklab, ${seed} 65%, var(--accent) 35%)`;
@@ -24,7 +28,7 @@ function softCardTone(seed: string) {
   } as const;
 }
 
-export function MemberOverviewCards({ overview }: Props) {
+export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
   const {
     hasLinkedProfile,
     pointDataError,
@@ -200,7 +204,7 @@ export function MemberOverviewCards({ overview }: Props) {
         </section>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className={`grid gap-6 ${canSeeOpportunities ? "lg:grid-cols-2" : ""}`}>
         <section
           className="rounded-xl border bg-card p-6 shadow-sm"
           style={upcomingEventsTone}
@@ -248,61 +252,63 @@ export function MemberOverviewCards({ overview }: Props) {
           )}
         </section>
 
-        <section
-          className="rounded-xl border bg-card p-6 shadow-sm"
-          style={opportunitiesTone}
-        >
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-semibold text-card-foreground">
-                Opportunities
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Ways to get involved off the calendar
-              </p>
+        {canSeeOpportunities && (
+          <section
+            className="rounded-xl border bg-card p-6 shadow-sm"
+            style={opportunitiesTone}
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-semibold text-card-foreground">
+                  Opportunities
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Ways to get involved off the calendar
+                </p>
+              </div>
+              <Link
+                href="/dashboard/opportunities"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Opportunities page →
+              </Link>
             </div>
-            <Link
-              href="/dashboard/opportunities"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              Opportunities page →
-            </Link>
-          </div>
 
-          {opportunitiesFetchError ? (
-            <p className="mt-4 text-sm text-muted-foreground">
-              Couldn&apos;t load opportunities: {opportunitiesFetchError}
-            </p>
-          ) : opportunities.length === 0 ? (
-            <p className="mt-4 text-sm text-muted-foreground">
-              No active opportunities right now — new internships, roles, and
-              projects land here first.
-            </p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {opportunities.map((o) => (
-                <li
-                  key={o.id}
-                  className="border-b border-border pb-3 last:border-0 last:pb-0"
-                >
-                  <a
-                    href={o.link_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-accent hover:underline"
+            {opportunitiesFetchError ? (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Couldn&apos;t load opportunities: {opportunitiesFetchError}
+              </p>
+            ) : opportunities.length === 0 ? (
+              <p className="mt-4 text-sm text-muted-foreground">
+                No active opportunities right now — new internships, roles, and
+                projects land here first.
+              </p>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {opportunities.map((o) => (
+                  <li
+                    key={o.id}
+                    className="border-b border-border pb-3 last:border-0 last:pb-0"
                   >
-                    {o.title}
-                  </a>
-                  {o.category ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {o.category}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+                    <a
+                      href={o.link_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-accent hover:underline"
+                    >
+                      {o.title}
+                    </a>
+                    {o.category ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {o.category}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
       </div>
     </div>
   );

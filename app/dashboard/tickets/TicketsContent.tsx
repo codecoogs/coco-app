@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { TicketRow, CreateTicketInput } from "./actions";
 
@@ -33,7 +32,6 @@ function formatShortDate(iso: string | null) {
 
 type Props = {
   initialTickets: TicketRow[];
-  canManageTickets: boolean;
   loadError: string | null;
   onCreateTicket: (input: CreateTicketInput) => Promise<{ error: string | null }>;
 };
@@ -49,7 +47,6 @@ const CATEGORY_OPTIONS = [
 
 export function TicketsContent({
   initialTickets,
-  canManageTickets,
   loadError,
   onCreateTicket,
 }: Props) {
@@ -114,16 +111,6 @@ export function TicketsContent({
         <p className="mt-1 text-muted-foreground">
           Submit software issues and track their status.
         </p>
-        {canManageTickets ? (
-          <div className="mt-3">
-            <Link
-              href="/dashboard/ticket-management"
-              className="text-sm font-medium text-blue-600 hover:text-blue-700"
-            >
-              Go to ticket management
-            </Link>
-          </div>
-        ) : null}
       </div>
 
       {loadError ? (

@@ -45,6 +45,21 @@ async function requireManageMembershipsWithAppUser(): Promise<
   return { ok: true, supabase: auth.supabase, appUserId };
 }
 
+/**
+ * Marking a new academic year current fires DB triggers that bulk-reset the
+ * leaderboard and clear team rosters (see 20260807110000 and 20260807120000
+ * migrations) - revalidate the pages that read that data so the reset shows
+ * up immediately instead of waiting out the client router cache's staleTime.
+ */
+function revalidateCurrentYearDependentPaths(): void {
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/leaderboard");
+  revalidatePath("/dashboard/point-history");
+  revalidatePath("/dashboard/teams");
+  revalidatePath("/dashboard/my-team");
+  revalidatePath("/dashboard/team-management");
+}
+
 export async function getMembershipPlansForManage(): Promise<{
   data: MembershipPlanWithPeriod[];
   error: string | null;
@@ -195,6 +210,7 @@ export async function createAcademicYear(
   if (error) return { error: error.message };
 
   revalidatePath("/dashboard/memberships/plans");
+  if (input.is_current) revalidateCurrentYearDependentPaths();
   return { error: null };
 }
 
@@ -222,6 +238,7 @@ export async function updateAcademicYear(
   if (error) return { error: error.message };
 
   revalidatePath("/dashboard/memberships/plans");
+  if (input.is_current) revalidateCurrentYearDependentPaths();
   return { error: null };
 }
 

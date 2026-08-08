@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { hasActiveMembership as checkHasActiveMembership } from "@/lib/supabase/membership";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import type { UserProfile } from "@/lib/types/rbac";
 import type { PermissionName } from "@/lib/types/rbac";
@@ -62,25 +63,17 @@ export function ProfileProvider({
   const loadProfile = useCallback(
     async (uid: string) => {
       setError(null);
-      const todayIso = new Date().toISOString().slice(0, 10);
-      const [p, usersRes, membershipsRes] = await Promise.all([
+      const [p, usersRes, hasMembership] = await Promise.all([
         fetchUserProfile(supabase, uid),
         supabase
           .from("users")
           .select("first_name, last_name, avatar_url")
           .eq("auth_id", uid)
           .maybeSingle(),
-        // RLS (memberships_select_own) already scopes this to the signed-in
-        // user's own rows - just check whether any are currently in force.
-        supabase
-          .from("memberships")
-          .select("id")
-          .eq("status", "active")
-          .gte("ends_at", todayIso)
-          .limit(1),
+        checkHasActiveMembership(supabase),
       ]);
       setProfile(p);
-      setHasActiveMembership(!!membershipsRes.data?.length);
+      setHasActiveMembership(hasMembership);
       if (usersRes.error) {
         console.error(
           "Error loading public.users row:",

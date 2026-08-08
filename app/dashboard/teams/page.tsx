@@ -1,4 +1,7 @@
+import { fetchUserProfile } from "@/lib/supabase/profile";
 import { createClient } from "@/lib/supabase/server";
+import { hasActiveMembership } from "@/lib/supabase/membership";
+import { canAccessMemberOnlyFeatures } from "@/lib/types/rbac";
 import { redirect } from "next/navigation";
 
 type TeamCard = {
@@ -19,11 +22,20 @@ export default async function TeamsPage() {
     redirect("/login?next=/dashboard/teams");
   }
 
+  const [profile, hasMembership] = await Promise.all([
+    fetchUserProfile(supabase, authUser.id),
+    hasActiveMembership(supabase),
+  ]);
+  if (!canAccessMemberOnlyFeatures(profile, hasMembership)) {
+    redirect("/dashboard");
+  }
+
   const [{ data: teamsRows, error: teamsErr }, { data: tmRows, error: tmErr }, { data: usersRows, error: usersErr }] =
     await Promise.all([
       supabase
         .from("teams")
         .select("id, name, team_number, description, team_image_url")
+        .eq("is_active", true)
         .order("team_number", { ascending: true })
         .order("name", { ascending: true }),
       supabase.from("teams_members").select("team_id, user_id"),
@@ -75,9 +87,6 @@ export default async function TeamsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Teams</h1>
-        <p className="mt-1 text-muted-foreground">
-          Browse all teams, descriptions, and member rosters.
-        </p>
       </div>
 
       {cards.length === 0 ? (
