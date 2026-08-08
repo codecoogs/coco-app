@@ -4,6 +4,7 @@ import { fetchUserProfile } from "@/lib/supabase/profile";
 import { createClient } from "@/lib/supabase/server";
 import { hasActiveMembership } from "@/lib/supabase/membership";
 import { canAccessMemberOnlyFeatures } from "@/lib/types/rbac";
+import { DeletionPendingBanner } from "@/app/dashboard/components/DeletionPendingBanner";
 
 function softCardTone(seed: string) {
   const accent = `color-mix(in oklab, ${seed} 65%, var(--accent) 35%)`;
@@ -24,10 +25,16 @@ export default async function DashboardPage() {
     return null;
   }
 
-  const [overview, profile, hasMembership] = await Promise.all([
+  const [overview, profile, hasMembership, deletionStatus] = await Promise.all([
     fetchMemberDashboardOverview(supabase, { id: user.id, email: user.email }),
     fetchUserProfile(supabase, user.id),
     hasActiveMembership(supabase),
+    supabase
+      .from("deleted_users")
+      .select("deletion_confirmed_at")
+      .eq("user_id", user.id)
+      .eq("status", "confirmed")
+      .maybeSingle(),
   ]);
   const canSeeOpportunities = canAccessMemberOnlyFeatures(profile, hasMembership);
   const accountTone = softCardTone("#22d3ee");
@@ -37,6 +44,10 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
       </div>
+
+      <DeletionPendingBanner
+        deletionConfirmedAt={deletionStatus.data?.deletion_confirmed_at ?? null}
+      />
 
       <MemberOverviewCards overview={overview} canSeeOpportunities={canSeeOpportunities} />
 
