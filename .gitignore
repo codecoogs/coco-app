@@ -13,7 +13,8 @@ CLAUDE.md
 SKILLS.md
 AGENTS.md
 OPINIONS.md
-
+.claude/worktrees/
+.worktreeinclude
 
 # testing
 /coverage
