@@ -37,12 +37,11 @@ export function requirePermission(hasPermission: boolean, message?: string) {
  * @param resource - The resource to check
  * @param message - Optional error message for logging
  */
-export function requireResource<T>(resource: T | null | undefined, message?: string): T {
+export function requireResource<T>(resource: T | null | undefined, message?: string): asserts resource is T {
   if (!resource) {
     if (message) {
       console.warn("[Not Found]", message);
     }
     notFound();
   }
-  return resource;
 }
