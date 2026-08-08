@@ -1,0 +1,44 @@
+CONFIRM YOUR ACCOUNT DELETION
+
+Hello {{ .Name }},
+
+We received a request to delete your CodeCoogs account.
+
+⚠️  THIS ACTION IS PERMANENT
+
+Once you confirm, your account will be marked for deletion. Your data will be permanently removed after 30 days. You can cancel anytime during this period by emailing us.
+
+CONFIRM YOUR DELETION:
+{{ .ConfirmationLink }}
+
+---
+
+WHAT HAPPENS NEXT:
+
+1. Click the link above to confirm
+2. You'll be logged out immediately
+3. Your data will be deleted in 30 days
+4. Payment records kept for 7 years (tax requirement)
+5. Admins can restore your account anytime during 30 days
+
+---
+
+DIDN'T REQUEST THIS?
+
+If you didn't request account deletion, ignore this email and your account will remain active.
+
+CHANGE YOUR MIND?
+
+Email us within 30 days: main@codecoogs.com
+
+---
+
+Deletion ID: {{ .DeletionId }}
+Link expires in: 24 hours
+
+CodeCoogs
+A student-led nonprofit computer science organization at the University of Houston
+4465 UNIVERSITY DRIVE MAILBOX 355
+HOUSTON TX 77204
+
+This is an automated email. Please do not reply directly to this message.

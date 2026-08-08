@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #1e40af; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background-color: #f9fafb; padding: 30px 20px; border-radius: 0 0 8px 8px; }
+        .warning-box { background-color: #fee2e2; border: 1px solid #fca5a5; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        .warning-box strong { color: #991b1b; }
+        .button { display: inline-block; background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+        .footer { color: #6b7280; font-size: 12px; text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+        .code { font-family: monospace; background-color: #f3f4f6; padding: 2px 6px; border-radius: 3px; }
+        .highlight { color: #1e40af; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Confirm Account Deletion</h1>
+        </div>
+
+        <div class="content">
+            <p>Hello {{ .Name }},</p>
+
+            <p>We received a request to delete your CodeCoogs account.</p>
+
+            <div class="warning-box">
+                <strong>⚠️ This action is permanent</strong>
+                <p>Once you confirm, your account will be marked for deletion. Your data will be permanently removed after 30 days. You can cancel anytime during this period by emailing us.</p>
+            </div>
+
+            <p><strong>Click the button below to confirm your account deletion:</strong></p>
+
+            <div style="text-align: center;">
+                <a href="{{ .ConfirmationLink }}" class="button">Confirm Account Deletion</a>
+            </div>
+
+            <p style="color: #6b7280; font-size: 14px;">Or copy and paste this link in your browser:<br>
+            <code style="word-break: break-all;">{{ .ConfirmationLink }}</code></p>
+
+            <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <p><strong>What happens next:</strong></p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Click the link above to confirm</li>
+                    <li>You'll be logged out immediately</li>
+                    <li>Your data will be deleted in 30 days</li>
+                    <li>Payment records kept for 7 years (tax requirement)</li>
+                    <li>Admins can restore your account anytime during 30 days</li>
+                </ul>
+            </div>
+
+            <p><strong>Didn't request this?</strong><br>
+            If you didn't request account deletion, ignore this email and your account will remain active.</p>
+
+            <p><strong>Change your mind?</strong><br>
+            Email us within 30 days: <span class="highlight">main@codecoogs.com</span></p>
+
+            <div class="footer">
+                <p><strong>CodeCoogs</strong><br>
+                A student-led nonprofit computer science organization at the University of Houston<br>
+                4465 UNIVERSITY DRIVE MAILBOX 355<br>
+                HOUSTON TX 77204</p>
+
+                <p style="margin-top: 15px;">
+                Deletion ID: <span class="code">{{ .DeletionId }}</span><br>
+                Link expires in: <strong>24 hours</strong>
+                </p>
+
+                <p style="margin-top: 15px; font-size: 11px;">
+                This is an automated email. Please do not reply directly to this message.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
