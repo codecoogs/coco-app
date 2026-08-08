@@ -39,7 +39,7 @@ export default function Forbidden() {
 
         {/* Error Description */}
         <p className="max-w-md text-base text-muted-foreground sm:text-lg">
-          You don't have permission to access this resource. If you believe this is a mistake, please contact your team administrator.
+          You don&apos;t have permission to access this resource. If you believe this is a mistake, please contact your team administrator.
         </p>
 
         {/* Action Buttons */}

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
  * Redirect to the 404 Not Found page
  * Use this when a resource cannot be found
  */
-export function notFound(message?: string) {
+export function notFound() {
   redirect("/404");
 }
 
@@ -12,7 +12,7 @@ export function notFound(message?: string) {
  * Redirect to the 403 Forbidden page
  * Use this when a user doesn't have permission to access a resource
  */
-export function forbidden(message?: string) {
+export function forbidden() {
   redirect("/403");
 }
 
