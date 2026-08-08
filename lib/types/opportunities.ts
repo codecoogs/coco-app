@@ -38,6 +38,9 @@ export const EMPLOYMENT_TYPES: EmploymentType[] = [
 
 export type OpportunitySource = "manual" | "csv_import";
 
+/** Page size for the member-facing /dashboard/opportunities browse view. */
+export const OPPORTUNITIES_PAGE_SIZE = 20;
+
 export type Opportunity = {
   id: string;
   title: string;

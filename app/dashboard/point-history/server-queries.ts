@@ -24,6 +24,25 @@ function sumPointsFromTransactions(
 }
 
 /**
+ * Current academic year id, or null if none is marked current. Point history
+ * (like the leaderboard) is scoped to this year - each academic year starts
+ * members back at 0 rather than showing a lifetime total. Falls back to no
+ * filtering (lifetime) if no year is marked current, so this degrades
+ * gracefully rather than hiding everything.
+ */
+async function getCurrentAcademicYearId(
+  client: SupabaseClient
+): Promise<string | null> {
+  const { data } = await client
+    .from("academic_years")
+    .select("id")
+    .eq("is_current", true)
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+/**
  * All public.users.id rows that belong to this login (auth user id + same email).
  * Handles legacy data where points reference a profile row that predates auth_id linking.
  */
@@ -81,17 +100,22 @@ async function fetchPointHistoryViaRls(
   supabase: SupabaseClient,
   appUserId: string
 ): Promise<{ data: PointHistoryBundle; error: string | null }> {
+  const currentYearId = await getCurrentAcademicYearId(supabase);
+
+  let txQuery = supabase
+    .from("point_transactions")
+    .select("id, category_id, points_earned, created_at")
+    .eq("user_id", appUserId)
+    .order("created_at", { ascending: false });
+  if (currentYearId) txQuery = txQuery.eq("academic_year_id", currentYearId);
+
   const [lbRes, txRes, catRes, userRes] = await Promise.all([
     supabase
       .from("leaderboard")
       .select("current_rank")
       .eq("user_id", appUserId)
       .maybeSingle(),
-    supabase
-      .from("point_transactions")
-      .select("id, category_id, points_earned, created_at")
-      .eq("user_id", appUserId)
-      .order("created_at", { ascending: false }),
+    txQuery,
     supabase.from("point_categories").select("id, name, points_value").order("name"),
     supabase.from("users").select("first_name").eq("id", appUserId).maybeSingle(),
   ]);
@@ -157,12 +181,17 @@ export async function fetchPointHistoryForSignedInUser(
     return { data: emptyBundle(), error: null, hasLinkedProfile: false };
   }
 
+  const currentYearId = await getCurrentAcademicYearId(admin);
+
+  let txQuery = admin
+    .from("point_transactions")
+    .select("id, category_id, points_earned, created_at")
+    .in("user_id", userIds)
+    .order("created_at", { ascending: false });
+  if (currentYearId) txQuery = txQuery.eq("academic_year_id", currentYearId);
+
   const [txRes, lbRes, catRes] = await Promise.all([
-    admin
-      .from("point_transactions")
-      .select("id, category_id, points_earned, created_at")
-      .in("user_id", userIds)
-      .order("created_at", { ascending: false }),
+    txQuery,
     admin.from("leaderboard").select("user_id, current_rank").in("user_id", userIds),
     supabase.from("point_categories").select("id, name, points_value").order("name"),
   ]);
