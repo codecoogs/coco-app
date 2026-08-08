@@ -227,3 +227,43 @@ If you're updating existing components:
 ```
 
 This ensures consistency across all themes and maintains proper contrast.
+
+## Error Pages
+
+The application includes styled error pages that use semantic colors and Coco mascot assets:
+
+### 404 Not Found Page
+- Located at `app/not-found.tsx`
+- Uses the cheerful "coco-nice" asset
+- Provides links to dashboard and home
+- Displayed when a user navigates to a non-existent page
+
+### 403 Forbidden Page
+- Located at `app/forbidden.tsx`
+- Uses the stern "coco-mean" asset
+- Provides links to dashboard and home
+- Displayed when a user lacks permissions to access a resource
+
+### Triggering Error Pages
+
+Use the error utilities from `lib/errors.ts`:
+
+```tsx
+import { requirePermission, requireResource, forbidden, notFound } from "@/lib/errors";
+
+// Check if user has permission
+requirePermission(user.canEditForm, "User lacks form edit permissions");
+
+// Check if resource exists
+const form = await getForm(formId);
+const validForm = requireResource(form, "Form not found");
+
+// Manual redirect to error pages
+if (!hasAccess) {
+  forbidden();
+}
+
+if (!exists) {
+  notFound();
+}
+```
