@@ -1,6 +1,6 @@
 /**
  * Safe internal redirect target after /auth/callback (open-redirect hardening).
- * Allows paths like /dashboard, /reset-password, /?modal=signup&from=invite
+ * Allows paths like /dashboard, /?modal=signup&from=invite
  */
 export function sanitizeAuthNextParam(next: string | null): string {
   const fallback = "/dashboard";

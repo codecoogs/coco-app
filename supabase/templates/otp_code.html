@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background-color:#18181b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#18181b;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" style="max-width:420px;background-color:#27272a;border:1px solid #3f3f46;border-radius:12px;padding:32px;">
+            <tr>
+              <td align="center" style="color:#ffffff;font-size:20px;font-weight:600;padding-bottom:8px;">
+                CodeCoogs
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="color:#d4d4d8;font-size:15px;padding-bottom:24px;">
+                Use this code to {{ .Data.otp_purpose_label }}.
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding-bottom:24px;">
+                <span style="display:inline-block;background-color:#18181b;border:1px solid #3f3f46;border-radius:8px;padding:16px 24px;color:#ffffff;font-size:32px;font-weight:700;letter-spacing:8px;font-family:'SF Mono',Consolas,Menlo,monospace;">
+                  {{ .Data.otp_code }}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="color:#a1a1aa;font-size:13px;">
+                This code expires soon and can only be used once. If you didn't request this, you can safely ignore this email.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
