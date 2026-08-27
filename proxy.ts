@@ -40,11 +40,6 @@ export async function proxy(request: NextRequest) {
     return redirect
   }
 
-  // Let users on reset-password through so they can set a new password after the email link
-  if (pathname === '/reset-password') {
-    return response
-  }
-
   if ((pathname === '/' || isAuthPath(pathname)) && user) {
     // Invite / finish-signup: email link lands with session + signup modal (see lib/auth-internal-path)
     if (pathname === '/' && request.nextUrl.searchParams.get('modal') === 'signup') {

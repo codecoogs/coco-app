@@ -1,8 +1,9 @@
 "use client";
 
+import { OtpInput } from "@/app/components/ui/OtpInput";
 import { PasswordInput } from "@/app/components/ui/PasswordInput";
 import { createClient } from "@/lib/supabase/client";
-import { getSiteUrl } from "@/lib/site-url";
+import { SIGNUP_MAJOR_OPTIONS } from "@/lib/signup-options";
 import {
   sanitizeExpectedGraduationInput,
   validateEmail,
@@ -12,15 +13,10 @@ import {
 } from "@/lib/validation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { resendSignupOtp, startSignup, verifySignupOtp } from "./signup-actions";
 
-export const SIGNUP_MAJOR_OPTIONS = [
-  "Computer Science",
-  "Computer Engineering",
-  "MIS",
-  "CIS",
-  "Other",
-] as const;
+const RESEND_COOLDOWN_MS = 30_000;
 
 type SignUpModalProps = {
   open: boolean;
@@ -53,6 +49,28 @@ export function SignUpModal({
     type: "error" | "success";
     text: string;
   } | null>(null);
+
+  const [step, setStep] = useState<"form" | "otp">("form");
+  const [otpCode, setOtpCode] = useState("");
+  const [pendingAuthId, setPendingAuthId] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [resendReady, setResendReady] = useState(false);
+  const resendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startResendCooldown = () => {
+    setResendReady(false);
+    if (resendTimer.current) clearTimeout(resendTimer.current);
+    resendTimer.current = setTimeout(
+      () => setResendReady(true),
+      RESEND_COOLDOWN_MS
+    );
+  };
+
+  useEffect(() => {
+    return () => {
+      if (resendTimer.current) clearTimeout(resendTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -166,41 +184,68 @@ export function SignUpModal({
       return;
     }
 
-    const redirectTo = `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}`;
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
+    const result = await startSignup({
+      firstName,
+      lastName,
+      email,
       password,
-      options: {
-        emailRedirectTo: redirectTo,
-        data: profileData,
-      },
+      expectedGraduation,
+      major,
     });
-    if (error) {
-      setLoading(false);
-      setMessage({ type: "error", text: error.message });
+    setLoading(false);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error });
       return;
     }
-    if (data.session) {
-      const { error: syncError } = await supabase.rpc(
-        "sync_my_signup_profile_from_auth",
-      );
-      setLoading(false);
-      if (syncError) {
-        setMessage({ type: "error", text: syncError.message });
-        return;
-      }
-      onClose();
+    setPendingAuthId(result.authId);
+    setPendingEmail(result.email);
+    setOtpCode("");
+    setStep("otp");
+    startResendCooldown();
+    setMessage({
+      type: "success",
+      text: `We sent a 6-digit code to ${result.email}.`,
+    });
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingAuthId) return;
+    if (otpCode.length !== 6) {
+      setMessage({ type: "error", text: "Enter all 6 digits." });
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    const result = await verifySignupOtp(pendingAuthId, otpCode);
+    setLoading(false);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error });
+      return;
+    }
+    onClose();
+    if (result.sessionEstablished) {
       const dest =
         next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
       router.push(dest);
       router.refresh();
+    } else {
+      router.push("/login");
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!pendingAuthId || !resendReady) return;
+    setLoading(true);
+    setMessage(null);
+    const result = await resendSignupOtp(pendingAuthId, pendingEmail);
+    setLoading(false);
+    startResendCooldown();
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error });
       return;
     }
-    setLoading(false);
-    setMessage({
-      type: "success",
-      text: "Check your email for the confirmation link.",
-    });
+    setMessage({ type: "success", text: "Code resent." });
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -252,14 +297,49 @@ export function SignUpModal({
           id="signup-modal-title"
           className="text-2xl font-semibold tracking-tight text-white"
         >
-          {fromInvite ? "Finish your account" : "Create an account"}
+          {step === "otp"
+            ? "Verify your email"
+            : fromInvite
+              ? "Finish your account"
+              : "Create an account"}
         </h2>
         <p className="mt-1 text-zinc-300">
-          {fromInvite
-            ? "Choose a password and confirm your profile to get started."
-            : "Add your profile details and choose a password."}
+          {step === "otp"
+            ? `Enter the 6-digit code we sent to ${pendingEmail}.`
+            : fromInvite
+              ? "Choose a password and confirm your profile to get started."
+              : "Add your profile details and choose a password."}
         </p>
 
+        {step === "otp" ? (
+          <form onSubmit={handleVerifyOtp} className="mt-6 space-y-4">
+            <OtpInput value={otpCode} onChange={setOtpCode} autoFocus />
+            {message && (
+              <p
+                className={`text-sm ${
+                  message.type === "error" ? "text-red-400" : "text-blue-400"
+                }`}
+              >
+                {message.text}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={loading || otpCode.length !== 6}
+              className="w-full rounded-lg bg-blue-600 py-3 font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
+            >
+              {loading ? "Verifying…" : "Verify"}
+            </button>
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={loading || !resendReady}
+              className="w-full text-center text-sm font-medium text-zinc-400 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {resendReady ? "Resend code" : "Resend code available shortly…"}
+            </button>
+          </form>
+        ) : (
         <form onSubmit={handleSignup} className="mt-6 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -425,27 +505,30 @@ export function SignUpModal({
                 : "Sign up"}
           </button>
         </form>
+        )}
 
-        <p className="mt-6 text-center text-sm text-zinc-400">
-          Already have an account?{" "}
-          {onOpenSignIn ? (
-            <button
-              type="button"
-              onClick={handleSignInClick}
-              className="font-medium text-zinc-400 hover:text-white"
-            >
-              Sign in
-            </button>
-          ) : (
-            <Link
-              href="/login"
-              className="font-medium text-zinc-400 hover:text-white"
-              onClick={onClose}
-            >
-              Sign in
-            </Link>
-          )}
-        </p>
+        {step === "form" && (
+          <p className="mt-6 text-center text-sm text-zinc-400">
+            Already have an account?{" "}
+            {onOpenSignIn ? (
+              <button
+                type="button"
+                onClick={handleSignInClick}
+                className="font-medium text-zinc-400 hover:text-white"
+              >
+                Sign in
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="font-medium text-zinc-400 hover:text-white"
+                onClick={onClose}
+              >
+                Sign in
+              </Link>
+            )}
+          </p>
+        )}
       </div>
     </div>
   );
