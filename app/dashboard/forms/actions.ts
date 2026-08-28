@@ -234,6 +234,22 @@ export async function updateFormAudience(
   return { error: null };
 }
 
+/**
+ * Fans out a "new form" notification if eligible — see
+ * notify_form_published() in supabase/migrations/20260828130000_notifications_schema.sql.
+ * Self-guarded/idempotent (status='published', is_active, not already sent),
+ * so safe to call after any mutation. Non-critical side effect: errors are
+ * logged, never surfaced to the caller.
+ */
+async function notifyForm(supabase: ServerSupabaseClient, formId: string) {
+  const { error } = await supabase.rpc("notify_form_published", {
+    p_form_id: formId,
+  });
+  if (error) {
+    console.error("[forms] notify_form_published:", error.message);
+  }
+}
+
 export async function setFormStatus(
   formId: string,
   status: FormStatus
@@ -247,6 +263,7 @@ export async function setFormStatus(
     .eq("id", formId);
 
   if (error) return { error: error.message };
+  await notifyForm(gate.supabase, formId);
   revalidatePath("/dashboard/forms/manage");
   revalidatePath(`/dashboard/forms/manage/${formId}/edit`);
   return { error: null };
@@ -265,6 +282,7 @@ export async function archiveForm(
     .eq("id", formId);
 
   if (error) return { error: error.message };
+  await notifyForm(gate.supabase, formId);
   revalidatePath("/dashboard/forms/manage");
   return { error: null };
 }
