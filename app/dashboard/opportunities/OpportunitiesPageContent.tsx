@@ -276,14 +276,23 @@ export function OpportunitiesPageContent({
               </p>
             )}
 
-            <a
-              href={selected.link_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              Apply / Learn more
-            </a>
+            {selected.linked_form_id ? (
+              <Link
+                href={`/dashboard/forms/${selected.linked_form_id}`}
+                className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                Apply
+              </Link>
+            ) : (
+              <a
+                href={selected.link_url ?? undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                Apply / Learn more
+              </a>
+            )}
           </div>
         </div>
       )}

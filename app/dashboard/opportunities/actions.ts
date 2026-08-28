@@ -8,6 +8,7 @@ import {
   OPPORTUNITIES_PAGE_SIZE,
   type ActiveOpportunity,
   type CsvOpportunityRow,
+  type LinkableForm,
   type Opportunity,
   type OpportunityInput,
 } from "@/lib/types/opportunities";
@@ -35,7 +36,24 @@ async function requireManageOpportunities(): Promise<
 }
 
 const OPPORTUNITY_COLUMNS =
-  "id, title, description, link_url, category, icon_url, company_name, location, employment_type, salary, source, external_id, field, is_active, display_order, expires_at, created_at, updated_at";
+  "id, title, description, link_url, linked_form_id, category, icon_url, company_name, location, employment_type, salary, source, external_id, field, is_active, display_order, expires_at, notify_members, notified_at, created_at, updated_at";
+
+/**
+ * Fans out a "new opportunity" notification if eligible — see
+ * notify_new_opportunity() in supabase/migrations/20260828130000_notifications_schema.sql.
+ * Self-guarded/idempotent (notify_members, is_active, not-expired, not
+ * already sent), so safe to call after any mutation without checking state
+ * here first. Notification delivery is a non-critical side effect: errors
+ * are logged, never surfaced to the caller.
+ */
+async function notifyOpportunity(supabase: ServerSupabaseClient, id: string) {
+  const { error } = await supabase.rpc("notify_new_opportunity", {
+    p_opportunity_id: id,
+  });
+  if (error) {
+    console.error("[opportunities] notify_new_opportunity:", error.message);
+  }
+}
 
 function escapeIlike(value: string): string {
   return `%${value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
@@ -71,7 +89,7 @@ export async function getActiveOpportunities(
   let query = supabase
     .from("active_opportunities")
     .select(
-      "id, title, description, link_url, category, icon_url, company_name, location, employment_type, salary, field",
+      "id, title, description, link_url, linked_form_id, category, icon_url, company_name, location, employment_type, salary, field",
       { count: "exact" }
     );
 
@@ -121,6 +139,23 @@ export async function getOpportunityLocations(): Promise<{
 // Admin
 // ---------------------------------------------------------------------------
 
+/** Forms available for the "link to an internal form" picker — any status, since
+ * an officer may want to wire this up before publishing the form. Uses a
+ * SECURITY DEFINER RPC because forms_select_manage RLS only grants visibility
+ * to manage_forms holders, not manage_opportunities holders. */
+export async function getFormsForOpportunityLinking(): Promise<{
+  data: LinkableForm[];
+  error: string | null;
+}> {
+  const gate = await requireManageOpportunities();
+  if (!gate.ok) return { data: [], error: gate.error };
+
+  const { data, error } = await gate.supabase.rpc("list_forms_for_opportunity_linking");
+
+  if (error) return { data: [], error: error.message };
+  return { data: (data ?? []) as LinkableForm[], error: null };
+}
+
 export async function getOpportunitiesForManage(): Promise<{
   data: Opportunity[];
   error: string | null;
@@ -144,15 +179,25 @@ export async function createOpportunity(
   if (!gate.ok) return { id: null, error: gate.error };
 
   const title = input.title.trim();
-  const link_url = input.link_url.trim();
+  const link_url = input.link_url?.trim() || null;
+  const linked_form_id = input.linked_form_id || null;
   if (!title) return { id: null, error: "Title is required." };
-  if (!link_url) return { id: null, error: "Link is required." };
+  if (!link_url && !linked_form_id) {
+    return { id: null, error: "Provide a link or select a form." };
+  }
+  if (link_url && linked_form_id) {
+    return {
+      id: null,
+      error: "Choose either an external link or an internal form, not both.",
+    };
+  }
 
   const { data, error } = await gate.supabase
     .from("opportunities")
     .insert({
       title,
       link_url,
+      linked_form_id,
       description: input.description?.trim() || null,
       category: input.category,
       company_name: input.company_name?.trim() || null,
@@ -160,6 +205,7 @@ export async function createOpportunity(
       employment_type: input.employment_type,
       salary: input.salary?.trim() || null,
       expires_at: input.expires_at,
+      notify_members: input.notify_members,
       source: "manual",
       created_by: gate.appUserId,
     })
@@ -167,9 +213,11 @@ export async function createOpportunity(
     .single();
 
   if (error) return { id: null, error: error.message };
+  const newId = data.id as string;
+  await notifyOpportunity(gate.supabase, newId);
   revalidatePath("/dashboard/opportunities/manage");
   revalidatePath("/dashboard/opportunities");
-  return { id: data.id as string, error: null };
+  return { id: newId, error: null };
 }
 
 export async function updateOpportunity(
@@ -180,15 +228,22 @@ export async function updateOpportunity(
   if (!gate.ok) return { error: gate.error };
 
   const title = input.title.trim();
-  const link_url = input.link_url.trim();
+  const link_url = input.link_url?.trim() || null;
+  const linked_form_id = input.linked_form_id || null;
   if (!title) return { error: "Title is required." };
-  if (!link_url) return { error: "Link is required." };
+  if (!link_url && !linked_form_id) {
+    return { error: "Provide a link or select a form." };
+  }
+  if (link_url && linked_form_id) {
+    return { error: "Choose either an external link or an internal form, not both." };
+  }
 
   const { error } = await gate.supabase
     .from("opportunities")
     .update({
       title,
       link_url,
+      linked_form_id,
       description: input.description?.trim() || null,
       category: input.category,
       company_name: input.company_name?.trim() || null,
@@ -196,11 +251,13 @@ export async function updateOpportunity(
       employment_type: input.employment_type,
       salary: input.salary?.trim() || null,
       expires_at: input.expires_at,
+      notify_members: input.notify_members,
       updated_by: gate.appUserId,
     })
     .eq("id", id);
 
   if (error) return { error: error.message };
+  await notifyOpportunity(gate.supabase, id);
   revalidatePath("/dashboard/opportunities/manage");
   revalidatePath("/dashboard/opportunities");
   return { error: null };
@@ -219,6 +276,29 @@ export async function setOpportunityActive(
     .eq("id", id);
 
   if (error) return { error: error.message };
+  await notifyOpportunity(gate.supabase, id);
+  revalidatePath("/dashboard/opportunities/manage");
+  revalidatePath("/dashboard/opportunities");
+  return { error: null };
+}
+
+/** Flip whether an opportunity notifies members — lets an officer opt a single
+ * already-imported row in without a full edit. Notifies immediately if it's
+ * already active (subject to the usual notify_new_opportunity guard). */
+export async function setOpportunityNotify(
+  id: string,
+  notify: boolean
+): Promise<{ error: string | null }> {
+  const gate = await requireManageOpportunities();
+  if (!gate.ok) return { error: gate.error };
+
+  const { error } = await gate.supabase
+    .from("opportunities")
+    .update({ notify_members: notify, updated_by: gate.appUserId })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  await notifyOpportunity(gate.supabase, id);
   revalidatePath("/dashboard/opportunities/manage");
   revalidatePath("/dashboard/opportunities");
   return { error: null };
@@ -238,6 +318,7 @@ export async function bulkSetOpportunitiesActive(
     .in("id", ids);
 
   if (error) return { error: error.message, updated: 0 };
+  await Promise.all(ids.map((id) => notifyOpportunity(gate.supabase, id)));
   revalidatePath("/dashboard/opportunities/manage");
   revalidatePath("/dashboard/opportunities");
   return { error: null, updated: ids.length };

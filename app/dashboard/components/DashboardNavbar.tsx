@@ -9,6 +9,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useDashboardShellOptional } from "./DashboardShell";
+import { NotificationBell } from "./NotificationBell";
 
 const POSITION_BADGE_COLOR = "#04495d";
 
@@ -179,6 +180,7 @@ export function DashboardNavbar() {
         <span className="hidden text-sm text-foreground sm:inline">
           {showWelcomeBack ? "Welcome back" : "Welcome"}, {displayName}!
         </span>
+        <NotificationBell />
         <div className="relative" ref={menuRef}>
           <button
             type="button"

@@ -1,12 +1,18 @@
 "use client";
 
-import { OPPORTUNITY_CATEGORIES, type Opportunity } from "@/lib/types/opportunities";
-import { useCallback, useMemo, useState } from "react";
+import {
+  OPPORTUNITY_CATEGORIES,
+  type LinkableForm,
+  type Opportunity,
+} from "@/lib/types/opportunities";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   bulkSetOpportunitiesActive,
   deleteOpportunity,
+  getFormsForOpportunityLinking,
   getOpportunitiesForManage,
   setOpportunityActive,
+  setOpportunityNotify,
 } from "../actions";
 import { ImportOpportunitiesModal } from "./ImportOpportunitiesModal";
 import { OpportunityFormModal } from "./OpportunityFormModal";
@@ -31,6 +37,22 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
     { mode: "create" } | { mode: "edit"; opportunity: Opportunity } | null
   >(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [linkableForms, setLinkableForms] = useState<LinkableForm[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    getFormsForOpportunityLinking().then(({ data }) => {
+      if (mounted) setLinkableForms(data);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const formsById = useMemo(
+    () => new Map(linkableForms.map((f) => [f.id, f])),
+    [linkableForms]
+  );
 
   const refresh = useCallback(async () => {
     const res = await getOpportunitiesForManage();
@@ -88,6 +110,20 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
     async (o: Opportunity) => {
       setBusy(true);
       const res = await setOpportunityActive(o.id, !o.is_active);
+      setBusy(false);
+      if (res.error) {
+        setMessage({ type: "error", text: res.error });
+        return;
+      }
+      await refresh();
+    },
+    [refresh]
+  );
+
+  const handleToggleNotify = useCallback(
+    async (o: Opportunity) => {
+      setBusy(true);
+      const res = await setOpportunityNotify(o.id, !o.notify_members);
       setBusy(false);
       if (res.error) {
         setMessage({ type: "error", text: res.error });
@@ -206,7 +242,9 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
                 <th className="px-4 py-3 font-medium">Category</th>
                 <th className="px-4 py-3 font-medium">Employment type</th>
                 <th className="px-4 py-3 font-medium">Field</th>
+                <th className="px-4 py-3 font-medium">Link</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Notify</th>
                 <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
@@ -227,6 +265,22 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
                   <td className="px-4 py-3 text-muted-foreground">
                     {o.field ?? "—"}
                   </td>
+                  <td className="max-w-[220px] px-4 py-3 text-muted-foreground">
+                    {o.linked_form_id ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="truncate">
+                          Form: {formsById.get(o.linked_form_id)?.title ?? "…"}
+                        </span>
+                        {formsById.get(o.linked_form_id)?.status !== "published" ? (
+                          <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                            {formsById.get(o.linked_form_id)?.status ?? "draft"}
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="block truncate">{o.link_url ?? "—"}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -237,6 +291,25 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
                     >
                       {o.is_active ? "Active" : "Inactive"}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleToggleNotify(o)}
+                      title={
+                        o.notified_at
+                          ? `Already notified members on ${new Date(o.notified_at).toLocaleDateString()}`
+                          : undefined
+                      }
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium disabled:opacity-50 ${
+                        o.notify_members
+                          ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {o.notify_members ? "On" : "Off"}
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {o.source === "csv_import" ? "CSV import" : "Manual"}
