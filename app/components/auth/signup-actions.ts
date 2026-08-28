@@ -10,6 +10,7 @@ import {
   validateExpectedGraduation,
   validatePassword,
   validatePersonName,
+  validateUhId,
 } from "@/lib/validation";
 
 async function findUserByEmail(email: string) {
@@ -38,6 +39,7 @@ export async function startSignup(input: {
   email: string;
   password: string;
   expectedGraduation: string;
+  uhId: string;
   major: string;
 }): Promise<StartSignupResult> {
   const fn = validatePersonName(input.firstName, "First name");
@@ -56,6 +58,10 @@ export async function startSignup(input: {
   if (!grad.valid) {
     return { ok: false, error: grad.error ?? "Invalid expected graduation." };
   }
+  const uhIdResult = validateUhId(input.uhId);
+  if (!uhIdResult.valid) {
+    return { ok: false, error: uhIdResult.error ?? "Invalid UH ID." };
+  }
   if (
     !SIGNUP_MAJOR_OPTIONS.includes(
       input.major as (typeof SIGNUP_MAJOR_OPTIONS)[number]
@@ -65,12 +71,33 @@ export async function startSignup(input: {
   }
 
   const email = input.email.trim();
+  const uhId = input.uhId.trim();
   const profileData = {
     first_name: input.firstName.trim(),
     last_name: input.lastName.trim(),
     major: input.major,
     expected_graduation: input.expectedGraduation.trim(),
+    uh_id: uhId,
   };
+
+  // Checked up front rather than relying on the DB's unique constraint:
+  // admin.createUser() sanitizes trigger/constraint failures down to a
+  // generic "Database error creating new user" before it reaches us, so a
+  // duplicate uh_id can't be distinguished from any other failure after
+  // the fact. Small TOCTOU race with two simultaneous signups is fine —
+  // the constraint itself is still the real safety net.
+  const admin = createAdminClient();
+  const { data: uhIdMatch } = await admin
+    .from("users")
+    .select("id")
+    .eq("uh_id", uhId)
+    .maybeSingle();
+  if (uhIdMatch) {
+    return {
+      ok: false,
+      error: "That UH ID is already associated with another account.",
+    };
+  }
 
   // Created via the admin API (not the client-side signUp()) so nothing
   // auto-sends Supabase's own confirmation email — that email would render
@@ -78,7 +105,6 @@ export async function startSignup(input: {
   // point, and a second, later send collides with Supabase's own
   // per-address send-rate cooldown. We trigger the single real email
   // ourselves once the code exists (see sendOtpEmail below).
-  const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.createUser({
     email,
     password: input.password,
@@ -89,6 +115,11 @@ export async function startSignup(input: {
   let authId: string | null = data.user?.id ?? null;
 
   if (error) {
+    // Note: admin.createUser() sanitizes DB-level failures (including a
+    // uh_id race lost to the pre-check above) down to a generic message —
+    // the constraint name never reaches us here, so there's nothing to
+    // pattern-match; the pre-check above is what actually surfaces the
+    // friendly message in the common case.
     const isAlreadyRegistered = /already registered|already exists/i.test(
       error.message
     );

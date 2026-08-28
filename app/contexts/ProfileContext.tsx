@@ -22,6 +22,7 @@ export type MemberPublicSnapshot = {
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
+  uhId: string | null;
 };
 
 type ProfileContextValue = {
@@ -67,7 +68,7 @@ export function ProfileProvider({
         fetchUserProfile(supabase, uid),
         supabase
           .from("users")
-          .select("first_name, last_name, avatar_url")
+          .select("first_name, last_name, avatar_url, uh_id")
           .eq("auth_id", uid)
           .maybeSingle(),
         checkHasActiveMembership(supabase),
@@ -85,6 +86,7 @@ export function ProfileProvider({
           first_name: string | null;
           last_name: string | null;
           avatar_url: string | null;
+          uh_id: string | null;
         } | null;
         if (!row) {
           setMemberPublic(null);
@@ -93,6 +95,7 @@ export function ProfileProvider({
             firstName: row.first_name?.trim() ?? "",
             lastName: row.last_name?.trim() ?? "",
             avatarUrl: row.avatar_url?.trim() ? row.avatar_url.trim() : null,
+            uhId: row.uh_id?.trim() ? row.uh_id.trim() : null,
           });
         }
       }

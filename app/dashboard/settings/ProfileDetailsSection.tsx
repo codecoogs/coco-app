@@ -1,7 +1,10 @@
 "use client";
 
 import { useProfile } from "@/app/contexts/ProfileContext";
-import { sanitizeExpectedGraduationInput } from "@/lib/validation";
+import {
+  sanitizeExpectedGraduationInput,
+  sanitizeUhIdInput,
+} from "@/lib/validation";
 import { useRouter } from "next/navigation";
 import { updateMyProfile } from "./actions";
 import { useCallback, useState } from "react";
@@ -14,6 +17,7 @@ export type ProfileDetailsInitial = {
   expected_graduation: string;
   major: string | null;
   discord: string | null;
+  uh_id: string | null;
 };
 
 type Props = {
@@ -28,6 +32,7 @@ export function ProfileDetailsSection({ initial }: Props) {
     null,
   );
   const [grad, setGrad] = useState(initial.expected_graduation ?? "");
+  const [uhId, setUhId] = useState(initial.uh_id ?? "");
 
   const onSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
@@ -144,6 +149,28 @@ export function ProfileDetailsSection({ initial }: Props) {
             defaultValue={initial.major ?? ""}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground"
           />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-muted-foreground">
+            UH ID
+          </label>
+          <input
+            name="uh_id"
+            inputMode="numeric"
+            spellCheck={false}
+            maxLength={7}
+            value={uhId}
+            onChange={(e) => setUhId(sanitizeUhIdInput(e.target.value))}
+            placeholder="1234567"
+            title="Your 7-digit UH student ID"
+            pattern="\d{7}"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Your 7-digit University of Houston student ID, required for CSI
+            org rostering.
+          </p>
         </div>
 
         <div className="sm:col-span-2">

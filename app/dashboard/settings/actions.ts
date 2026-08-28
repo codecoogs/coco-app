@@ -12,8 +12,10 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import {
   sanitizeExpectedGraduationInput,
+  sanitizeUhIdInput,
   validateExpectedGraduation,
   validatePersonName,
+  validateUhId,
 } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 
@@ -134,6 +136,7 @@ export async function updateMyProfile(
     trimOrEmpty(formData.get("expected_graduation")),
   ).trim();
   const major = trimOrEmpty(formData.get("major"));
+  const uh_id = sanitizeUhIdInput(trimOrEmpty(formData.get("uh_id")));
 
   const fn = validatePersonName(first_name, "First name");
   if (!fn.valid) return { ok: false, error: fn.error ?? "Invalid first name." };
@@ -142,6 +145,14 @@ export async function updateMyProfile(
   const grad = validateExpectedGraduation(expected_graduation);
   if (!grad.valid) {
     return { ok: false, error: grad.error ?? "Invalid expected graduation." };
+  }
+  // Optional here (unlike signup): don't block saving the rest of the form
+  // for users who haven't filled it in yet, but validate the format if given.
+  if (uh_id) {
+    const uhIdResult = validateUhId(uh_id);
+    if (!uhIdResult.valid) {
+      return { ok: false, error: uhIdResult.error ?? "Invalid UH ID." };
+    }
   }
 
   if (phone.length > 50) return { ok: false, error: "Phone number is too long." };
@@ -157,9 +168,18 @@ export async function updateMyProfile(
     p_classification: classification,
     p_expected_graduation: expected_graduation,
     p_major: major,
+    p_uh_id: uh_id,
   });
 
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    if (/users_uh_id_key/.test(error.message)) {
+      return {
+        ok: false,
+        error: "That UH ID is already associated with another account.",
+      };
+    }
+    return { ok: false, error: error.message };
+  }
   revalidatePath("/dashboard/settings");
   return { ok: true };
 }
