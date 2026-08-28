@@ -16,7 +16,6 @@ export type PermissionRow = {
   name: string;
   description: string | null;
   created_at: string | null;
-  updated_at: string | null;
 };
 
 export type RolePermissionRow = {
@@ -69,7 +68,7 @@ export async function getPermissionsForManage(): Promise<{
 
   const { data, error } = await admin
     .from("permissions")
-    .select("id, name, description, created_at, updated_at")
+    .select("id, name, description, created_at")
     .order("name", { ascending: true });
 
   if (error) return { data: [], error: error.message };
@@ -325,11 +324,14 @@ export async function getRolePermissionsMatrixForManage(): Promise<{
   return { data: { roles, permissions, rolePermissionIds: rolePermissionIdsOut }, error: null };
 }
 
-export async function setRolePermissionForManage(
+export type PermissionChange = { permissionId: string; enabled: boolean };
+
+export async function setRolePermissionsForManage(
   roleId: number,
-  permissionId: string,
-  enabled: boolean
+  changes: PermissionChange[]
 ): Promise<{ error: string | null }> {
+  if (changes.length === 0) return { error: null };
+
   const supabase = await createClient();
   const {
     data: { user: authUser },
@@ -341,32 +343,32 @@ export async function setRolePermissionForManage(
     return { error: "You do not have permission to manage roles permissions." };
   }
 
-  const appUserId = await getCurrentAppUserId(supabase);
-  if (!appUserId) return { error: "Could not resolve your user account." };
-
   const admin = getServiceRoleClient();
   if (!admin) return { error: SERVICE_ROLE_ERROR };
 
-  if (enabled) {
-    const now = new Date().toISOString();
+  const toEnable = changes.filter((c) => c.enabled);
+  const toDisable = changes.filter((c) => !c.enabled);
+
+  if (toEnable.length > 0) {
     const { error } = await admin.from("role_permissions").upsert(
-      {
+      toEnable.map((c) => ({
         role_id: roleId,
-        permission_id: permissionId,
-        created_by: appUserId,
-        updated_by: appUserId,
-        created_at: now,
-        updated_at: now,
-      },
+        permission_id: c.permissionId,
+      })),
       { onConflict: "role_id, permission_id" }
     );
     if (error) return { error: error.message };
-  } else {
+  }
+
+  if (toDisable.length > 0) {
     const { error } = await admin
       .from("role_permissions")
       .delete()
       .eq("role_id", roleId)
-      .eq("permission_id", permissionId);
+      .in(
+        "permission_id",
+        toDisable.map((c) => c.permissionId)
+      );
     if (error) return { error: error.message };
   }
 
@@ -374,11 +376,12 @@ export async function setRolePermissionForManage(
   return { error: null };
 }
 
-export async function setPositionPermissionForManage(
+export async function setPositionPermissionsForManage(
   positionId: number,
-  permissionId: string,
-  enabled: boolean
+  changes: PermissionChange[]
 ): Promise<{ error: string | null }> {
+  if (changes.length === 0) return { error: null };
+
   const supabase = await createClient();
   const {
     data: { user: authUser },
@@ -390,32 +393,32 @@ export async function setPositionPermissionForManage(
     return { error: "You do not have permission to manage position permissions." };
   }
 
-  const appUserId = await getCurrentAppUserId(supabase);
-  if (!appUserId) return { error: "Could not resolve your user account." };
-
   const admin = getServiceRoleClient();
   if (!admin) return { error: SERVICE_ROLE_ERROR };
 
-  if (enabled) {
-    const now = new Date().toISOString();
+  const toEnable = changes.filter((c) => c.enabled);
+  const toDisable = changes.filter((c) => !c.enabled);
+
+  if (toEnable.length > 0) {
     const { error } = await admin.from("position_permissions").upsert(
-      {
+      toEnable.map((c) => ({
         position_id: positionId,
-        permission_id: permissionId,
-        created_by: appUserId,
-        updated_by: appUserId,
-        created_at: now,
-        updated_at: now,
-      },
+        permission_id: c.permissionId,
+      })),
       { onConflict: "position_id, permission_id" }
     );
     if (error) return { error: error.message };
-  } else {
+  }
+
+  if (toDisable.length > 0) {
     const { error } = await admin
       .from("position_permissions")
       .delete()
       .eq("position_id", positionId)
-      .eq("permission_id", permissionId);
+      .in(
+        "permission_id",
+        toDisable.map((c) => c.permissionId)
+      );
     if (error) return { error: error.message };
   }
 
