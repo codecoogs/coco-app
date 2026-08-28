@@ -6,10 +6,12 @@ import { createClient } from "@/lib/supabase/client";
 import { SIGNUP_MAJOR_OPTIONS } from "@/lib/signup-options";
 import {
   sanitizeExpectedGraduationInput,
+  sanitizeUhIdInput,
   validateEmail,
   validateExpectedGraduation,
   validatePassword,
   validatePersonName,
+  validateUhId,
 } from "@/lib/validation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -42,6 +44,7 @@ export function SignUpModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [expectedGraduation, setExpectedGraduation] = useState("");
+  const [uhId, setUhId] = useState("");
   const [major, setMajor] = useState<string>(SIGNUP_MAJOR_OPTIONS[0]);
   const [loading, setLoading] = useState(false);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
@@ -139,6 +142,11 @@ export function SignUpModal({
       });
       return;
     }
+    const uhIdResult = validateUhId(uhId);
+    if (!uhIdResult.valid) {
+      setMessage({ type: "error", text: uhIdResult.error ?? "Invalid UH ID." });
+      return;
+    }
     if (
       !SIGNUP_MAJOR_OPTIONS.includes(
         major as (typeof SIGNUP_MAJOR_OPTIONS)[number]
@@ -156,6 +164,7 @@ export function SignUpModal({
       last_name: lastName.trim(),
       major,
       expected_graduation: expectedGraduation.trim(),
+      uh_id: uhId.trim(),
     };
 
     if (existing && fromInvite) {
@@ -190,6 +199,7 @@ export function SignUpModal({
       email,
       password,
       expectedGraduation,
+      uhId,
       major,
     });
     setLoading(false);
@@ -456,6 +466,35 @@ export function SignUpModal({
             <p className="mt-1 text-xs text-zinc-400">
               Only numbers and a hyphen after the year. Month must be two digits
               (01–09, 10–12), e.g. 2026-05.
+            </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor="signup-uh-id"
+              className="block text-sm font-medium text-zinc-300"
+            >
+              UH ID
+            </label>
+            <input
+              id="signup-uh-id"
+              name="uh_id"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              spellCheck={false}
+              required
+              maxLength={7}
+              placeholder="1234567"
+              title="Your 7-digit UH student ID"
+              pattern="\d{7}"
+              value={uhId}
+              onChange={(e) => setUhId(sanitizeUhIdInput(e.target.value))}
+              className="mt-1 block w-full rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2.5 text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-zinc-400">
+              Your 7-digit University of Houston student ID, required for CSI
+              org rostering.
             </p>
           </div>
 
