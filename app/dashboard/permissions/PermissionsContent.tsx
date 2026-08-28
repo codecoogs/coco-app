@@ -7,8 +7,8 @@ import {
   getPermissionsForManage,
   getPositionPermissionMatrixForManage,
   getRolePermissionsMatrixForManage,
-  setRolePermissionForManage,
-  setPositionPermissionForManage,
+  setRolePermissionsForManage,
+  setPositionPermissionsForManage,
   type PositionPermissionMatrixRow,
   type PermissionRow,
   type RolePermissionsMatrixData,
@@ -118,7 +118,8 @@ export function PermissionsContent({
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(
     roles.length ? roles[0]?.id ?? null : null
   );
-  const [togglingPermissionId, setTogglingPermissionId] = useState<string | null>(null);
+  const [rolePendingChanges, setRolePendingChanges] = useState<Record<string, boolean>>({});
+  const [savingRolePermissions, setSavingRolePermissions] = useState(false);
 
   useEffect(() => {
     if (roles.length === 0) {
@@ -133,56 +134,62 @@ export function PermissionsContent({
     if (!exists) setSelectedRoleId(roles[0]?.id ?? null);
   }, [roles, selectedRoleId]);
 
-  const enabledPermissionIds = new Set<string>(
+  // Clears pending edits whenever the selected role changes (the role
+  // selector is disabled while dirty, so in practice this only fires after
+  // a save/discard or on initial selection).
+  useEffect(() => {
+    setRolePendingChanges({});
+  }, [selectedRoleId]);
+
+  const rolePermissionIdsBaseline = new Set<string>(
     selectedRoleId == null
       ? []
       : rolePermissionsMatrix.rolePermissionIds[String(selectedRoleId)] ?? []
   );
 
-  const toggleRolePermission = useCallback(
-    async (permissionId: string, enabled: boolean) => {
-      if (selectedRoleId == null) return;
-      setTogglingPermissionId(permissionId);
-      setMessage(null);
-      const ridKey = String(selectedRoleId);
-
-      // Optimistic update for instant UI feedback.
-      setRolePermissionsMatrix((prev) => {
-        const cur = prev.rolePermissionIds[ridKey] ?? [];
-        const next = enabled
-          ? [...new Set([...cur, permissionId])].sort()
-          : cur.filter((id) => id !== permissionId).sort();
-        return {
-          ...prev,
-          rolePermissionIds: {
-            ...prev.rolePermissionIds,
-            [ridKey]: next,
-          },
-        };
-      });
-
-      const { error } = await setRolePermissionForManage(
-        selectedRoleId,
-        permissionId,
-        enabled
-      );
-      setTogglingPermissionId(null);
-
-      if (error) {
-        setMessage({ type: "error", text: error });
-        await refresh();
-      } else {
-        await refresh();
-      }
-    },
-    [refresh, selectedRoleId]
+  const roleDirtyEntries = Object.entries(rolePendingChanges).filter(
+    ([permissionId, enabled]) => enabled !== rolePermissionIdsBaseline.has(permissionId)
   );
+  const roleHasChanges = roleDirtyEntries.length > 0;
+
+  const toggleRolePermission = useCallback((permissionId: string, enabled: boolean) => {
+    setMessage(null);
+    setRolePendingChanges((prev) => ({ ...prev, [permissionId]: enabled }));
+  }, []);
+
+  const saveRolePermissions = useCallback(async () => {
+    if (selectedRoleId == null || roleDirtyEntries.length === 0) return;
+    setSavingRolePermissions(true);
+    setMessage(null);
+    const { error } = await setRolePermissionsForManage(
+      selectedRoleId,
+      roleDirtyEntries.map(([permissionId, enabled]) => ({ permissionId, enabled }))
+    );
+    setSavingRolePermissions(false);
+    if (error) {
+      setMessage({ type: "error", text: error });
+      return;
+    }
+    setRolePendingChanges({});
+    setMessage({ type: "ok", text: "Role permissions saved." });
+    await refresh();
+  }, [selectedRoleId, roleDirtyEntries, refresh]);
+
+  const discardRoleChanges = useCallback(() => {
+    setRolePendingChanges({});
+    setMessage(null);
+  }, []);
 
   const positions = useMemo(() => positionMatrix ?? [], [positionMatrix]);
   const [selectedPositionId, setSelectedPositionId] = useState<number | null>(
     positions.length ? positions[0]?.position_id ?? null : null
   );
-  const [togglingPositionPermissionId, setTogglingPositionPermissionId] = useState<string | null>(null);
+  // Keyed by permission name (direct_permissions/inherited_permissions are
+  // name arrays), mapped to permission_id only when saving.
+  const [positionPendingChanges, setPositionPendingChanges] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [savingPositionPermissions, setSavingPositionPermissions] = useState(false);
 
   useEffect(() => {
     if (positions.length === 0) {
@@ -197,64 +204,61 @@ export function PermissionsContent({
     if (!exists) setSelectedPositionId(positions[0]?.position_id ?? null);
   }, [positions, selectedPositionId]);
 
+  // Position selector is disabled while dirty, so this only fires after a
+  // save/discard or on initial selection.
+  useEffect(() => {
+    setPositionPendingChanges({});
+  }, [selectedPositionId]);
+
   const selectedPosition =
     positions.find((p) => p.position_id === selectedPositionId) ?? null;
   const directNameSet = new Set<string>(selectedPosition?.direct_permissions ?? []);
   const inheritedNameSet = new Set<string>(selectedPosition?.inherited_permissions ?? []);
 
-  const togglePositionPermission = useCallback(
-    async (permissionName: string, enabled: boolean) => {
-      if (selectedPositionId == null) return;
-      setTogglingPositionPermissionId(permissionName);
-      setMessage(null);
+  const positionDirtyEntries = Object.entries(positionPendingChanges).filter(
+    ([name, enabled]) => enabled !== directNameSet.has(name)
+  );
+  const positionHasChanges = positionDirtyEntries.length > 0;
 
-      // Optimistic update: direct_permissions are the only ones we mutate.
-      setPositionMatrix((prev) =>
-        prev.map((row) => {
-          if (row.position_id !== selectedPositionId) return row;
-          const nextDirect = new Set(row.direct_permissions);
-          if (enabled) nextDirect.add(permissionName);
-          else nextDirect.delete(permissionName);
-          const nextInherited = row.inherited_permissions;
-          const nextEffective = [
-            ...new Set([...nextInherited, ...nextDirect]),
-          ].sort();
-          return {
-            ...row,
-            direct_permissions: [...nextDirect].sort(),
-            effective_permissions: nextEffective,
-          };
-        })
-      );
+  const togglePositionPermission = useCallback((permissionName: string, enabled: boolean) => {
+    setMessage(null);
+    setPositionPendingChanges((prev) => ({ ...prev, [permissionName]: enabled }));
+  }, []);
 
-      // Map permission name back to permission_id.
-      const permRow = rows.find((r) => r.name === permissionName);
-      const permissionId = permRow?.id;
-      if (!permissionId) {
-        setTogglingPositionPermissionId(null);
+  const savePositionPermissions = useCallback(async () => {
+    if (selectedPositionId == null || positionDirtyEntries.length === 0) return;
+    setSavingPositionPermissions(true);
+    setMessage(null);
+
+    const changes: { permissionId: string; enabled: boolean }[] = [];
+    for (const [name, enabled] of positionDirtyEntries) {
+      const permRow = rows.find((r) => r.name === name);
+      if (!permRow) {
+        setSavingPositionPermissions(false);
         setMessage({
           type: "error",
-          text: `Permission not found in current list: ${permissionName}`,
+          text: `Permission not found in current list: ${name}`,
         });
-        await refresh();
         return;
       }
+      changes.push({ permissionId: permRow.id, enabled });
+    }
 
-      const { error } = await setPositionPermissionForManage(
-        selectedPositionId,
-        permissionId,
-        enabled
-      );
-      setTogglingPositionPermissionId(null);
-      if (error) {
-        setMessage({ type: "error", text: error });
-        await refresh();
-      } else {
-        await refresh();
-      }
-    },
-    [refresh, rows, selectedPositionId]
-  );
+    const { error } = await setPositionPermissionsForManage(selectedPositionId, changes);
+    setSavingPositionPermissions(false);
+    if (error) {
+      setMessage({ type: "error", text: error });
+      return;
+    }
+    setPositionPendingChanges({});
+    setMessage({ type: "ok", text: "Position permissions saved." });
+    await refresh();
+  }, [selectedPositionId, positionDirtyEntries, rows, refresh]);
+
+  const discardPositionChanges = useCallback(() => {
+    setPositionPendingChanges({});
+    setMessage(null);
+  }, []);
 
   const handleCreate = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
@@ -486,7 +490,7 @@ export function PermissionsContent({
                   Description
                 </th>
                 <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
-                  Updated
+                  Created
                 </th>
               </tr>
             </thead>
@@ -507,7 +511,7 @@ export function PermissionsContent({
                       {p.description?.trim() || "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground sm:px-6">
-                      {formatDate(p.updated_at ?? p.created_at)}
+                      {formatDate(p.created_at)}
                     </td>
                   </tr>
                 ))
@@ -568,7 +572,8 @@ export function PermissionsContent({
                   <select
                     value={selectedRoleId ?? ""}
                     onChange={(e) => setSelectedRoleId(Number(e.target.value))}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    disabled={roleHasChanges}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:opacity-50"
                   >
                     {roles.map((r) => (
                       <option key={r.id} value={r.id}>
@@ -576,6 +581,11 @@ export function PermissionsContent({
                       </option>
                     ))}
                   </select>
+                  {roleHasChanges ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Save or discard your changes before switching roles.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -606,7 +616,10 @@ export function PermissionsContent({
                           </tr>
                         ) : (
                           permissionsForMatrix.map((p) => {
-                            const checked = enabledPermissionIds.has(p.id);
+                            const checked =
+                              p.id in rolePendingChanges
+                                ? rolePendingChanges[p.id]
+                                : rolePermissionIdsBaseline.has(p.id);
                             return (
                               <tr key={p.id} className="hover:bg-muted">
                                 <td className="px-4 py-3 font-mono text-sm text-card-foreground sm:px-6">
@@ -619,7 +632,7 @@ export function PermissionsContent({
                                   <input
                                     type="checkbox"
                                     checked={checked}
-                                    disabled={togglingPermissionId === p.id}
+                                    disabled={savingRolePermissions}
                                     onChange={(e) =>
                                       toggleRolePermission(p.id, e.target.checked)
                                     }
@@ -632,6 +645,31 @@ export function PermissionsContent({
                       </tbody>
                     </table>
                   </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 border-t border-border pt-3">
+                  {roleHasChanges ? (
+                    <span className="mr-auto text-sm text-muted-foreground">
+                      {roleDirtyEntries.length} unsaved change
+                      {roleDirtyEntries.length === 1 ? "" : "s"}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={discardRoleChanges}
+                    disabled={!roleHasChanges || savingRolePermissions}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
+                  >
+                    Discard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveRolePermissions}
+                    disabled={!roleHasChanges || savingRolePermissions}
+                    className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {savingRolePermissions ? "Saving..." : "Save changes"}
+                  </button>
                 </div>
               </>
             )}
@@ -661,7 +699,8 @@ export function PermissionsContent({
                   <select
                     value={selectedPositionId ?? ""}
                     onChange={(e) => setSelectedPositionId(Number(e.target.value))}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                    disabled={positionHasChanges}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground disabled:opacity-50"
                   >
                     {positions.map((p) => (
                       <option key={p.position_id} value={p.position_id}>
@@ -669,6 +708,11 @@ export function PermissionsContent({
                       </option>
                     ))}
                   </select>
+                  {positionHasChanges ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Save or discard your changes before switching positions.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="rounded-lg border border-border bg-card p-0.5">
@@ -708,7 +752,10 @@ export function PermissionsContent({
                           ) : (
                             rows.map((p) => {
                               const inherited = inheritedNameSet.has(p.name);
-                              const direct = directNameSet.has(p.name);
+                              const direct =
+                                p.name in positionPendingChanges
+                                  ? positionPendingChanges[p.name]
+                                  : directNameSet.has(p.name);
                               const effective = inherited || direct;
                               return (
                                 <tr key={p.id} className="hover:bg-muted">
@@ -723,7 +770,7 @@ export function PermissionsContent({
                                       <input
                                         type="checkbox"
                                         checked={direct}
-                                        disabled={togglingPositionPermissionId === p.name}
+                                        disabled={savingPositionPermissions}
                                         onChange={(e) =>
                                           togglePositionPermission(
                                             p.name,
@@ -744,6 +791,31 @@ export function PermissionsContent({
                       </table>
                     </div>
                   </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 border-t border-border pt-3">
+                  {positionHasChanges ? (
+                    <span className="mr-auto text-sm text-muted-foreground">
+                      {positionDirtyEntries.length} unsaved change
+                      {positionDirtyEntries.length === 1 ? "" : "s"}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={discardPositionChanges}
+                    disabled={!positionHasChanges || savingPositionPermissions}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
+                  >
+                    Discard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={savePositionPermissions}
+                    disabled={!positionHasChanges || savingPositionPermissions}
+                    className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {savingPositionPermissions ? "Saving..." : "Save changes"}
+                  </button>
                 </div>
               </>
             )}
