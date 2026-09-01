@@ -73,6 +73,7 @@ export function isTeamAllowed(profile: UserProfile | null): boolean {
  * - view_point_categories / manage_point_categories: read vs edit point_categories (RLS).
  * - view_finances / manage_finances: finance ledger, categories, sponsors, budgets.
  * - manage_finance_sources: narrower than manage_finances; configuring Stripe/bank accounts only.
+ * - view_executive_dashboard: executive-tier growth dashboard (sign-ups, memberships, form submissions).
  */
 export const PERMISSION_NAMES = [
   "view_officers",
@@ -97,6 +98,7 @@ export const PERMISSION_NAMES = [
   "view_finances",
   "manage_finances",
   "manage_finance_sources",
+  "view_executive_dashboard",
 ] as const;
 
 export type PermissionName = (typeof PERMISSION_NAMES)[number];
