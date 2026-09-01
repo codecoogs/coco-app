@@ -104,6 +104,7 @@ export async function getActiveOpportunities(
   }
 
   const { data, error, count } = await query
+    .order("is_internal", { ascending: false })
     .order("display_order", { ascending: true })
     .range(from, to);
 
