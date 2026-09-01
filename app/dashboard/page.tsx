@@ -3,7 +3,8 @@ import { fetchMemberDashboardOverview } from "@/app/dashboard/member-dashboard-d
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import { createClient } from "@/lib/supabase/server";
 import { hasActiveMembership } from "@/lib/supabase/membership";
-import { canAccessMemberOnlyFeatures } from "@/lib/types/rbac";
+import { canAccessMemberOnlyFeatures, hasPermission } from "@/lib/types/rbac";
+import { redirect } from "next/navigation";
 
 function softCardTone(seed: string) {
   const accent = `color-mix(in oklab, ${seed} 65%, var(--accent) 35%)`;
@@ -24,9 +25,13 @@ export default async function DashboardPage() {
     return null;
   }
 
-  const [overview, profile, hasMembership] = await Promise.all([
+  const profile = await fetchUserProfile(supabase, user.id);
+  if (hasPermission(profile, "view_executive_dashboard")) {
+    redirect("/dashboard/executive");
+  }
+
+  const [overview, hasMembership] = await Promise.all([
     fetchMemberDashboardOverview(supabase, { id: user.id, email: user.email }),
-    fetchUserProfile(supabase, user.id),
     hasActiveMembership(supabase),
   ]);
   const canSeeOpportunities = canAccessMemberOnlyFeatures(profile, hasMembership);

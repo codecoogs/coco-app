@@ -46,6 +46,26 @@ const navItems: NavItem[] = [
         ),
     },
     {
+        href: "/dashboard/executive",
+        label: "Executive dashboard",
+        requiredPermission: "view_executive_dashboard",
+        icon: (
+            <svg
+                className="h-5 w-5 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+            >
+                <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 17l6-6 4 4 8-8m0 0h-5m5 0v5"
+                />
+            </svg>
+        ),
+    },
+    {
         href: "/dashboard/point-history",
         label: "My Points",
         icon: (
@@ -190,6 +210,7 @@ const navItems: NavItem[] = [
  */
 const ALL_NAV_HREFS = [
     "/dashboard",
+    "/dashboard/executive",
     "/dashboard/point-history",
     "/dashboard/leaderboard",
     "/dashboard/events",
