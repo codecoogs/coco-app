@@ -22,7 +22,7 @@ import {
 } from "@/app/components/ui/shadcn/table";
 import { FINANCE_ACCOUNT_TYPES, type FinanceAccount, type FinanceAccountType } from "@/lib/types/finance";
 import { useState } from "react";
-import { createFinanceAccount, setFinanceAccountActive } from "./actions";
+import { createFinanceAccount, setFinanceAccountActive, updateFinanceAccount } from "./actions";
 
 type Props = {
   accounts: FinanceAccount[];
@@ -36,28 +36,43 @@ const TYPE_LABELS: Record<FinanceAccountType, string> = {
 };
 
 export function AccountsTab({ accounts, onChange }: Props) {
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [type, setType] = useState<FinanceAccountType>("tdecu_manual");
   const [externalId, setExternalId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleAdd() {
+  function startEdit(a: FinanceAccount) {
+    setEditingId(a.id);
+    setName(a.name);
+    setType(a.type);
+    setExternalId(a.external_id ?? "");
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setName("");
+    setType("tdecu_manual");
+    setExternalId("");
+    setError(null);
+  }
+
+  async function handleSave() {
     if (!name.trim()) return;
     setBusy(true);
     setError(null);
-    const res = await createFinanceAccount({
-      name: name.trim(),
-      type,
-      external_id: externalId.trim() || null,
-    });
+    const input = { name: name.trim(), type, external_id: externalId.trim() || null };
+    const res = editingId
+      ? await updateFinanceAccount(editingId, input)
+      : await createFinanceAccount(input);
     setBusy(false);
     if (res.error) {
       setError(res.error);
       return;
     }
-    setName("");
-    setExternalId("");
+    cancelEdit();
     onChange();
   }
 
@@ -92,7 +107,10 @@ export function AccountsTab({ accounts, onChange }: Props) {
                     {a.is_active ? "Active" : "Inactive"}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right whitespace-nowrap">
+                  <Button variant="ghost" size="sm" onClick={() => startEdit(a)}>
+                    Edit
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -109,7 +127,7 @@ export function AccountsTab({ accounts, onChange }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Add account</CardTitle>
+          <CardTitle>{editingId ? "Edit account" : "Add account"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
@@ -140,9 +158,16 @@ export function AccountsTab({ accounts, onChange }: Props) {
             </div>
           </div>
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-          <Button onClick={handleAdd} disabled={busy}>
-            {busy ? "Adding…" : "Add account"}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={busy}>
+              {busy ? "Saving…" : editingId ? "Save changes" : "Add account"}
+            </Button>
+            {editingId && (
+              <Button variant="outline" onClick={cancelEdit} disabled={busy}>
+                Cancel
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

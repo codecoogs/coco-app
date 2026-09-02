@@ -37,6 +37,7 @@ import {
   setTransactionVerified,
   type LedgerFilters,
 } from "./actions";
+import { ImportTransactionsModal } from "./ImportTransactionsModal";
 import { TransactionFormDialog } from "./TransactionFormDialog";
 
 type Props = {
@@ -68,6 +69,7 @@ export function LedgerTab({
   const [formDialog, setFormDialog] = useState<
     { mode: "create" } | { mode: "edit"; transaction: FinanceTransactionWithLabels } | null
   >(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense");
 
@@ -222,9 +224,14 @@ export function LedgerTab({
         </div>
 
         {canManageFinances && (
-          <Button className="ml-auto" onClick={() => setFormDialog({ mode: "create" })}>
-            Add manual entry
-          </Button>
+          <div className="ml-auto flex gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              Import CSV
+            </Button>
+            <Button onClick={() => setFormDialog({ mode: "create" })}>
+              Add manual entry
+            </Button>
+          </div>
         )}
       </div>
 
@@ -352,6 +359,15 @@ export function LedgerTab({
             setFormDialog(null);
             refresh(filters);
           }}
+        />
+      )}
+
+      {importOpen && (
+        <ImportTransactionsModal
+          accounts={accounts}
+          categories={activeCategories}
+          onClose={() => setImportOpen(false)}
+          onImported={() => refresh(filters)}
         />
       )}
     </div>

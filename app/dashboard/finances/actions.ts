@@ -218,6 +218,52 @@ export async function setTransactionVerified(
   return { error: null };
 }
 
+export type CsvTransactionRow = {
+  occurred_at: string;
+  description: string | null;
+  amount_cents: number;
+  direction: FinanceDirection;
+  category_id: string | null;
+};
+
+/**
+ * Bulk-inserts historical transactions (e.g. a bank statement dump) as
+ * manual, unverified entries against one account. No dedup: unlike Stripe
+ * ingestion or the opportunities CSV import, a bank row has no natural
+ * unique key to check against, so re-importing the same file will create
+ * duplicates - that's on the operator, not something this can detect.
+ */
+export async function importFinanceTransactions(
+  accountId: string,
+  rows: CsvTransactionRow[]
+): Promise<{ inserted: number; error: string | null }> {
+  const auth = await requireManageFinances();
+  if (!auth.ok) return { inserted: 0, error: auth.error };
+  const { supabase, appUserId } = auth;
+
+  if (!accountId) return { inserted: 0, error: "Choose an account." };
+  if (!rows.length) return { inserted: 0, error: "No rows to import." };
+
+  const { error } = await supabase.from("finance_transactions").insert(
+    rows.map((r) => ({
+      account_id: accountId,
+      category_id: r.category_id,
+      direction: r.direction,
+      amount_cents: r.amount_cents,
+      description: r.description,
+      occurred_at: r.occurred_at,
+      member_id: null,
+      sponsor_id: null,
+      source: "manual",
+      created_by: appUserId,
+    }))
+  );
+  if (error) return { inserted: 0, error: error.message };
+
+  revalidatePath(FINANCES_PATH);
+  return { inserted: rows.length, error: null };
+}
+
 // ---------------------------------------------------------------------------
 // Categories (manage_finances)
 // ---------------------------------------------------------------------------
@@ -348,6 +394,23 @@ export async function createFinanceAccount(input: {
   if (!auth.ok) return { error: auth.error };
 
   const { error } = await auth.supabase.from("finance_accounts").insert(input);
+  if (error) return { error: error.message };
+
+  revalidatePath(FINANCES_PATH);
+  return { error: null };
+}
+
+export async function updateFinanceAccount(
+  id: string,
+  input: { name: string; type: FinanceAccountType; external_id: string | null }
+): Promise<{ error: string | null }> {
+  const auth = await requireManageFinanceSources();
+  if (!auth.ok) return { error: auth.error };
+
+  const { error } = await auth.supabase
+    .from("finance_accounts")
+    .update(input)
+    .eq("id", id);
   if (error) return { error: error.message };
 
   revalidatePath(FINANCES_PATH);
