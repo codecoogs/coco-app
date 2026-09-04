@@ -22,8 +22,10 @@ create index if not exists opportunities_website_viewable_idx
   on public.opportunities (website_viewable, is_active);
 
 -- Recreate the public read view to expose the new columns. CREATE OR REPLACE VIEW can
--- only append columns, not reposition existing ones — the new columns go at the end,
--- keeping the original column order/names identical.
+-- only append columns, not reposition or rename existing ones — the new columns go at
+-- the end, after is_internal, keeping every preceding column identical to
+-- 20260828150000_active_opportunities_sort_internal_first. The internal-first ordering
+-- from that migration is preserved.
 create or replace view public.active_opportunities with (security_invoker = on) as
 select
   id,
@@ -46,10 +48,12 @@ select
   source,
   external_id,
   field,
+  linked_form_id,
+  (linked_form_id is not null) as is_internal,
   website_viewable,
   term,
   opens_on,
   closes_on
 from public.opportunities
 where is_active = true and (expires_at is null or expires_at > now())
-order by display_order;
+order by is_internal desc, display_order;
