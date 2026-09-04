@@ -7,6 +7,7 @@ import {
   createTeam,
   deleteTeam,
   getTeamsForManage,
+  setTeamActive,
   uploadTeamImageForManage,
   updateTeam,
   type AcademicYearOption,
@@ -168,6 +169,25 @@ export function TeamsContent({
       setBusy(false);
       if (error) setMessage({ type: "error", text: error });
       else setMessage({ type: "ok", text: "Team deleted." });
+      await reload();
+    },
+    [reload]
+  );
+
+  const handleToggleActive = useCallback(
+    async (id: string, nextActive: boolean) => {
+      setBusy(true);
+      setMessage(null);
+      const { error } = await setTeamActive(id, nextActive);
+      setBusy(false);
+      if (error) {
+        setMessage({ type: "error", text: error });
+        return;
+      }
+      setMessage({
+        type: "ok",
+        text: nextActive ? "Team reactivated." : "Team deactivated.",
+      });
       await reload();
     },
     [reload]
@@ -423,6 +443,9 @@ export function TeamsContent({
                 <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                   Updated
                 </th>
+                <th className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
+                  Status
+                </th>
                 {canManage ? (
                   <th className="bg-muted px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
                     Actions
@@ -434,7 +457,7 @@ export function TeamsContent({
               {teams.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={canManage ? 6 : 5}
+                    colSpan={canManage ? 7 : 6}
                     className="px-4 py-8 text-center text-muted-foreground sm:px-6"
                   >
                     No teams yet.
@@ -458,6 +481,17 @@ export function TeamsContent({
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground sm:px-6">
                       {formatDate(row.updated_at ?? row.created_at)}
                     </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6">
+                      <span
+                        className={
+                          row.is_active
+                            ? "rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-950/50 dark:text-green-300"
+                            : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                        }
+                      >
+                        {row.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
                     {canManage ? (
                       <td className="whitespace-nowrap px-4 py-3 text-right text-sm sm:px-6">
                         <button
@@ -470,6 +504,15 @@ export function TeamsContent({
                           className="font-medium text-blue-600 hover:underline dark:text-blue-400"
                         >
                           Edit
+                        </button>
+                        <span className="text-muted-foreground"> · </span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(row.id, !row.is_active)}
+                          disabled={busy}
+                          className="font-medium text-blue-600 hover:underline disabled:opacity-50 dark:text-blue-400"
+                        >
+                          {row.is_active ? "Deactivate" : "Reactivate"}
                         </button>
                         <span className="text-muted-foreground"> · </span>
                         <button

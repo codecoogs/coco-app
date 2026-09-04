@@ -86,6 +86,7 @@ export type TeamManageRow = {
   team_image_url: string | null;
   academic_year: string | null;
   academic_year_label: string | null;
+  is_active: boolean;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -110,7 +111,7 @@ export async function getTeamsForManage(): Promise<{
   const { data: rows, error } = await admin
     .from("teams")
     .select(
-      "id, name, team_number, description, team_image_url, academic_year, created_at, updated_at"
+      "id, name, team_number, description, team_image_url, academic_year, is_active, created_at, updated_at"
     )
     .order("team_number", { ascending: true })
     .order("name", { ascending: true });
@@ -160,6 +161,7 @@ export async function getTeamsForManage(): Promise<{
       const ay = typeof r.academic_year === "string" ? r.academic_year : null;
       return ay ? yearLabels.get(ay) ?? null : null;
     })(),
+    is_active: r.is_active !== false,
     created_at: typeof r.created_at === "string" ? r.created_at : null,
     updated_at: typeof r.updated_at === "string" ? r.updated_at : null,
   }));
@@ -387,6 +389,42 @@ export async function updateTeam(
       academic_year: updates.academic_year || null,
       updated_by: appUserId,
       updated_at: now,
+    })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidateTeamPages();
+  return { error: null };
+}
+
+/** Soft delete: hides the team from the member-facing directory without losing its data (unlike deleteTeam). */
+export async function setTeamActive(
+  id: string,
+  isActive: boolean
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser?.id) return { error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authUser.id);
+  const denied = assertManageTeams(profile);
+  if (denied) return { error: denied };
+
+  const appUserId = await getCurrentAppUserId(supabase);
+  if (!appUserId) return { error: "Could not resolve your user account." };
+
+  const admin = getServiceRoleClient();
+  if (!admin) return { error: SERVICE_ROLE_ERROR };
+
+  const { error } = await admin
+    .from("teams")
+    .update({
+      is_active: isActive,
+      updated_by: appUserId,
+      updated_at: new Date().toISOString(),
     })
     .eq("id", id);
 

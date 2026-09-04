@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { DashboardNavbar } from "./DashboardNavbar";
 import { DashboardSidebar } from "./DashboardSidebar";
+import { MissingUhIdBanner } from "./MissingUhIdBanner";
 
 type DashboardShellContextValue = {
   mobileSidebarOpen: boolean;
@@ -45,6 +46,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <DashboardSidebar />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <DashboardNavbar />
+          <MissingUhIdBanner />
           <main className="min-h-0 flex-1 overflow-y-auto px-4 py-8 sm:px-6 lg:px-8">
             {children}
           </main>

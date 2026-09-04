@@ -9,6 +9,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useDashboardShellOptional } from "./DashboardShell";
+import { NotificationBell } from "./NotificationBell";
 
 const POSITION_BADGE_COLOR = "#04495d";
 
@@ -36,15 +37,12 @@ function welcomeDisplayName(
   if (fromMember) return fromMember;
 
   const meta = user.user_metadata as Record<string, unknown> | undefined;
-  const mf =
-    typeof meta?.first_name === "string" ? meta.first_name.trim() : "";
-  const ml =
-    typeof meta?.last_name === "string" ? meta.last_name.trim() : "";
+  const mf = typeof meta?.first_name === "string" ? meta.first_name.trim() : "";
+  const ml = typeof meta?.last_name === "string" ? meta.last_name.trim() : "";
   const fromMeta = [mf, ml].filter(Boolean).join(" ");
   if (fromMeta) return fromMeta;
 
-  const full =
-    typeof meta?.full_name === "string" ? meta.full_name.trim() : "";
+  const full = typeof meta?.full_name === "string" ? meta.full_name.trim() : "";
   if (full) return full;
 
   const email = user.email?.trim();
@@ -54,7 +52,7 @@ function welcomeDisplayName(
 }
 
 export function DashboardNavbar() {
-  const { user, profile, memberPublic, loading } = useProfile();
+  const { user, profile, memberPublic, hasActiveMembership, loading } = useProfile();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const shell = useDashboardShellOptional();
@@ -131,6 +129,9 @@ export function DashboardNavbar() {
 
   const positionTitle = profile?.positionTitle?.trim() ?? "";
   const roleName = profile?.roleName?.trim() ?? "";
+  // Officer/exec/admin position badges take priority; fall back to a plain
+  // "Member" badge for anyone with an active membership but no position.
+  const badgeLabel = positionTitle || (hasActiveMembership ? "Member" : "");
 
   return (
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-3 sm:px-6">
@@ -156,13 +157,13 @@ export function DashboardNavbar() {
             />
           </svg>
         </button>
-        {positionTitle ? (
+        {badgeLabel ? (
           <span
             className="inline-flex max-w-52 items-center truncate rounded-full px-2 py-0.5 text-[11px] font-medium text-white sm:max-w-none sm:px-2.5 sm:text-xs"
             style={{ backgroundColor: POSITION_BADGE_COLOR }}
-            title={positionTitle}
+            title={badgeLabel}
           >
-            {positionTitle}
+            {badgeLabel}
           </span>
         ) : (
           <span className="text-xs text-muted-foreground"> </span>
@@ -179,6 +180,7 @@ export function DashboardNavbar() {
         <span className="hidden text-sm text-foreground sm:inline">
           {showWelcomeBack ? "Welcome back" : "Welcome"}, {displayName}!
         </span>
+        <NotificationBell />
         <div className="relative" ref={menuRef}>
           <button
             type="button"
@@ -255,6 +257,14 @@ export function DashboardNavbar() {
                 >
                   Settings
                 </Link>
+                <Link
+                  href="/dashboard/membership"
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-card-foreground hover:bg-muted"
+                >
+                  Memberships
+                </Link>
               </div>
 
               <div className="border-t border-border p-1">
@@ -262,7 +272,7 @@ export function DashboardNavbar() {
                   <button
                     type="submit"
                     role="menuitem"
-                    className="flex w-full items-center justify-start rounded-lg px-3 py-2 text-sm font-medium text-blue-600 hover:bg-muted hover:underline dark:text-blue-400"
+                    className="flex w-full items-center justify-center rounded-lg border border-destructive/80 bg-destructive/40 px-3 py-2 text-sm font-medium text-card-foreground transition hover:bg-destructive/90"
                   >
                     Sign out
                   </button>

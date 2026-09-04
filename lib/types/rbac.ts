@@ -71,6 +71,9 @@ export function isTeamAllowed(profile: UserProfile | null): boolean {
  * - DB may use singular names (e.g. manage_officer); hasPermission() accepts both for officers.
  * - view_events / manage_events: events page (view_any) vs create/edit/cancel.
  * - view_point_categories / manage_point_categories: read vs edit point_categories (RLS).
+ * - view_finances / manage_finances: finance ledger, categories, sponsors, budgets.
+ * - manage_finance_sources: narrower than manage_finances; configuring Stripe/bank accounts only.
+ * - view_executive_dashboard: executive-tier growth dashboard (sign-ups, memberships, form submissions).
  */
 export const PERMISSION_NAMES = [
   "view_officers",
@@ -92,6 +95,10 @@ export const PERMISSION_NAMES = [
   "view_forms",
   "manage_forms",
   "manage_opportunities",
+  "view_finances",
+  "manage_finances",
+  "manage_finance_sources",
+  "view_executive_dashboard",
 ] as const;
 
 export type PermissionName = (typeof PERMISSION_NAMES)[number];
@@ -161,4 +168,34 @@ export function hasAllPermissions(
   if (profile.is_admin) return true;
   const list = profile.permissions ?? [];
   return permissions.every((p) => profileHasPermissionName(list, p));
+}
+
+/**
+ * True if the user holds any staff-level position (officer/exec/intern/admin).
+ * Staff bypass the paid-membership requirement for member-only features
+ * (Opportunities, Teams) and automatic point awards - matches the heuristic
+ * already used to gate the sidebar's Management nav group.
+ */
+export function isStaffRole(profile: UserProfile | null): boolean {
+  if (!profile) return false;
+  if (profile.is_admin) return true;
+
+  const roleText = `${profile.positionTitle ?? ""} ${profile.roleName ?? ""}`.toLowerCase();
+  return (
+    roleText.includes("intern") ||
+    roleText.includes("officer") ||
+    roleText.includes("executive") ||
+    roleText.includes("admin")
+  );
+}
+
+/**
+ * True if the user can access paid-member-only features: staff bypass,
+ * everyone else needs an active membership (see lib/supabase/membership.ts).
+ */
+export function canAccessMemberOnlyFeatures(
+  profile: UserProfile | null,
+  hasActiveMembership: boolean
+): boolean {
+  return isStaffRole(profile) || hasActiveMembership;
 }

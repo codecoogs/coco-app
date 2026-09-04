@@ -1,6 +1,10 @@
 import { MemberOverviewCards } from "@/app/dashboard/components/MemberOverviewCards";
 import { fetchMemberDashboardOverview } from "@/app/dashboard/member-dashboard-data";
+import { fetchUserProfile } from "@/lib/supabase/profile";
 import { createClient } from "@/lib/supabase/server";
+import { hasActiveMembership } from "@/lib/supabase/membership";
+import { canAccessMemberOnlyFeatures, hasPermission } from "@/lib/types/rbac";
+import { redirect } from "next/navigation";
 
 function softCardTone(seed: string) {
   const accent = `color-mix(in oklab, ${seed} 65%, var(--accent) 35%)`;
@@ -21,22 +25,25 @@ export default async function DashboardPage() {
     return null;
   }
 
-  const overview = await fetchMemberDashboardOverview(supabase, {
-    id: user.id,
-    email: user.email,
-  });
+  const profile = await fetchUserProfile(supabase, user.id);
+  if (hasPermission(profile, "view_executive_dashboard")) {
+    redirect("/dashboard/executive");
+  }
+
+  const [overview, hasMembership] = await Promise.all([
+    fetchMemberDashboardOverview(supabase, { id: user.id, email: user.email }),
+    hasActiveMembership(supabase),
+  ]);
+  const canSeeOpportunities = canAccessMemberOnlyFeatures(profile, hasMembership);
   const accountTone = softCardTone("#22d3ee");
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="mt-1 text-muted-foreground">
-          Welcome back. Here&apos;s a snapshot of your membership.
-        </p>
       </div>
 
-      <MemberOverviewCards overview={overview} />
+      <MemberOverviewCards overview={overview} canSeeOpportunities={canSeeOpportunities} />
 
       <section
         className="rounded-xl border bg-card p-6 shadow-sm"

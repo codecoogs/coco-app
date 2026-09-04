@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { hasActiveMembership as checkHasActiveMembership } from "@/lib/supabase/membership";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import type { UserProfile } from "@/lib/types/rbac";
 import type { PermissionName } from "@/lib/types/rbac";
@@ -21,6 +22,7 @@ export type MemberPublicSnapshot = {
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
+  uhId: string | null;
 };
 
 type ProfileContextValue = {
@@ -28,6 +30,8 @@ type ProfileContextValue = {
   profile: UserProfile | null;
   /** First/last name and avatar from public.users for UI (navbar, etc.). */
   memberPublic: MemberPublicSnapshot | null;
+  /** True if the user has a membership row that's active and not past its end date. */
+  hasActiveMembership: boolean;
   loading: boolean;
   error: string | null;
   refetchProfile: () => Promise<void>;
@@ -53,21 +57,24 @@ export function ProfileProvider({
   const [memberPublic, setMemberPublic] = useState<MemberPublicSnapshot | null>(
     null,
   );
+  const [hasActiveMembership, setHasActiveMembership] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadProfile = useCallback(
     async (uid: string) => {
       setError(null);
-      const [p, usersRes] = await Promise.all([
+      const [p, usersRes, hasMembership] = await Promise.all([
         fetchUserProfile(supabase, uid),
         supabase
           .from("users")
-          .select("first_name, last_name, avatar_url")
+          .select("first_name, last_name, avatar_url, uh_id")
           .eq("auth_id", uid)
           .maybeSingle(),
+        checkHasActiveMembership(supabase),
       ]);
       setProfile(p);
+      setHasActiveMembership(hasMembership);
       if (usersRes.error) {
         console.error(
           "Error loading public.users row:",
@@ -79,6 +86,7 @@ export function ProfileProvider({
           first_name: string | null;
           last_name: string | null;
           avatar_url: string | null;
+          uh_id: string | null;
         } | null;
         if (!row) {
           setMemberPublic(null);
@@ -87,6 +95,7 @@ export function ProfileProvider({
             firstName: row.first_name?.trim() ?? "",
             lastName: row.last_name?.trim() ?? "",
             avatarUrl: row.avatar_url?.trim() ? row.avatar_url.trim() : null,
+            uhId: row.uh_id?.trim() ? row.uh_id.trim() : null,
           });
         }
       }
@@ -119,6 +128,7 @@ export function ProfileProvider({
       } else {
         setProfile(null);
         setMemberPublic(null);
+        setHasActiveMembership(false);
       }
       setLoading(false);
     };
@@ -136,6 +146,7 @@ export function ProfileProvider({
       } else {
         setProfile(null);
         setMemberPublic(null);
+        setHasActiveMembership(false);
       }
     });
 
@@ -166,12 +177,13 @@ export function ProfileProvider({
       user,
       profile,
       memberPublic,
+      hasActiveMembership,
       loading,
       error,
       refetchProfile,
       can,
     }),
-    [user, profile, memberPublic, loading, error, refetchProfile, can],
+    [user, profile, memberPublic, hasActiveMembership, loading, error, refetchProfile, can],
   );
 
   return (

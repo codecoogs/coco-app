@@ -74,9 +74,6 @@ export function EventsPageContent({
     <div className="flex flex-col gap-6 lg:gap-5">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Events</h1>
-        <p className="mt-1 text-muted-foreground">
-          Upcoming public events — arrows, dots, or keyboard (← →).
-        </p>
       </div>
 
       {events.length === 0 ? (

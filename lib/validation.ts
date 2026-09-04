@@ -147,3 +147,25 @@ export function validateExpectedGraduation(value: string): {
   }
   return { valid: true };
 }
+
+const UH_ID_REGEX = /^\d{7}$/;
+
+/** Digits only, capped at 7 — for controlled UH ID inputs as the user types. */
+export function sanitizeUhIdInput(input: string): string {
+  return input.replace(/\D/g, "").slice(0, 7);
+}
+
+/**
+ * UH ID: the university's 7-digit student ID, required for CSI
+ * (Center of Student Involvement) org rostering compliance.
+ */
+export function validateUhId(value: string): { valid: boolean; error?: string } {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { valid: false, error: "UH ID is required." };
+  }
+  if (!UH_ID_REGEX.test(trimmed)) {
+    return { valid: false, error: "UH ID must be exactly 7 digits." };
+  }
+  return { valid: true };
+}

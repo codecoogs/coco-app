@@ -16,7 +16,7 @@ export default async function SettingsPage() {
   const { data: row } = await supabase
     .from("users")
     .select(
-      "avatar_url, first_name, last_name, phone, classification, expected_graduation, major, discord, updated",
+      "avatar_url, first_name, last_name, phone, classification, expected_graduation, major, discord, uh_id, updated",
     )
     .eq("auth_id", user.id)
     .maybeSingle();
@@ -31,6 +31,7 @@ export default async function SettingsPage() {
         expected_graduation: string | null;
         major: string | null;
         discord: string | null;
+        uh_id: string | null;
         updated: string | null;
       }
     | null;
@@ -42,9 +43,6 @@ export default async function SettingsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="mt-1 text-muted-foreground">
-          Manage your profile. More options will be available here later.
-        </p>
       </div>
 
       <ProfileAvatarSection
@@ -61,6 +59,7 @@ export default async function SettingsPage() {
           expected_graduation: u?.expected_graduation ?? "",
           major: u?.major ?? null,
           discord: u?.discord ?? null,
+          uh_id: u?.uh_id ?? null,
         }}
       />
       <DiscordLinkSection />

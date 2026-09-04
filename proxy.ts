@@ -20,6 +20,21 @@ function isAuthPath(pathname: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  // Owns its own auth entirely (exchanges the OAuth code and writes the
+  // session cookies itself). Running getUser() here first - before that
+  // exchange happens - finds no session yet; GoTrue's response to that can
+  // write cookie-clearing Set-Cookie headers onto this response, which Next
+  // merges onto the callback route's own redirect afterward. Depending on
+  // header order that can wipe the session /auth/callback just established,
+  // so the very next request to /dashboard finds no user and bounces back
+  // to /login - exactly the "Discord sign-in redirects me back to sign in"
+  // symptom this fixes.
+  if (pathname.startsWith('/auth/callback')) {
+    return NextResponse.next({ request })
+  }
+
   const response = NextResponse.next({ request })
 
   const supabase = createProxySupabaseClient(request, response)
@@ -29,8 +44,6 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const pathname = request.nextUrl.pathname
-
   if (isProtected(pathname) && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
@@ -38,11 +51,6 @@ export async function proxy(request: NextRequest) {
     const redirect = NextResponse.redirect(url)
     forwardSessionCookies(response, redirect)
     return redirect
-  }
-
-  // Let users on reset-password through so they can set a new password after the email link
-  if (pathname === '/reset-password') {
-    return response
   }
 
   if ((pathname === '/' || isAuthPath(pathname)) && user) {
