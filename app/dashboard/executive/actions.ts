@@ -5,6 +5,8 @@ import { fetchUserProfile } from "@/lib/supabase/profile";
 import { getServiceRoleClient } from "@/lib/supabase/service-role";
 import { hasPermission } from "@/lib/types/rbac";
 
+type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
 const SERVICE_ROLE_ERROR =
   "SUPABASE_SERVICE_ROLE_KEY is not set on the server. The executive dashboard needs the service role key to read sign-up data.";
 
@@ -15,11 +17,16 @@ const GROWTH_WEEKS = 10;
 export type DailyPoint = { date: string; count: number };
 export type WeeklyTotalPoint = { date: string; total: number };
 
+/** Accounts whose most recent sign-in falls in the window - a distinct-user
+ * count, not a login count. auth.users keeps only the latest sign-in. */
+export type AuthActivity = { active7d: number; active30d: number };
+
 export type ExecutiveDashboardData = {
   signups: DailyPoint[];
   memberships: DailyPoint[];
   growth: WeeklyTotalPoint[];
   formSubmissions: DailyPoint[];
+  authActivity: AuthActivity | null;
   error: string | null;
 };
 
@@ -72,7 +79,7 @@ function bucketCumulativeWeekly(dates: Date[], weeks = GROWTH_WEEKS): WeeklyTota
 }
 
 async function requireViewExecutiveDashboard(): Promise<
-  { ok: true } | { ok: false; error: string }
+  { ok: true; supabase: ServerSupabaseClient } | { ok: false; error: string }
 > {
   const supabase = await createClient();
   const {
@@ -84,7 +91,7 @@ async function requireViewExecutiveDashboard(): Promise<
   if (!hasPermission(profile, "view_executive_dashboard")) {
     return { ok: false, error: "You do not have permission to view the executive dashboard." };
   }
-  return { ok: true };
+  return { ok: true, supabase };
 }
 
 const EMPTY: ExecutiveDashboardData = {
@@ -92,6 +99,7 @@ const EMPTY: ExecutiveDashboardData = {
   memberships: [],
   growth: [],
   formSubmissions: [],
+  authActivity: null,
   error: null,
 };
 
@@ -109,7 +117,9 @@ export async function getExecutiveDashboardData(): Promise<ExecutiveDashboardDat
   const cutoff = last7DayCutoff();
   const cutoffNaive = cutoff.toISOString().replace("Z", "");
 
-  const [usersRes, allUsersRes, membershipsRes, formResponsesRes] = await Promise.all([
+  // get_auth_activity_stats is SECURITY DEFINER and gates on the caller's own
+  // permission, so it goes through the user's client, not the service role.
+  const [usersRes, allUsersRes, membershipsRes, formResponsesRes, authRes] = await Promise.all([
     admin.from("users").select("created").gte("created", cutoffNaive),
     admin.from("users").select("created").order("created", { ascending: true }).limit(50000),
     admin
@@ -118,6 +128,7 @@ export async function getExecutiveDashboardData(): Promise<ExecutiveDashboardDat
       .gte("created_at", cutoff.toISOString())
       .neq("status", "refunded"),
     admin.from("form_responses").select("submitted_at").gte("submitted_at", cutoff.toISOString()),
+    gate.supabase.rpc("get_auth_activity_stats").single(),
   ]);
 
   const firstError =
@@ -125,7 +136,13 @@ export async function getExecutiveDashboardData(): Promise<ExecutiveDashboardDat
     allUsersRes.error?.message ??
     membershipsRes.error?.message ??
     formResponsesRes.error?.message ??
+    authRes.error?.message ??
     null;
+
+  const authRow = authRes.data as { active_7d: number; active_30d: number } | null;
+  const authActivity = authRow
+    ? { active7d: authRow.active_7d, active30d: authRow.active_30d }
+    : null;
 
   const signups = bucketDaily((usersRes.data ?? []).map((r) => parseNaiveAsUtc(r.created)));
   const growth = bucketCumulativeWeekly(
@@ -138,5 +155,12 @@ export async function getExecutiveDashboardData(): Promise<ExecutiveDashboardDat
     (formResponsesRes.data ?? []).map((r) => new Date(r.submitted_at))
   );
 
-  return { signups, memberships, growth, formSubmissions, error: firstError };
+  return {
+    signups,
+    memberships,
+    growth,
+    formSubmissions,
+    authActivity,
+    error: firstError,
+  };
 }

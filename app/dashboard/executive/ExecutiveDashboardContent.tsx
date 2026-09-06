@@ -21,7 +21,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/app/components/ui/shadcn/chart";
-import type { ExecutiveDashboardData } from "./actions";
+import type { AuthActivity, ExecutiveDashboardData } from "./actions";
 
 const signupsConfig = {
   count: { label: "New sign-ups", color: "var(--chart-1)" },
@@ -73,6 +73,42 @@ function BarChartCard({
             <Bar dataKey={dataKey} fill={`var(--color-${dataKey})`} radius={4} />
           </BarChart>
         </ChartContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SignInActivityCard({ activity }: { activity: AuthActivity | null }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Sign-in activity</CardTitle>
+        <CardDescription>
+          Accounts that have signed in recently. This counts distinct accounts
+          by their most recent sign-in, not the number of logins.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {activity ? (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-3xl font-bold text-foreground">
+                {activity.active7d}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">Last 7 days</p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-foreground">
+                {activity.active30d}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">Last 30 days</p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Sign-in activity is unavailable.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -132,6 +168,8 @@ export function ExecutiveDashboardContent({ data }: { data: ExecutiveDashboardDa
             </ChartContainer>
           </CardContent>
         </Card>
+
+        <SignInActivityCard activity={data.authActivity} />
 
         <BarChartCard
           title="Form submissions"
