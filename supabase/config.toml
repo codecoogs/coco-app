@@ -452,6 +452,14 @@ project_id = "plkogchblccmresvdsvm"
 enabled = true
 sql_paths = ["./seed.sql"]
 
-# TODO: add [remotes.dev.auth] with site_url / additional_redirect_urls once the
-# dev branch has its first Vercel deployment and we know its real alias. Until
-# then dev inherits the local [auth] block, i.e. site_url = localhost:3000.
+# Without this, dev inherits the local [auth] block and its site_url becomes
+# localhost:3000 -- every OAuth callback and email link on the deployed dev
+# site would redirect to a developer machine.
+[remotes.dev.auth]
+site_url = "https://coco-app-git-dev-coco-wizards-projects.vercel.app/dashboard"
+additional_redirect_urls = [
+  "https://coco-app-git-dev-coco-wizards-projects.vercel.app",
+  "https://coco-app-git-dev-coco-wizards-projects.vercel.app/dashboard",
+  "http://localhost:3000",
+  "http://localhost:3000/dashboard",
+]
