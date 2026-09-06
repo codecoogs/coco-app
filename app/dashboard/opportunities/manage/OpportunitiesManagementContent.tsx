@@ -13,6 +13,7 @@ import {
   getOpportunitiesForManage,
   setOpportunityActive,
   setOpportunityNotify,
+  setOpportunityWebsiteViewable,
 } from "../actions";
 import { ImportOpportunitiesModal } from "./ImportOpportunitiesModal";
 import { OpportunityFormModal } from "./OpportunityFormModal";
@@ -134,6 +135,20 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
     [refresh]
   );
 
+  const handleToggleWebsiteViewable = useCallback(
+    async (o: Opportunity) => {
+      setBusy(true);
+      const res = await setOpportunityWebsiteViewable(o.id, !o.website_viewable);
+      setBusy(false);
+      if (res.error) {
+        setMessage({ type: "error", text: res.error });
+        return;
+      }
+      await refresh();
+    },
+    [refresh]
+  );
+
   const handleDelete = useCallback(
     async (o: Opportunity) => {
       if (!confirm(`Delete "${o.title}"? This cannot be undone.`)) return;
@@ -234,7 +249,7 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-          <table className="w-full min-w-[980px] text-sm">
+          <table className="w-full min-w-[1060px] text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="px-4 py-3 font-medium">Title</th>
@@ -244,6 +259,7 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
                 <th className="px-4 py-3 font-medium">Field</th>
                 <th className="px-4 py-3 font-medium">Link</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Website</th>
                 <th className="px-4 py-3 font-medium">Notify</th>
                 <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 font-medium">Actions</th>
@@ -291,6 +307,25 @@ export function OpportunitiesManagementContent({ initialOpportunities }: Props) 
                     >
                       {o.is_active ? "Active" : "Inactive"}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleToggleWebsiteViewable(o)}
+                      title={
+                        o.website_viewable && !o.term
+                          ? "Shown on the website, but no term is set - the card will render a blank application window."
+                          : undefined
+                      }
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium disabled:opacity-50 ${
+                        o.website_viewable
+                          ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {o.website_viewable ? "Shown" : "Hidden"}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <button
