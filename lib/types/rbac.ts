@@ -95,6 +95,7 @@ export const PERMISSION_NAMES = [
   "view_forms",
   "manage_forms",
   "manage_opportunities",
+  "manage_resources",
   "view_finances",
   "manage_finances",
   "manage_finance_sources",

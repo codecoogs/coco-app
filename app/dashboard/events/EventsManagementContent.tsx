@@ -1,5 +1,6 @@
 "use client";
 
+import type { Resource } from "@/lib/types/resources";
 import { compareAsc, isPast, parseISO } from "date-fns";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -15,6 +16,7 @@ import {
 } from "./actions";
 import { AddEventAttendanceModal } from "./AddEventAttendanceModal";
 import { EventFormModal } from "./EventFormModal";
+import { ResourcesTab } from "./resources/ResourcesTab";
 
 function formatWhen(iso: string | null) {
   if (!iso) return "—";
@@ -163,12 +165,16 @@ type Props = {
   initialEvents: EventRow[];
   categories: PointCategoryOption[];
   canManage: boolean;
+  initialResources: Resource[];
+  canManageResources: boolean;
 };
 
 export function EventsManagementContent({
   initialEvents,
   categories,
   canManage,
+  initialResources,
+  canManageResources,
 }: Props) {
   const [events, setEvents] = useState(initialEvents);
   useEffect(() => {
@@ -185,7 +191,9 @@ export function EventsManagementContent({
     { mode: "create" } | { mode: "edit"; event: EventRow } | null
   >(null);
 
-  const [mainTab, setMainTab] = useState<"events" | "attendance">("events");
+  const [mainTab, setMainTab] = useState<
+    "events" | "attendance" | "resources"
+  >("events");
   const [attendanceRows, setAttendanceRows] = useState<
     EventAttendanceBulkRow[] | null
   >(null);
@@ -470,28 +478,45 @@ export function EventsManagementContent({
         >
           Attendance
         </button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-4">
-        {mainTab === "events" && canManage && (
+        {canManageResources && (
           <button
             type="button"
-            onClick={() => setModal({ mode: "create" })}
-            className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-card-foreground hover:bg-muted"
+            role="tab"
+            aria-selected={mainTab === "resources"}
+            onClick={() => setMainTab("resources")}
+            className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+              mainTab === "resources"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            New event
+            Resources
           </button>
         )}
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={hidePast}
-            onChange={(e) => setHidePast(e.target.checked)}
-            className="rounded border-border"
-          />
-          Hide past events
-        </label>
       </div>
+
+      {mainTab !== "resources" && (
+        <div className="flex flex-wrap items-center gap-4">
+          {mainTab === "events" && canManage && (
+            <button
+              type="button"
+              onClick={() => setModal({ mode: "create" })}
+              className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-card-foreground hover:bg-muted"
+            >
+              New event
+            </button>
+          )}
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={hidePast}
+              onChange={(e) => setHidePast(e.target.checked)}
+              className="rounded border-border"
+            />
+            Hide past events
+          </label>
+        </div>
+      )}
 
       {mainTab === "attendance" && attendanceError && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
@@ -1138,6 +1163,10 @@ export function EventsManagementContent({
             </>
           )}
         </section>
+      )}
+
+      {mainTab === "resources" && canManageResources && (
+        <ResourcesTab initialResources={initialResources} />
       )}
 
       {modal?.mode === "create" && (

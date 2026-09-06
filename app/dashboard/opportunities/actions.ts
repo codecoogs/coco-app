@@ -36,7 +36,7 @@ async function requireManageOpportunities(): Promise<
 }
 
 const OPPORTUNITY_COLUMNS =
-  "id, title, description, link_url, linked_form_id, category, icon_url, company_name, location, employment_type, salary, source, external_id, field, is_active, display_order, expires_at, notify_members, notified_at, created_at, updated_at";
+  "id, title, description, link_url, linked_form_id, category, icon_url, company_name, location, employment_type, salary, source, external_id, field, is_active, website_viewable, term, display_order, expires_at, notify_members, notified_at, created_at, updated_at";
 
 /**
  * Fans out a "new opportunity" notification if eligible — see
@@ -207,6 +207,8 @@ export async function createOpportunity(
       salary: input.salary?.trim() || null,
       expires_at: input.expires_at,
       notify_members: input.notify_members,
+      website_viewable: input.website_viewable,
+      term: input.term?.trim() || null,
       source: "manual",
       created_by: gate.appUserId,
     })
@@ -253,6 +255,8 @@ export async function updateOpportunity(
       salary: input.salary?.trim() || null,
       expires_at: input.expires_at,
       notify_members: input.notify_members,
+      website_viewable: input.website_viewable,
+      term: input.term?.trim() || null,
       updated_by: gate.appUserId,
     })
     .eq("id", id);
@@ -302,6 +306,26 @@ export async function setOpportunityNotify(
   await notifyOpportunity(gate.supabase, id);
   revalidatePath("/dashboard/opportunities/manage");
   revalidatePath("/dashboard/opportunities");
+  return { error: null };
+}
+
+/** Flip whether an opportunity is served to the public website. Separate from
+ * is_active so an officer can keep a posting live for members without putting
+ * it on codecoogs.com. */
+export async function setOpportunityWebsiteViewable(
+  id: string,
+  websiteViewable: boolean
+): Promise<{ error: string | null }> {
+  const gate = await requireManageOpportunities();
+  if (!gate.ok) return { error: gate.error };
+
+  const { error } = await gate.supabase
+    .from("opportunities")
+    .update({ website_viewable: websiteViewable, updated_by: gate.appUserId })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/dashboard/opportunities/manage");
   return { error: null };
 }
 
