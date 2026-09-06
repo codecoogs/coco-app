@@ -60,6 +60,10 @@ export type Opportunity = {
   /** Discipline/search-keyword tag from a CSV import (e.g. "Data Science"). Distinct from category. */
   field: string | null;
   is_active: boolean;
+  /** Whether this may appear on codecoogs.com. Distinct from is_active, which is whether it is live in the admin app at all. */
+  website_viewable: boolean;
+  /** Human-readable application window the website shows on the card (e.g. "Spring 2026"). */
+  term: string | null;
   display_order: number;
   expires_at: string | null;
   /** Whether members get a notification when this becomes visible. Off by default for CSV imports. */
@@ -98,6 +102,8 @@ export type OpportunityInput = {
   salary: string | null;
   expires_at: string | null;
   notify_members: boolean;
+  website_viewable: boolean;
+  term: string | null;
 };
 
 /** A form available to link an opportunity to, from list_forms_for_opportunity_linking(). */
