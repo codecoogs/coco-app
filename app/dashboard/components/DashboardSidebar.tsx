@@ -22,6 +22,12 @@ type NavItem = {
     requiredAnyPermissions?: readonly PermissionName[];
     /** If set, only shown to paid members or staff (officers/execs/admins) - see canAccessMemberOnlyFeatures. */
     requiresMemberOrStaff?: boolean;
+    /**
+     * If set, hidden when the user HAS this permission. For links whose page
+     * redirects elsewhere for those users, so the redirect target is not
+     * listed twice under two different names.
+     */
+    hiddenWithPermission?: PermissionName;
     icon: React.ReactNode;
 };
 
@@ -29,6 +35,11 @@ const navItems: NavItem[] = [
     {
         href: "/dashboard",
         label: "Dashboard",
+        // /dashboard redirects straight to /dashboard/executive for anyone
+        // holding this permission (see app/dashboard/page.tsx), so listing
+        // both put one destination in the sidebar twice. Members keep this
+        // link -- it is their only route to the member overview.
+        hiddenWithPermission: "view_executive_dashboard",
         icon: (
             <svg
                 className="h-5 w-5 shrink-0"
@@ -60,7 +71,7 @@ const navItems: NavItem[] = [
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M3 17l6-6 4 4 8-8m0 0h-5m5 0v5"
+                    d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
                 />
             </svg>
         ),
@@ -377,6 +388,9 @@ export function DashboardSidebar() {
     const visibleNavItems = useMemo(
         () =>
             navItems.filter((item) => {
+                if (item.hiddenWithPermission && can(item.hiddenWithPermission)) {
+                    return false;
+                }
                 if (item.requiresMemberOrStaff && !canSeeMemberOnlyNav) {
                     return false;
                 }
