@@ -15,6 +15,11 @@ export type NotificationRow = {
 /** RLS (notifications_select_own) already scopes every query here to the
  * caller's own rows — no explicit user_id filter needed. */
 
+/** How long a notification stays in the panel after being read. Clicking one
+ * dims it rather than removing it outright, so a misclick doesn't lose the
+ * link - it drops out on its own once the window passes. */
+const READ_RETENTION_MS = 24 * 60 * 60 * 1000;
+
 export async function getRecentNotifications(limit = 20): Promise<{
   data: NotificationRow[];
   error: string | null;
@@ -25,9 +30,11 @@ export async function getRecentNotifications(limit = 20): Promise<{
   } = await supabase.auth.getUser();
   if (!user?.id) return { data: [], error: "Not signed in." };
 
+  const readCutoff = new Date(Date.now() - READ_RETENTION_MS).toISOString();
   const { data, error } = await supabase
     .from("notifications")
     .select("id, type, title, body, link, read_at, created_at")
+    .or(`read_at.is.null,read_at.gte.${readCutoff}`)
     .order("created_at", { ascending: false })
     .limit(limit);
 

@@ -2,6 +2,7 @@
 
 import { Dropzone, formatFileSize } from "@/app/components/ui/Dropzone";
 import { createClient } from "@/lib/supabase/client";
+import { safeFileName, uploadWithTimeout } from "@/lib/supabase/upload";
 import {
   createEvent,
   updateEvent,
@@ -73,40 +74,16 @@ export function EventFormModal({
 
   const uploadFlyer = useCallback(
     async (file: File): Promise<string | null> => {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = `flyers/${crypto.randomUUID()}-${safeName}`;
+      const path = `flyers/${crypto.randomUUID()}-${safeFileName(file.name)}`;
 
-      // storage-js has no built-in timeout (unlike functions.invoke) - without
-      // this, a stalled upload leaves the modal on "Saving..." forever with no
-      // error to act on.
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Flyer upload timed out. Check your connection and try again.")),
-          20000,
-        ),
-      );
-
-      let result: { error: { message: string } | null };
-      try {
-        result = await Promise.race([
-          supabase.storage.from("assets").upload(path, file, {
-            cacheControl: "3600",
-            upsert: false,
-          }),
-          timeout,
-        ]);
-      } catch (err) {
-        setMessage({
-          type: "error",
-          text: err instanceof Error ? err.message : "Flyer upload failed.",
-        });
+      const { error } = await uploadWithTimeout(supabase, "assets", path, file, {
+        label: "Flyer upload",
+      });
+      if (error) {
+        setMessage({ type: "error", text: error });
         return null;
       }
 
-      if (result.error) {
-        setMessage({ type: "error", text: result.error.message });
-        return null;
-      }
       const { data } = supabase.storage.from("assets").getPublicUrl(path);
       return data.publicUrl;
     },

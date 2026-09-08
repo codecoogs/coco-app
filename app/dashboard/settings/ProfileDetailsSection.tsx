@@ -16,7 +16,6 @@ export type ProfileDetailsInitial = {
   classification: string;
   expected_graduation: string;
   major: string | null;
-  discord: string | null;
   uh_id: string | null;
 };
 
@@ -171,23 +170,6 @@ export function ProfileDetailsSection({ initial }: Props) {
             Your 7-digit University of Houston student ID, required for CSI
             org rostering.
           </p>
-        </div>
-
-        <div className="sm:col-span-2">
-          <label className="mb-1 block text-sm font-medium text-muted-foreground">
-            Discord
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              value={initial.discord ?? ""}
-              disabled
-              className="w-full flex-1 rounded-lg border border-border bg-muted px-3 py-2 text-foreground disabled:opacity-80"
-              placeholder="Not linked"
-            />
-            <span className="text-xs text-muted-foreground">
-              Use “Link Discord” below to connect your Discord account.
-            </span>
-          </div>
         </div>
 
         <div className="sm:col-span-2">
