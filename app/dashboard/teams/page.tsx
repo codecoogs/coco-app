@@ -1,3 +1,4 @@
+import { MembersOnlyNotice } from "@/app/dashboard/components/MembersOnlyNotice";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import { createClient } from "@/lib/supabase/server";
 import { hasActiveMembership } from "@/lib/supabase/membership";
@@ -27,7 +28,12 @@ export default async function TeamsPage() {
     hasActiveMembership(supabase),
   ]);
   if (!canAccessMemberOnlyFeatures(profile, hasMembership)) {
-    redirect("/dashboard");
+    return (
+      <div className="space-y-8">
+        <h1 className="text-2xl font-bold text-foreground">Teams</h1>
+        <MembersOnlyNotice feature="Teams" />
+      </div>
+    );
   }
 
   const [{ data: teamsRows, error: teamsErr }, { data: tmRows, error: tmErr }, { data: usersRows, error: usersErr }] =

@@ -1,3 +1,4 @@
+import { MembersOnlyNotice } from "@/app/dashboard/components/MembersOnlyNotice";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import { createClient } from "@/lib/supabase/server";
 import { hasActiveMembership } from "@/lib/supabase/membership";
@@ -20,7 +21,12 @@ export default async function MyTeamPage() {
     hasActiveMembership(supabase),
   ]);
   if (!canAccessMemberOnlyFeatures(profile, hasMembership)) {
-    redirect("/dashboard");
+    return (
+      <div className="space-y-8">
+        <h1 className="text-2xl font-bold text-foreground">My team</h1>
+        <MembersOnlyNotice feature="My team" />
+      </div>
+    );
   }
 
   const initial = await getMyTeamView();
