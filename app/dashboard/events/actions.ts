@@ -310,7 +310,14 @@ export async function createEvent(
     flyerUrl: input.flyer_url,
     googleEventId: null,
   });
-  if (syncRes.error) return { error: syncRes.error };
+  // Calendar sync is best-effort. A Google outage or an expired refresh token
+  // must not stop an officer creating an event -- before this, syncGoogleCalendar
+  // ran ahead of the insert and returned early, so any Google failure blocked
+  // event creation entirely. Logged rather than swallowed so a broken credential
+  // is still visible in the runtime logs.
+  if (syncRes.error) {
+    console.error("google-calendar-sync failed on create:", syncRes.error);
+  }
 
   const { error } = await gate.supabase.from("events").insert({
     title: input.title,
@@ -354,7 +361,9 @@ export async function updateEvent(
     flyerUrl: input.flyer_url,
     googleEventId: existing.google_event_id ?? null,
   });
-  if (syncRes.error) return { error: syncRes.error };
+  if (syncRes.error) {
+    console.error("google-calendar-sync failed on update:", syncRes.error);
+  }
 
   const { error } = await gate.supabase
     .from("events")
@@ -367,7 +376,10 @@ export async function updateEvent(
       point_category: input.point_category,
       flyer_url: input.flyer_url,
       is_public: input.is_public,
-      google_event_id: syncRes.google_event_id,
+      // Keep the id we already have when sync failed, so a transient Google
+      // error does not orphan the calendar entry -- nulling it would make the
+      // next successful sync create a duplicate instead of updating.
+      google_event_id: syncRes.google_event_id ?? existing.google_event_id ?? null,
     })
     .eq("id", id);
 
