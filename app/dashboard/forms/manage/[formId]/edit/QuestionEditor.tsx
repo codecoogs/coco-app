@@ -15,8 +15,8 @@ import type { QuestionInput } from "../../../actions";
 
 type Props = {
   question: FormQuestion;
-  onSave: (input: QuestionInput) => Promise<void>;
-  onDelete: () => Promise<void>;
+  onSave: (input: QuestionInput) => void;
+  onDelete: () => void;
   busy: boolean;
 };
 
@@ -37,7 +37,6 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
   const [options, setOptions] = useState<string[]>(
     question.options.length ? question.options.map((o) => o.label) : [""]
   );
-  const [saving, setSaving] = useState(false);
 
   const isOptionBased = OPTION_BASED_TYPES.includes(type);
 
@@ -47,9 +46,8 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    await onSave({
+  const handleSave = () => {
+    onSave({
       type,
       label,
       help_text: helpText || null,
@@ -57,7 +55,6 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
       autofill_source: isOptionBased ? null : autofillSource || null,
       options: options.filter((o) => o.trim()),
     });
-    setSaving(false);
   };
 
   return (
@@ -66,12 +63,12 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
       style={style}
       className="rounded-xl border border-border bg-card p-4 shadow-sm"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="mt-2 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+          className="cursor-grab touch-none self-stretch text-muted-foreground hover:text-foreground active:cursor-grabbing flex items-center"
           aria-label="Drag to reorder"
         >
           ⠿
@@ -193,7 +190,7 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
               <button
                 type="button"
                 onClick={onDelete}
-                disabled={busy || saving}
+                disabled={busy}
                 className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50 dark:text-red-400"
               >
                 Delete
@@ -201,10 +198,10 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={busy || saving || !label.trim()}
+                disabled={busy || !label.trim()}
                 className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
               >
-                {saving ? "Saving…" : "Save"}
+                Save
               </button>
             </div>
           </div>
