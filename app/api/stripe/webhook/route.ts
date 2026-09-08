@@ -101,6 +101,7 @@ export async function POST(req: Request) {
 
 const MEMBERSHIP_EVENT_TYPES = new Set([
   "checkout.session.completed",
+  "checkout.session.expired",
   "payment_intent.payment_failed",
   "payment_intent.succeeded",
   "charge.refunded",
