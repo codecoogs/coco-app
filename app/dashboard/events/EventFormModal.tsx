@@ -1,5 +1,6 @@
 "use client";
 
+import { Dropzone, formatFileSize } from "@/app/components/ui/Dropzone";
 import { createClient } from "@/lib/supabase/client";
 import {
   createEvent,
@@ -55,6 +56,15 @@ export function EventFormModal({
     type: "error" | "ok";
     text: string;
   } | null>(null);
+  const [flyerFile, setFlyerFile] = useState<File | null>(null);
+  const [flyerName, setFlyerName] = useState<string | null>(null);
+  const [flyerSizeLabel, setFlyerSizeLabel] = useState<string | null>(null);
+
+  const onFlyerFileSelected = useCallback((file: File | null) => {
+    setFlyerFile(file);
+    setFlyerName(file?.name ?? null);
+    setFlyerSizeLabel(file ? formatFileSize(file.size) : null);
+  }, []);
 
   const defaultPointCategoryName = useMemo(
     () => pickPointCategoryName(event, categories),
@@ -65,14 +75,36 @@ export function EventFormModal({
     async (file: File): Promise<string | null> => {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `flyers/${crypto.randomUUID()}-${safeName}`;
-      const { error } = await supabase.storage
-        .from("assets")
-        .upload(path, file, {
-          cacheControl: "3600",
-          upsert: false,
+
+      // storage-js has no built-in timeout (unlike functions.invoke) - without
+      // this, a stalled upload leaves the modal on "Saving..." forever with no
+      // error to act on.
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Flyer upload timed out. Check your connection and try again.")),
+          20000,
+        ),
+      );
+
+      let result: { error: { message: string } | null };
+      try {
+        result = await Promise.race([
+          supabase.storage.from("assets").upload(path, file, {
+            cacheControl: "3600",
+            upsert: false,
+          }),
+          timeout,
+        ]);
+      } catch (err) {
+        setMessage({
+          type: "error",
+          text: err instanceof Error ? err.message : "Flyer upload failed.",
         });
-      if (error) {
-        setMessage({ type: "error", text: error.message });
+        return null;
+      }
+
+      if (result.error) {
+        setMessage({ type: "error", text: result.error.message });
         return null;
       }
       const { data } = supabase.storage.from("assets").getPublicUrl(path);
@@ -103,8 +135,6 @@ export function EventFormModal({
     ).value;
     const is_public = (form.elements.namedItem("is_public") as HTMLInputElement)
       .checked;
-    const flyerInput = form.elements.namedItem("flyer") as HTMLInputElement;
-    const flyerFile = flyerInput?.files?.[0];
 
     if (!title) {
       setMessage({ type: "error", text: "Title is required." });
@@ -133,43 +163,42 @@ export function EventFormModal({
     }
 
     setBusy(true);
-    let flyer_url = event?.flyer_url ?? null;
-    if (flyerFile) {
-      const url = await uploadFlyer(flyerFile);
-      if (!url) {
-        setBusy(false);
+    try {
+      let flyer_url = event?.flyer_url ?? null;
+      if (flyerFile) {
+        const url = await uploadFlyer(flyerFile);
+        if (!url) return;
+        flyer_url = url;
+      }
+
+      const payload = {
+        title,
+        description: description || null,
+        location: location || null,
+        start_time,
+        end_time,
+        point_category: cat.name,
+        flyer_url,
+        is_public,
+      };
+
+      const result =
+        mode === "create"
+          ? await createEvent(payload)
+          : event
+            ? await updateEvent(event.id, payload)
+            : { error: "Missing event." };
+
+      if (result.error) {
+        setMessage({ type: "error", text: result.error });
         return;
       }
-      flyer_url = url;
+
+      await onSaved();
+      onClose();
+    } finally {
+      setBusy(false);
     }
-
-    const payload = {
-      title,
-      description: description || null,
-      location: location || null,
-      start_time,
-      end_time,
-      point_category: cat.name,
-      flyer_url,
-      is_public,
-    };
-
-    const result =
-      mode === "create"
-        ? await createEvent(payload)
-        : event
-          ? await updateEvent(event.id, payload)
-          : { error: "Missing event." };
-
-    setBusy(false);
-
-    if (result.error) {
-      setMessage({ type: "error", text: result.error });
-      return;
-    }
-
-    await onSaved();
-    onClose();
   };
 
   if (!categories.length) {
@@ -314,11 +343,14 @@ export function EventFormModal({
             <label className="mb-1 block text-sm font-medium text-muted-foreground">
               Flyer (image)
             </label>
-            <input
-              name="flyer"
-              type="file"
+            <Dropzone
+              id="event-flyer"
               accept="image/jpeg,image/png,image/webp,image/gif"
-              className="w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium"
+              hint="JPEG, PNG, WEBP, or GIF"
+              disabled={busy}
+              fileName={flyerName}
+              fileSizeLabel={flyerSizeLabel}
+              onFileSelected={onFlyerFileSelected}
             />
             {event?.flyer_url ? (
               <p className="mt-1 text-xs text-muted-foreground">
