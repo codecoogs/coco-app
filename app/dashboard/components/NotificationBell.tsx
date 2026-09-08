@@ -138,10 +138,15 @@ export function NotificationBell() {
       </button>
 
       {open && (
+        // The bell is not the last item in the navbar (the avatar menu sits
+        // after it), so an `absolute right-0 w-80` panel starts ~320px left of
+        // the bell and runs off the left edge on a phone. Anchor it to the
+        // viewport below the sm breakpoint instead; max-width can't fix this
+        // because the real constraint is the space left of the bell.
         <div
           role="menu"
           aria-label="Notifications"
-          className="absolute right-0 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-card shadow-lg"
+          className="fixed inset-x-2 top-14 z-50 overflow-hidden rounded-xl border border-border bg-card shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80"
         >
           <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <p className="text-sm font-medium text-card-foreground">Notifications</p>
@@ -172,7 +177,9 @@ export function NotificationBell() {
                   role="menuitem"
                   onClick={() => void handleClickNotification(n)}
                   className={`flex w-full flex-col items-start gap-0.5 border-b border-border px-3 py-2.5 text-left last:border-b-0 hover:bg-muted ${
-                    n.read_at ? "" : "bg-blue-50 dark:bg-blue-950/20"
+                    n.read_at
+                      ? "opacity-60 hover:opacity-100"
+                      : "bg-blue-50 dark:bg-blue-950/20"
                   }`}
                 >
                   <span className="text-sm font-medium text-card-foreground">

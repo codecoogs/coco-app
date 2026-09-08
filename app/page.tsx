@@ -2,7 +2,6 @@
 
 import { SignInModal } from "@/app/components/auth/SignInModal";
 import { SignUpModal } from "@/app/components/auth/SignUpModal";
-import { TeamSignInModal } from "@/app/components/auth/TeamSignInModal";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -43,7 +42,6 @@ function HomePageContent() {
   const modal = searchParams.get("modal");
   const [signInOpen, setSignInOpen] = useState(() => modal === "signin");
   const [signUpOpen, setSignUpOpen] = useState(() => modal === "signup");
-  const [teamSignInOpen, setTeamSignInOpen] = useState(() => modal === "team");
 
   return (
     <>
@@ -84,16 +82,6 @@ function HomePageContent() {
                 priority
               />
             </Link>
-          </div>
-
-          <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
-            <button
-              type="button"
-              onClick={() => setTeamSignInOpen(true)}
-              className="rounded-lg border border-zinc-600 bg-zinc-800/50 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-800 hover:text-white"
-            >
-              Team login
-            </button>
           </div>
 
           <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-5 py-24 sm:px-8 lg:py-14">
@@ -174,12 +162,6 @@ function HomePageContent() {
         onOpenSignIn={() => setSignInOpen(true)}
         next={searchParams.get("next") ?? "/dashboard"}
         fromInvite={searchParams.get("from") === "invite"}
-      />
-      <TeamSignInModal
-        open={teamSignInOpen}
-        onClose={() => setTeamSignInOpen(false)}
-        onOpenSignIn={() => setSignInOpen(true)}
-        next="/dashboard"
       />
     </>
   );

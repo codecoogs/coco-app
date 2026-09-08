@@ -9,10 +9,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Discord (and other) OAuth return URL. exchangeCodeForSession writes chunked
- * session cookies; those must be copied onto the redirect response (same
- * pattern as proxy + forwardSessionCookies) or the browser never stores
- * access/refresh tokens after OAuth.
+ * OAuth return URL. exchangeCodeForSession writes chunked session cookies;
+ * those must be copied onto the redirect response (same pattern as proxy +
+ * forwardSessionCookies) or the browser never stores access/refresh tokens
+ * after OAuth.
+ *
+ * No provider currently routes here - Discord sign-in was removed and this is
+ * the only OAuth entry point. Kept because it is provider-agnostic: adding any
+ * future provider needs this route back, and deleting it buys nothing.
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
@@ -63,15 +67,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Send straight to the executive dashboard in this same response when the
-  // default destination applies, instead of landing on /dashboard and
-  // relying on its own server-side redirect to bounce again. That second
-  // hop is a full extra request back through the proxy (another
-  // getUser() call) moments after this one just minted the session - the
-  // reload-fixes-it flakiness reported for exec accounts right after
-  // Discord sign-in traces to that race window. An explicit next (e.g.
-  // /dashboard/settings from the Discord-link flow in DiscordLinkSection)
-  // is left untouched. /dashboard still redirects on its own for direct
-  // navigation there (sidebar link, bookmark, etc).
+  // default destination applies, instead of landing on /dashboard and relying
+  // on its own server-side redirect to bounce again. That second hop is a full
+  // extra request back through the proxy (another getUser() call) moments
+  // after this one just minted the session - the reload-fixes-it flakiness
+  // reported for exec accounts right after OAuth sign-in traces to that race
+  // window. An explicit next is left untouched. /dashboard still redirects on
+  // its own for direct navigation there (sidebar link, bookmark, etc).
   let finalNext = next;
   if (next === "/dashboard" && exchangeData.user) {
     const profile = await fetchUserProfile(supabase, exchangeData.user.id);

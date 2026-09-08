@@ -3,7 +3,7 @@
 import { downloadCsv } from "@/lib/csv";
 import type { FormQuestion, ResponseRow } from "@/lib/types/forms";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSignedFileUrl } from "../../../actions";
 
 type Props = {
@@ -45,6 +45,16 @@ export function FormResponsesContent({
   loadError,
 }: Props) {
   const [message, setMessage] = useState<string | null>(null);
+  const [openResponseId, setOpenResponseId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openResponseId) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenResponseId(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [openResponseId]);
 
   // Text blocks are messages, not questions - they never collect an answer,
   // so they don't belong as a column here.
@@ -86,6 +96,11 @@ export function FormResponsesContent({
   const fileQuestions = useMemo(
     () => answerableQuestions.filter((q) => q.type === "file_upload"),
     [answerableQuestions]
+  );
+
+  const openResponse = useMemo(
+    () => initialResponses.find((r) => r.id === openResponseId) ?? null,
+    [initialResponses, openResponseId]
   );
 
   return (
@@ -139,7 +154,11 @@ export function FormResponsesContent({
             </thead>
             <tbody>
               {initialResponses.map((r) => (
-                <tr key={r.id} className="border-b border-border last:border-0">
+                <tr
+                  key={r.id}
+                  onClick={() => setOpenResponseId(r.id)}
+                  className="cursor-pointer border-b border-border last:border-0 hover:bg-muted"
+                >
                   <td className="px-4 py-3 text-foreground">
                     {[r.first_name, r.last_name].filter(Boolean).join(" ") || "—"}
                     <div className="text-xs text-muted-foreground">{r.email}</div>
@@ -153,7 +172,10 @@ export function FormResponsesContent({
                         r.answers[q.id]?.filePath ? (
                           <button
                             type="button"
-                            onClick={() => handleViewFile(r.answers[q.id]!.filePath!)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewFile(r.answers[q.id]!.filePath!);
+                            }}
                             className="text-xs font-medium text-foreground hover:underline"
                           >
                             View file
@@ -178,6 +200,70 @@ export function FormResponsesContent({
           File uploads open via a temporary signed link (10 minutes).
         </p>
       )}
+
+      {openResponse ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full response"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setOpenResponseId(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        >
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-card-foreground">
+                  {[openResponse.first_name, openResponse.last_name]
+                    .filter(Boolean)
+                    .join(" ") || "—"}
+                </h3>
+                <p className="text-sm text-muted-foreground">{openResponse.email}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Submitted {new Date(openResponse.submitted_at).toLocaleString()}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpenResponseId(null)}
+                aria-label="Close"
+                className="shrink-0 rounded-md px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                ✕
+              </button>
+            </div>
+
+            <dl className="space-y-3 text-sm">
+              {answerableQuestions.map((q) => {
+                const filePath = openResponse.answers[q.id]?.filePath;
+                return (
+                  <div key={q.id} className="border-t border-border pt-3">
+                    <dt className="font-medium text-muted-foreground">{q.label}</dt>
+                    <dd className="mt-0.5 whitespace-pre-wrap text-card-foreground">
+                      {q.type === "file_upload" ? (
+                        filePath ? (
+                          <button
+                            type="button"
+                            onClick={() => handleViewFile(filePath)}
+                            className="font-medium text-foreground hover:underline"
+                          >
+                            View file
+                          </button>
+                        ) : (
+                          "—"
+                        )
+                      ) : (
+                        answerText(q, openResponse) || "—"
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

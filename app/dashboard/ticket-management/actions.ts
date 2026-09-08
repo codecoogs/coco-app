@@ -10,6 +10,7 @@ import { hasAnyPermission, hasPermission } from "@/lib/types/rbac";
 export type TicketManageRow = {
   id: string;
   title: string;
+  description: string;
   status: string;
   category: string;
   priority: string;
@@ -41,7 +42,7 @@ export async function getTicketsForManage(): Promise<{
   const { data: ticketRows, error: ticketErr } = await admin
     .from("tickets")
     .select(
-      "id, title, status, category, priority, created_on, updated_on, is_active, created_by"
+      "id, title, description, status, category, priority, created_on, updated_on, is_active, created_by"
     )
     .order("created_on", { ascending: false });
 
@@ -83,6 +84,7 @@ export async function getTicketsForManage(): Promise<{
     return {
       id: String(r.id),
       title: String(r.title ?? ""),
+      description: String(r.description ?? ""),
       status: String(r.status ?? ""),
       category: String(r.category ?? "general"),
       priority: String(r.priority ?? "normal"),

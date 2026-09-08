@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { safeFileName, uploadWithTimeout } from "@/lib/supabase/upload";
 import { groupFormPages, isQuestionAnswered, type AnswerValue } from "@/lib/types/forms";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
@@ -44,32 +45,43 @@ export function FormFillContent({ form, initialAnswers, initialResponseId }: Pro
       setMessage(null);
       setUploadingQuestionId(questionId);
 
-      let rid = responseId;
-      if (!rid) {
-        const res = await ensureResponseId(form.id);
-        if (!res.id) {
-          setMessage({ type: "error", text: res.error ?? "Could not start response." });
-          setUploadingQuestionId(null);
+      // try/finally: every exit path has to clear the spinner. Before this, a
+      // throw from ensureResponseId or a stalled upload left "Uploading..." on
+      // screen forever with no error and no way to retry.
+      try {
+        let rid = responseId;
+        if (!rid) {
+          const res = await ensureResponseId(form.id);
+          if (!res.id) {
+            setMessage({ type: "error", text: res.error ?? "Could not start response." });
+            return;
+          }
+          rid = res.id;
+          setResponseId(rid);
+        }
+
+        const path = `${rid}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+        const { error } = await uploadWithTimeout(
+          supabase,
+          "form-uploads",
+          path,
+          file,
+          { label: "File upload" }
+        );
+        if (error) {
+          setMessage({ type: "error", text: error });
           return;
         }
-        rid = res.id;
-        setResponseId(rid);
+
+        handleAnswerChange(questionId, { filePath: path, fileName: file.name });
+      } catch (err) {
+        setMessage({
+          type: "error",
+          text: err instanceof Error ? err.message : "File upload failed.",
+        });
+      } finally {
+        setUploadingQuestionId(null);
       }
-
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = `${rid}/${crypto.randomUUID()}-${safeName}`;
-      const { error } = await supabase.storage
-        .from("form-uploads")
-        .upload(path, file, { cacheControl: "3600", upsert: false });
-
-      setUploadingQuestionId(null);
-
-      if (error) {
-        setMessage({ type: "error", text: error.message });
-        return;
-      }
-
-      handleAnswerChange(questionId, { filePath: path, fileName: file.name });
     },
     [form.id, handleAnswerChange, responseId, supabase]
   );
