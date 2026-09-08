@@ -1,5 +1,6 @@
 import { ThemeScript } from "@/app/components/ThemeScript";
 import { ThemeProvider } from "@/app/contexts/ThemeContext";
+import { getSiteUrl } from "@/lib/site-url";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
@@ -16,10 +17,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl() || "http://localhost:3000"),
   title: "Coco App",
   description: "Coco community dashboard for members.",
-  icons: {
-    icon: "/favicon.ico",
+  manifest: "/manifest.webmanifest",
+  openGraph: {
+    title: "Coco App",
+    description: "Coco community dashboard for members.",
+    siteName: "Coco App",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Coco App",
+    description: "Coco community dashboard for members.",
   },
 };
 
