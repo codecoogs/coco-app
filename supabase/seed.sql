@@ -183,4 +183,26 @@ select
 from ins_semester
 on conflict (id) do update set semester_id = excluded.semester_id, is_active = true;
 
+-- Point categories -----------------------------------------------------------
+-- The ten categories production uses. Without these a freshly reset database
+-- has no way to award points at all, so every local QA run had to hand-enter
+-- them first. name is UNIQUE, so re-running refreshes values rather than
+-- duplicating rows.
+
+insert into public.point_categories (name, points_value, description)
+values
+  ('Competition 2nd Place', 125, 'Rewarded for those who have been able to achieve 2nd place in our Coding Competitions!'),
+  ('Competition 3rd Place', 100, 'Rewarded for those who have been able to achieve 3rd place in our Coding Competitions!'),
+  ('Competition Attendance', 60, 'Participation points for those who go out of their way to attend our Coding Competitions!'),
+  ('Competitions 1st Place', 150, 'Rewarded for those who win 1st place in our Coding Competitions!'),
+  ('General Body Meeting', 50, 'Points are rewarded to all those who join us in our General Meetings. ex. First General Meeting!'),
+  ('Social Attendance', 40, 'Points are rewarded for those who come out to our social events like our Study Socials!'),
+  ('Team Lead', 150, 'Many points are given to those who step up to lead others in creating professional projects over the academic year!'),
+  ('Team Participation', 100, 'Points for all those who actively participate in our team projects!'),
+  ('Team Winning', 200, 'In our Banquet we give out points to those who are able to win our judges over. (Points given to all participating members and leads!)'),
+  ('Workshop Attendance', 40, 'Points are given out to those members who join in on our workshops to learn something new!')
+on conflict (name) do update set
+  points_value = excluded.points_value,
+  description = excluded.description;
+
 select 'QA seed applied — QA Officer position, 2 forms, 11 opportunities, 1 membership plan (60000000-0000-0000-0000-000000000001) ready.' as status;
