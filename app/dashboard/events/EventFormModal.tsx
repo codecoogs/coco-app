@@ -75,14 +75,36 @@ export function EventFormModal({
     async (file: File): Promise<string | null> => {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `flyers/${crypto.randomUUID()}-${safeName}`;
-      const { error } = await supabase.storage
-        .from("assets")
-        .upload(path, file, {
-          cacheControl: "3600",
-          upsert: false,
+
+      // storage-js has no built-in timeout (unlike functions.invoke) - without
+      // this, a stalled upload leaves the modal on "Saving..." forever with no
+      // error to act on.
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Flyer upload timed out. Check your connection and try again.")),
+          20000,
+        ),
+      );
+
+      let result: { error: { message: string } | null };
+      try {
+        result = await Promise.race([
+          supabase.storage.from("assets").upload(path, file, {
+            cacheControl: "3600",
+            upsert: false,
+          }),
+          timeout,
+        ]);
+      } catch (err) {
+        setMessage({
+          type: "error",
+          text: err instanceof Error ? err.message : "Flyer upload failed.",
         });
-      if (error) {
-        setMessage({ type: "error", text: error.message });
+        return null;
+      }
+
+      if (result.error) {
+        setMessage({ type: "error", text: result.error.message });
         return null;
       }
       const { data } = supabase.storage.from("assets").getPublicUrl(path);
@@ -141,28 +163,25 @@ export function EventFormModal({
     }
 
     setBusy(true);
-    let flyer_url = event?.flyer_url ?? null;
-    if (flyerFile) {
-      const url = await uploadFlyer(flyerFile);
-      if (!url) {
-        setBusy(false);
-        return;
-      }
-      flyer_url = url;
-    }
-
-    const payload = {
-      title,
-      description: description || null,
-      location: location || null,
-      start_time,
-      end_time,
-      point_category: cat.name,
-      flyer_url,
-      is_public,
-    };
-
     try {
+      let flyer_url = event?.flyer_url ?? null;
+      if (flyerFile) {
+        const url = await uploadFlyer(flyerFile);
+        if (!url) return;
+        flyer_url = url;
+      }
+
+      const payload = {
+        title,
+        description: description || null,
+        location: location || null,
+        start_time,
+        end_time,
+        point_category: cat.name,
+        flyer_url,
+        is_public,
+      };
+
       const result =
         mode === "create"
           ? await createEvent(payload)
