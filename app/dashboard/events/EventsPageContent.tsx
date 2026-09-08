@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type EventsPublicRow = {
   id: number;
@@ -70,6 +70,25 @@ export function EventsPageContent({
     return () => window.removeEventListener("keydown", onKey);
   }, [go]);
 
+  // Swipe navigation for touch devices, mirroring the Previous/Next buttons.
+  const touchStartX = useRef<number | null>(null);
+  const SWIPE_THRESHOLD_PX = 40;
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const onTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (touchStartX.current === null) return;
+      const delta = e.changedTouches[0].clientX - touchStartX.current;
+      touchStartX.current = null;
+      if (delta <= -SWIPE_THRESHOLD_PX) go(1);
+      else if (delta >= SWIPE_THRESHOLD_PX) go(-1);
+    },
+    [go],
+  );
+
   return (
     <div className="flex flex-col gap-6 lg:gap-5">
       <div>
@@ -92,9 +111,11 @@ export function EventsPageContent({
         <div className="flex w-full flex-col items-center px-4 pb-0 sm:px-6">
           <div className="w-full max-w-sm">
             <article
-              className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg"
+              className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg touch-pan-y"
               aria-roledescription="carousel"
               aria-label="Public events carousel"
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
             >
               {/* Meta on top */}
               <header className="border-b border-border bg-muted/40 px-4 py-4 sm:px-5">

@@ -331,7 +331,7 @@ export async function createEvent(
     point_category: input.point_category,
     flyer_url: input.flyer_url,
     is_public: input.is_public,
-    status: "active",
+    status: "scheduled",
     google_event_id: syncRes.google_event_id,
   });
 
