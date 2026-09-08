@@ -140,6 +140,24 @@ function HomePageContent() {
                   Sign up
                 </button>
               </p>
+
+              <p className="mt-4 text-center text-xs text-zinc-500 sm:text-start">
+                By continuing, you agree to our{" "}
+                <Link
+                  href="/legal/terms-of-service"
+                  className="underline hover:text-zinc-300"
+                >
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/legal/privacy-policy"
+                  className="underline hover:text-zinc-300"
+                >
+                  Privacy Policy
+                </Link>
+                .
+              </p>
             </div>
           </div>
         </div>

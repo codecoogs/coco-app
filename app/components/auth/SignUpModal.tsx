@@ -46,6 +46,7 @@ export function SignUpModal({
   const [expectedGraduation, setExpectedGraduation] = useState("");
   const [uhId, setUhId] = useState("");
   const [major, setMajor] = useState<string>(SIGNUP_MAJOR_OPTIONS[0]);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [message, setMessage] = useState<{
@@ -153,6 +154,13 @@ export function SignUpModal({
       )
     ) {
       setMessage({ type: "error", text: "Please select a major." });
+      return;
+    }
+    if (!agreedToTerms) {
+      setMessage({
+        type: "error",
+        text: "You must agree to the Terms of Service and Privacy Policy.",
+      });
       return;
     }
 
@@ -521,6 +529,40 @@ export function SignUpModal({
             </select>
           </div>
 
+          <div className="flex items-start gap-2">
+            <input
+              id="signup-agree-terms"
+              name="agree_terms"
+              type="checkbox"
+              required
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-blue-600 focus:ring-blue-500"
+            />
+            <label
+              htmlFor="signup-agree-terms"
+              className="text-sm text-zinc-300"
+            >
+              I agree to the{" "}
+              <Link
+                href="/legal/terms-of-service"
+                target="_blank"
+                className="font-medium text-zinc-300 underline hover:text-white"
+              >
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/legal/privacy-policy"
+                target="_blank"
+                className="font-medium text-zinc-300 underline hover:text-white"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </label>
+          </div>
+
           {message && (
             <p
               className={`text-sm ${
@@ -532,7 +574,7 @@ export function SignUpModal({
           )}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !agreedToTerms}
             className="w-full rounded-lg bg-blue-600 py-3 font-medium text-white transition hover:bg-blue-500 disabled:opacity-50"
           >
             {loading
