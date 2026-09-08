@@ -60,29 +60,35 @@ export function FormsManagementContent({ initialForms }: Props) {
   );
 
   const handleStatusChange = useCallback(
-    async (formId: string, status: FormSummary["status"]) => {
-      setBusy(true);
-      const res = await setFormStatus(formId, status);
-      setBusy(false);
-      if (res.error) {
-        setMessage({ type: "error", text: res.error });
-        return;
-      }
-      await refresh();
+    (formId: string, status: FormSummary["status"]) => {
+      setMessage(null);
+      setForms((prev) => prev.map((f) => (f.id === formId ? { ...f, status } : f)));
+
+      void (async () => {
+        const res = await setFormStatus(formId, status);
+        if (res.error) {
+          setMessage({ type: "error", text: res.error });
+          await refresh();
+        }
+      })();
     },
     [refresh]
   );
 
   const handleArchiveToggle = useCallback(
-    async (formId: string, isActive: boolean) => {
-      setBusy(true);
-      const res = await archiveForm(formId, isActive);
-      setBusy(false);
-      if (res.error) {
-        setMessage({ type: "error", text: res.error });
-        return;
-      }
-      await refresh();
+    (formId: string, isActive: boolean) => {
+      setMessage(null);
+      setForms((prev) =>
+        prev.map((f) => (f.id === formId ? { ...f, is_active: isActive } : f))
+      );
+
+      void (async () => {
+        const res = await archiveForm(formId, isActive);
+        if (res.error) {
+          setMessage({ type: "error", text: res.error });
+          await refresh();
+        }
+      })();
     },
     [refresh]
   );
@@ -193,7 +199,6 @@ export function FormsManagementContent({ initialForms }: Props) {
                       {f.status === "draft" && (
                         <button
                           type="button"
-                          disabled={busy}
                           onClick={() => handleStatusChange(f.id, "published")}
                           className="text-green-700 hover:underline dark:text-green-400"
                         >
@@ -203,7 +208,6 @@ export function FormsManagementContent({ initialForms }: Props) {
                       {f.status === "published" && (
                         <button
                           type="button"
-                          disabled={busy}
                           onClick={() => handleStatusChange(f.id, "closed")}
                           className="text-amber-700 hover:underline dark:text-amber-400"
                         >
@@ -213,7 +217,6 @@ export function FormsManagementContent({ initialForms }: Props) {
                       {f.status === "closed" && (
                         <button
                           type="button"
-                          disabled={busy}
                           onClick={() => handleStatusChange(f.id, "published")}
                           className="text-green-700 hover:underline dark:text-green-400"
                         >
@@ -222,7 +225,6 @@ export function FormsManagementContent({ initialForms }: Props) {
                       )}
                       <button
                         type="button"
-                        disabled={busy}
                         onClick={() => handleArchiveToggle(f.id, !f.is_active)}
                         className="text-red-600 hover:underline dark:text-red-400"
                       >

@@ -1,6 +1,7 @@
 /**
  * Types for the forms feature (public.forms, form_questions, form_responses, ...).
- * See supabase/migrations/20260721120000_forms_schema.sql for the source of truth.
+ * See supabase/migrations/20260721120000_forms_schema.sql and
+ * supabase/migrations/20260908010000_form_sections.sql for the source of truth.
  */
 
 export type FormStatus = "draft" | "published" | "closed";
@@ -70,7 +71,22 @@ export type FormQuestion = {
   is_required: boolean;
   order_index: number;
   autofill_source: AutofillSource | null;
+  /** Null means the question sits before any section (the form's first page). */
+  section_id: string | null;
   options: FormQuestionOption[];
+};
+
+/**
+ * A section is a title/description text block that also acts as a page
+ * break (matching Google Forms) - everything from one section up to the
+ * next renders as its own page when filling out the form.
+ */
+export type FormSection = {
+  id: string;
+  form_id: string;
+  title: string;
+  description: string | null;
+  order_index: number;
 };
 
 export type FormSummary = {
@@ -101,6 +117,7 @@ export type FormWithQuestions = {
   role_ids: number[];
   position_ids: number[];
   questions: FormQuestion[];
+  sections: FormSection[];
 };
 
 /** A single answer as edited/submitted in the fill-out UI, keyed by question id. */
