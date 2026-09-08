@@ -17,19 +17,25 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import {
   createQuestion,
+  createSection,
   deleteQuestion,
+  deleteSection,
   getFormForEdit,
-  reorderQuestions,
+  reorderFormItems,
   setFormStatus,
   updateFormAudience,
   updateFormMeta,
   updateQuestion,
+  updateSection,
+  type FormItemRef,
   type PositionOption,
   type QuestionInput,
   type RoleOption,
+  type SectionInput,
 } from "../../../actions";
-import type { FormAudienceType, FormWithQuestions } from "@/lib/types/forms";
+import type { FormAudienceType, FormQuestion, FormSection, FormWithQuestions } from "@/lib/types/forms";
 import { QuestionEditor } from "./QuestionEditor";
+import { SectionEditor } from "./SectionEditor";
 
 type Props = {
   form: FormWithQuestions;
@@ -37,6 +43,10 @@ type Props = {
   positionOptions: PositionOption[];
   audienceError: string | null;
 };
+
+type BuilderItem =
+  | { kind: "question"; data: FormQuestion }
+  | { kind: "section"; data: FormSection };
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground";
@@ -100,76 +110,243 @@ export function FormBuilderContent({
     await refresh();
   }, [form.id, audienceType, roleIds, positionIds, refresh]);
 
-  const handleAddQuestion = useCallback(async () => {
-    setBusy(true);
-    setMessage(null);
-    const res = await createQuestion(form.id, {
+  // Unified, order_index-sorted view of questions + sections (sections double
+  // as page breaks - see supabase/migrations/20260908010000_form_sections.sql).
+  const builderItems = useMemo<BuilderItem[]>(() => {
+    const items: BuilderItem[] = [
+      ...form.questions.map((data) => ({ kind: "question" as const, data })),
+      ...form.sections.map((data) => ({ kind: "section" as const, data })),
+    ];
+    return items.sort((a, b) => a.data.order_index - b.data.order_index);
+  }, [form.questions, form.sections]);
+
+  const itemIds = useMemo(() => builderItems.map((item) => item.data.id), [builderItems]);
+
+  // --- Optimistic mutations: local state updates immediately, the server
+  // call runs in the background, and only a failure triggers a message +
+  // refresh() to reconcile with the server's actual state. ---
+
+  const handleAddQuestion = useCallback(() => {
+    const tempId = `temp-${crypto.randomUUID()}`;
+    const optimisticQuestion: FormQuestion = {
+      id: tempId,
+      form_id: form.id,
       type: "short_answer",
       label: "New question",
       help_text: null,
       is_required: false,
+      order_index: builderItems.length,
       autofill_source: null,
+      section_id: builderItems.length
+        ? [...builderItems].reverse().find((i) => i.kind === "section")?.data.id ?? null
+        : null,
       options: [],
-    });
-    setBusy(false);
-    if (res.error) {
-      setMessage({ type: "error", text: res.error });
-      return;
-    }
-    await refresh();
-  }, [form.id, refresh]);
+    };
+    setForm((prev) => ({ ...prev, questions: [...prev.questions, optimisticQuestion] }));
 
-  const handleSaveQuestion = useCallback(
-    async (questionId: string, input: QuestionInput) => {
-      setBusy(true);
-      const res = await updateQuestion(questionId, input);
-      setBusy(false);
-      if (res.error) {
-        setMessage({ type: "error", text: res.error });
+    void (async () => {
+      const res = await createQuestion(form.id, {
+        type: "short_answer",
+        label: "New question",
+        help_text: null,
+        is_required: false,
+        autofill_source: null,
+        options: [],
+      });
+      if (res.error || !res.id) {
+        setMessage({ type: "error", text: res.error ?? "Could not add question." });
+        await refresh();
         return;
       }
-      await refresh();
+      const realId = res.id;
+      setForm((prev) => ({
+        ...prev,
+        questions: prev.questions.map((q) =>
+          q.id === tempId ? { ...q, id: realId } : q
+        ),
+      }));
+    })();
+  }, [form.id, builderItems, refresh]);
+
+  const handleAddSection = useCallback(() => {
+    const tempId = `temp-${crypto.randomUUID()}`;
+    const optimisticSection: FormSection = {
+      id: tempId,
+      form_id: form.id,
+      title: "New section",
+      description: null,
+      order_index: builderItems.length,
+    };
+    setForm((prev) => ({ ...prev, sections: [...prev.sections, optimisticSection] }));
+
+    void (async () => {
+      const res = await createSection(form.id, { title: "New section", description: null });
+      if (res.error || !res.id) {
+        setMessage({ type: "error", text: res.error ?? "Could not add section." });
+        await refresh();
+        return;
+      }
+      const realId = res.id;
+      setForm((prev) => ({
+        ...prev,
+        sections: prev.sections.map((s) =>
+          s.id === tempId ? { ...s, id: realId } : s
+        ),
+      }));
+    })();
+  }, [form.id, builderItems, refresh]);
+
+  const handleSaveQuestion = useCallback(
+    (questionId: string, input: QuestionInput) => {
+      setForm((prev) => ({
+        ...prev,
+        questions: prev.questions.map((q) =>
+          q.id === questionId
+            ? {
+                ...q,
+                type: input.type,
+                label: input.label,
+                help_text: input.help_text,
+                is_required: input.is_required,
+                autofill_source: input.autofill_source,
+                options: input.options.map((label, idx) => ({
+                  id: `${questionId}-opt-${idx}`,
+                  question_id: questionId,
+                  label,
+                  order_index: idx,
+                })),
+              }
+            : q
+        ),
+      }));
+
+      void (async () => {
+        const res = await updateQuestion(questionId, input);
+        if (res.error) {
+          setMessage({ type: "error", text: res.error });
+          await refresh();
+        }
+      })();
+    },
+    [refresh]
+  );
+
+  const handleSaveSection = useCallback(
+    (sectionId: string, input: SectionInput) => {
+      setForm((prev) => ({
+        ...prev,
+        sections: prev.sections.map((s) =>
+          s.id === sectionId ? { ...s, title: input.title, description: input.description } : s
+        ),
+      }));
+
+      void (async () => {
+        const res = await updateSection(sectionId, input);
+        if (res.error) {
+          setMessage({ type: "error", text: res.error });
+          await refresh();
+        }
+      })();
     },
     [refresh]
   );
 
   const handleDeleteQuestion = useCallback(
-    async (questionId: string) => {
+    (questionId: string) => {
       if (!confirm("Delete this question? This cannot be undone.")) return;
-      setBusy(true);
-      const res = await deleteQuestion(questionId, form.id);
-      setBusy(false);
-      if (res.error) {
-        setMessage({ type: "error", text: res.error });
+      setForm((prev) => ({
+        ...prev,
+        questions: prev.questions.filter((q) => q.id !== questionId),
+      }));
+
+      void (async () => {
+        const res = await deleteQuestion(questionId, form.id);
+        if (res.error) {
+          setMessage({ type: "error", text: res.error });
+          await refresh();
+        }
+      })();
+    },
+    [form.id, refresh]
+  );
+
+  const handleDeleteSection = useCallback(
+    (sectionId: string) => {
+      if (
+        !confirm(
+          "Delete this section? Its questions move to the previous page rather than being deleted."
+        )
+      )
         return;
-      }
-      await refresh();
+      setForm((prev) => ({
+        ...prev,
+        sections: prev.sections.filter((s) => s.id !== sectionId),
+        questions: prev.questions.map((q) =>
+          q.section_id === sectionId ? { ...q, section_id: null } : q
+        ),
+      }));
+
+      void (async () => {
+        const res = await deleteSection(sectionId, form.id);
+        if (res.error) {
+          setMessage({ type: "error", text: res.error });
+          await refresh();
+        }
+      })();
     },
     [form.id, refresh]
   );
 
   const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
+    (event: DragEndEvent) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
 
-      const oldIndex = form.questions.findIndex((q) => q.id === active.id);
-      const newIndex = form.questions.findIndex((q) => q.id === over.id);
+      const oldIndex = builderItems.findIndex((item) => item.data.id === active.id);
+      const newIndex = builderItems.findIndex((item) => item.data.id === over.id);
       if (oldIndex === -1 || newIndex === -1) return;
 
-      const reordered = arrayMove(form.questions, oldIndex, newIndex);
-      setForm((prev) => ({ ...prev, questions: reordered }));
+      const reordered = arrayMove(builderItems, oldIndex, newIndex);
 
-      const res = await reorderQuestions(
-        form.id,
-        reordered.map((q) => q.id)
-      );
-      if (res.error) {
-        setMessage({ type: "error", text: res.error });
-        await refresh();
-      }
+      // Derive each question's section_id from the nearest preceding section
+      // in the new order, mirroring reorderFormItems' server-side logic, so
+      // the local view is correct immediately instead of waiting on refresh().
+      let currentSectionId: string | null = null;
+      const nextQuestions = new Map(form.questions.map((q) => [q.id, q]));
+      const nextSections = new Map(form.sections.map((s) => [s.id, s]));
+      reordered.forEach((item, idx) => {
+        if (item.kind === "section") {
+          currentSectionId = item.data.id;
+          nextSections.set(item.data.id, { ...item.data, order_index: idx });
+        } else {
+          nextQuestions.set(item.data.id, {
+            ...item.data,
+            order_index: idx,
+            section_id: currentSectionId,
+          });
+        }
+      });
+
+      setForm((prev) => ({
+        ...prev,
+        questions: Array.from(nextQuestions.values()),
+        sections: Array.from(nextSections.values()),
+      }));
+
+      const items: FormItemRef[] = reordered.map((item) => ({
+        id: item.data.id,
+        kind: item.kind,
+      }));
+
+      void (async () => {
+        const res = await reorderFormItems(form.id, items);
+        if (res.error) {
+          setMessage({ type: "error", text: res.error });
+          await refresh();
+        }
+      })();
     },
-    [form.id, form.questions, refresh]
+    [form.id, form.questions, form.sections, builderItems, refresh]
   );
 
   const handlePublishToggle = useCallback(async () => {
@@ -183,8 +360,6 @@ export function FormBuilderContent({
     }
     await refresh();
   }, [form.id, form.status, refresh]);
-
-  const questionIds = useMemo(() => form.questions.map((q) => q.id), [form.questions]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -344,17 +519,25 @@ export function FormBuilderContent({
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-foreground">Questions</h2>
-          <button
-            type="button"
-            onClick={handleAddQuestion}
-            disabled={busy}
-            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
-          >
-            Add question
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleAddSection}
+              className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-card-foreground hover:bg-muted"
+            >
+              Add section
+            </button>
+            <button
+              type="button"
+              onClick={handleAddQuestion}
+              className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-card-foreground hover:bg-muted"
+            >
+              Add question
+            </button>
+          </div>
         </div>
 
-        {!form.questions.length ? (
+        {!builderItems.length ? (
           <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
             No questions yet. Add one to get started.
           </div>
@@ -364,17 +547,26 @@ export function FormBuilderContent({
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <SortableContext items={questionIds} strategy={verticalListSortingStrategy}>
+            <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
               <div className="space-y-3">
-                {form.questions.map((q) => (
-                  <QuestionEditor
-                    key={q.id}
-                    question={q}
-                    busy={busy}
-                    onSave={(input) => handleSaveQuestion(q.id, input)}
-                    onDelete={() => handleDeleteQuestion(q.id)}
-                  />
-                ))}
+                {builderItems.map((item) =>
+                  item.kind === "section" ? (
+                    <SectionEditor
+                      key={item.data.id}
+                      section={item.data}
+                      onSave={(input) => handleSaveSection(item.data.id, input)}
+                      onDelete={() => handleDeleteSection(item.data.id)}
+                    />
+                  ) : (
+                    <QuestionEditor
+                      key={item.data.id}
+                      question={item.data}
+                      busy={busy}
+                      onSave={(input) => handleSaveQuestion(item.data.id, input)}
+                      onDelete={() => handleDeleteQuestion(item.data.id)}
+                    />
+                  )
+                )}
               </div>
             </SortableContext>
           </DndContext>
