@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import { hasPermission } from "@/lib/types/rbac";
 import { isMembershipCurrent, type MembershipStatus } from "@/lib/types/membership";
-import { MembershipsContent } from "./MembershipsContent";
+import { getPayments } from "./actions";
+import { MembershipsPageContent } from "./MembershipsPageContent";
 import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
@@ -166,6 +167,8 @@ export default async function MembershipsPage() {
       e instanceof Error ? e.message : "Failed to load users with payment info.";
   }
 
+  const paymentsRes = await getPayments();
+
   return (
     <div className="space-y-8">
       <div>
@@ -189,7 +192,11 @@ export default async function MembershipsPage() {
           {error}
         </div>
       ) : (
-        <MembershipsContent users={users} />
+        <MembershipsPageContent
+          users={users}
+          initialPayments={paymentsRes.data}
+          paymentsError={paymentsRes.error}
+        />
       )}
     </div>
   );
