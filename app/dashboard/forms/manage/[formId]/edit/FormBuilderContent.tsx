@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { Dropzone, formatFileSize } from "@/app/components/ui/Dropzone";
+import { UploadProgressBar } from "@/app/components/ui/UploadProgressBar";
 import { createClient } from "@/lib/supabase/client";
 import {
   createQuestion,
@@ -35,10 +36,26 @@ import {
   type RoleOption,
   type SectionInput,
 } from "../../../actions";
-import { uploadFormBanner } from "../../../uploadBanner";
+import { uploadFormBanner } from "../../../uploadFormImage";
 import type { FormAudienceType, FormQuestion, FormSection, FormWithQuestions } from "@/lib/types/forms";
 import { QuestionEditor } from "./QuestionEditor";
 import { SectionEditor } from "./SectionEditor";
+
+/** Blue when there are unsaved changes to persist, gray otherwise. */
+function saveButtonClass(dirty: boolean) {
+  return `rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50 ${
+    dirty
+      ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700"
+      : "border-border bg-background text-foreground hover:bg-muted"
+  }`;
+}
+
+function sameIds(a: number[], b: number[]) {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((id, i) => id === sortedB[i]);
+}
 
 type Props = {
   form: FormWithQuestions;
@@ -63,12 +80,23 @@ export function FormBuilderContent({
   const [form, setForm] = useState(initialForm);
   const [title, setTitle] = useState(initialForm.title);
   const [description, setDescription] = useState(initialForm.description ?? "");
+  const [savedMeta, setSavedMeta] = useState({
+    title: initialForm.title,
+    description: initialForm.description ?? "",
+  });
   const [audienceType, setAudienceType] = useState<FormAudienceType>(
     initialForm.audience_type
   );
   const [roleIds, setRoleIds] = useState<number[]>(initialForm.role_ids);
   const [positionIds, setPositionIds] = useState<number[]>(initialForm.position_ids);
+  const [savedAudience, setSavedAudience] = useState({
+    audienceType: initialForm.audience_type,
+    roleIds: initialForm.role_ids,
+    positionIds: initialForm.position_ids,
+  });
   const [busy, setBusy] = useState(false);
+  const [metaSaving, setMetaSaving] = useState(false);
+  const [audienceSaving, setAudienceSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(
     null
   );
@@ -77,12 +105,20 @@ export function FormBuilderContent({
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerName, setBannerName] = useState<string | null>(null);
   const [bannerSizeLabel, setBannerSizeLabel] = useState<string | null>(null);
+  const [bannerUploading, setBannerUploading] = useState(false);
 
   const onBannerFileSelected = useCallback((file: File | null) => {
     setBannerFile(file);
     setBannerName(file?.name ?? null);
     setBannerSizeLabel(file ? formatFileSize(file.size) : null);
   }, []);
+
+  const isMetaDirty =
+    title !== savedMeta.title || description !== savedMeta.description || bannerFile !== null;
+  const isAudienceDirty =
+    audienceType !== savedAudience.audienceType ||
+    !sameIds(roleIds, savedAudience.roleIds) ||
+    !sameIds(positionIds, savedAudience.positionIds);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -97,13 +133,17 @@ export function FormBuilderContent({
 
   const handleSaveMeta = useCallback(async () => {
     setBusy(true);
+    setMetaSaving(true);
     setMessage(null);
 
     let banner_url = form.banner_url;
     if (bannerFile) {
+      setBannerUploading(true);
       const uploaded = await uploadFormBanner(supabase, bannerFile);
+      setBannerUploading(false);
       if (uploaded.error) {
         setBusy(false);
+        setMetaSaving(false);
         setMessage({ type: "error", text: uploaded.error });
         return;
       }
@@ -112,17 +152,20 @@ export function FormBuilderContent({
 
     const res = await updateFormMeta(form.id, { title, description, banner_url });
     setBusy(false);
+    setMetaSaving(false);
     if (res.error) {
       setMessage({ type: "error", text: res.error });
       return;
     }
     setForm((prev) => ({ ...prev, banner_url }));
+    setSavedMeta({ title, description });
     onBannerFileSelected(null);
     setMessage({ type: "ok", text: "Saved." });
   }, [form.id, form.banner_url, title, description, bannerFile, supabase, onBannerFileSelected]);
 
   const handleSaveAudience = useCallback(async () => {
     setBusy(true);
+    setAudienceSaving(true);
     setMessage(null);
     const res = await updateFormAudience(form.id, {
       audience_type: audienceType,
@@ -130,10 +173,12 @@ export function FormBuilderContent({
       position_ids: positionIds,
     });
     setBusy(false);
+    setAudienceSaving(false);
     if (res.error) {
       setMessage({ type: "error", text: res.error });
       return;
     }
+    setSavedAudience({ audienceType, roleIds, positionIds });
     setMessage({ type: "ok", text: "Audience updated." });
     await refresh();
   }, [form.id, audienceType, roleIds, positionIds, refresh]);
@@ -154,47 +199,62 @@ export function FormBuilderContent({
   // call runs in the background, and only a failure triggers a message +
   // refresh() to reconcile with the server's actual state. ---
 
-  const handleAddQuestion = useCallback(() => {
-    const tempId = `temp-${crypto.randomUUID()}`;
-    const optimisticQuestion: FormQuestion = {
-      id: tempId,
-      form_id: form.id,
-      type: "short_answer",
-      label: "New question",
-      help_text: null,
-      is_required: false,
-      order_index: builderItems.length,
-      autofill_source: null,
-      section_id: builderItems.length
-        ? [...builderItems].reverse().find((i) => i.kind === "section")?.data.id ?? null
-        : null,
-      options: [],
-    };
-    setForm((prev) => ({ ...prev, questions: [...prev.questions, optimisticQuestion] }));
-
-    void (async () => {
-      const res = await createQuestion(form.id, {
-        type: "short_answer",
-        label: "New question",
+  const addQuestion = useCallback(
+    (type: FormQuestion["type"], label: string) => {
+      const tempId = `temp-${crypto.randomUUID()}`;
+      const optimisticQuestion: FormQuestion = {
+        id: tempId,
+        form_id: form.id,
+        type,
+        label,
         help_text: null,
         is_required: false,
+        order_index: builderItems.length,
         autofill_source: null,
+        section_id: builderItems.length
+          ? [...builderItems].reverse().find((i) => i.kind === "section")?.data.id ?? null
+          : null,
+        image_url: null,
         options: [],
-      });
-      if (res.error || !res.id) {
-        setMessage({ type: "error", text: res.error ?? "Could not add question." });
-        await refresh();
-        return;
-      }
-      const realId = res.id;
-      setForm((prev) => ({
-        ...prev,
-        questions: prev.questions.map((q) =>
-          q.id === tempId ? { ...q, id: realId } : q
-        ),
-      }));
-    })();
-  }, [form.id, builderItems, refresh]);
+      };
+      setForm((prev) => ({ ...prev, questions: [...prev.questions, optimisticQuestion] }));
+
+      void (async () => {
+        const res = await createQuestion(form.id, {
+          type,
+          label,
+          help_text: null,
+          is_required: false,
+          autofill_source: null,
+          options: [],
+          image_url: null,
+        });
+        if (res.error || !res.id) {
+          setMessage({ type: "error", text: res.error ?? "Could not add question." });
+          await refresh();
+          return;
+        }
+        const realId = res.id;
+        setForm((prev) => ({
+          ...prev,
+          questions: prev.questions.map((q) =>
+            q.id === tempId ? { ...q, id: realId } : q
+          ),
+        }));
+      })();
+    },
+    [form.id, builderItems, refresh]
+  );
+
+  const handleAddQuestion = useCallback(
+    () => addQuestion("short_answer", "New question"),
+    [addQuestion]
+  );
+
+  const handleAddTextBlock = useCallback(
+    () => addQuestion("text_block", "New message"),
+    [addQuestion]
+  );
 
   const handleAddSection = useCallback(() => {
     const tempId = `temp-${crypto.randomUUID()}`;
@@ -230,7 +290,7 @@ export function FormBuilderContent({
   }, [form.id, builderItems, refresh]);
 
   const handleSaveQuestion = useCallback(
-    (questionId: string, input: QuestionInput) => {
+    async (questionId: string, input: QuestionInput) => {
       setForm((prev) => ({
         ...prev,
         questions: prev.questions.map((q) =>
@@ -242,6 +302,7 @@ export function FormBuilderContent({
                 help_text: input.help_text,
                 is_required: input.is_required,
                 autofill_source: input.autofill_source,
+                image_url: input.image_url,
                 options: input.options.map((label, idx) => ({
                   id: `${questionId}-opt-${idx}`,
                   question_id: questionId,
@@ -253,19 +314,17 @@ export function FormBuilderContent({
         ),
       }));
 
-      void (async () => {
-        const res = await updateQuestion(questionId, input);
-        if (res.error) {
-          setMessage({ type: "error", text: res.error });
-          await refresh();
-        }
-      })();
+      const res = await updateQuestion(questionId, input);
+      if (res.error) {
+        setMessage({ type: "error", text: res.error });
+        await refresh();
+      }
     },
     [refresh]
   );
 
   const handleSaveSection = useCallback(
-    (sectionId: string, input: SectionInput) => {
+    async (sectionId: string, input: SectionInput) => {
       setForm((prev) => ({
         ...prev,
         sections: prev.sections.map((s) =>
@@ -280,13 +339,11 @@ export function FormBuilderContent({
         ),
       }));
 
-      void (async () => {
-        const res = await updateSection(sectionId, input);
-        if (res.error) {
-          setMessage({ type: "error", text: res.error });
-          await refresh();
-        }
-      })();
+      const res = await updateSection(sectionId, input);
+      if (res.error) {
+        setMessage({ type: "error", text: res.error });
+        await refresh();
+      }
     },
     [refresh]
   );
@@ -480,34 +537,34 @@ export function FormBuilderContent({
             id="form-banner"
             accept="image/jpeg,image/png,image/webp,image/gif"
             hint="JPEG, PNG, WEBP, or GIF"
-            disabled={busy}
+            disabled={bannerUploading}
             fileName={bannerName}
             fileSizeLabel={bannerSizeLabel}
             onFileSelected={onBannerFileSelected}
           />
-          {form.banner_url && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Current:{" "}
-              <a
-                href={form.banner_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline dark:text-blue-400"
-              >
-                View banner
-              </a>
-              . Upload a new file to replace. Shown on every page, unless a section has its
-              own banner.
-            </p>
+          <UploadProgressBar active={bannerUploading} />
+          {form.banner_url && !bannerFile && (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- Banner URLs come from storage / external hosts */}
+              <img
+                src={form.banner_url}
+                alt=""
+                className="mt-2 max-h-40 w-full rounded-lg border border-border object-cover"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Shown on every page, unless a section has its own banner. Upload a new file
+                to replace.
+              </p>
+            </>
           )}
         </div>
         <button
           type="button"
           onClick={handleSaveMeta}
-          disabled={busy || !title.trim()}
-          className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
+          disabled={busy || metaSaving || !isMetaDirty || !title.trim()}
+          className={saveButtonClass(isMetaDirty)}
         >
-          {busy ? "Saving…" : "Save details"}
+          {metaSaving ? "Saving…" : "Save details"}
         </button>
       </section>
 
@@ -578,32 +635,21 @@ export function FormBuilderContent({
         <button
           type="button"
           onClick={handleSaveAudience}
-          disabled={busy}
-          className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
+          disabled={busy || audienceSaving || !isAudienceDirty}
+          className={saveButtonClass(isAudienceDirty)}
         >
-          Save audience
+          {audienceSaving ? "Saving…" : "Save audience"}
         </button>
       </section>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-foreground">Questions</h2>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleAddSection}
-              className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-card-foreground hover:bg-muted"
-            >
-              Add section
-            </button>
-            <button
-              type="button"
-              onClick={handleAddQuestion}
-              className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-card-foreground hover:bg-muted"
-            >
-              Add question
-            </button>
-          </div>
+          <AddItemButtons
+            onAddSection={handleAddSection}
+            onAddQuestion={handleAddQuestion}
+            onAddTextBlock={handleAddTextBlock}
+          />
         </div>
 
         {!builderItems.length ? (
@@ -640,7 +686,54 @@ export function FormBuilderContent({
             </SortableContext>
           </DndContext>
         )}
+
+        {/* Repeated at the bottom so adding to a long form doesn't require scrolling back up. */}
+        {builderItems.length > 3 && (
+          <div className="flex justify-end">
+            <AddItemButtons
+              onAddSection={handleAddSection}
+              onAddQuestion={handleAddQuestion}
+              onAddTextBlock={handleAddTextBlock}
+            />
+          </div>
+        )}
       </section>
+    </div>
+  );
+}
+
+function AddItemButtons({
+  onAddSection,
+  onAddQuestion,
+  onAddTextBlock,
+}: {
+  onAddSection: () => void;
+  onAddQuestion: () => void;
+  onAddTextBlock: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={onAddSection}
+        className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-card-foreground hover:bg-muted"
+      >
+        Add section
+      </button>
+      <button
+        type="button"
+        onClick={onAddQuestion}
+        className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-card-foreground hover:bg-muted"
+      >
+        Add question
+      </button>
+      <button
+        type="button"
+        onClick={onAddTextBlock}
+        className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-card-foreground hover:bg-muted"
+      >
+        Add message
+      </button>
     </div>
   );
 }

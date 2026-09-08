@@ -3,20 +3,35 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Dropzone, formatFileSize } from "@/app/components/ui/Dropzone";
+import { UploadProgressBar } from "@/app/components/ui/UploadProgressBar";
 import { createClient } from "@/lib/supabase/client";
 import type { FormSection } from "@/lib/types/forms";
 import { useCallback, useMemo, useState } from "react";
 import type { SectionInput } from "../../../actions";
-import { uploadFormBanner } from "../../../uploadBanner";
+import { uploadFormBanner } from "../../../uploadFormImage";
 
 type Props = {
   section: FormSection;
-  onSave: (input: SectionInput) => void;
+  onSave: (input: SectionInput) => Promise<void>;
   onDelete: () => void;
 };
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground";
+
+type Snapshot = {
+  title: string;
+  description: string;
+  bannerUrl: string | null;
+};
+
+function toSnapshot(section: FormSection): Snapshot {
+  return {
+    title: section.title,
+    description: section.description ?? "",
+    bannerUrl: section.banner_url,
+  };
+}
 
 /** A title/description text block that also marks a page break - see form_sections in supabase/migrations/20260908010000_form_sections.sql. */
 export function SectionEditor({ section, onSave, onDelete }: Props) {
@@ -24,13 +39,15 @@ export function SectionEditor({ section, onSave, onDelete }: Props) {
     useSortable({ id: section.id });
 
   const supabase = useMemo(() => createClient(), []);
-  const [title, setTitle] = useState(section.title);
-  const [description, setDescription] = useState(section.description ?? "");
+  const [saved, setSaved] = useState<Snapshot>(() => toSnapshot(section));
+  const [title, setTitle] = useState(saved.title);
+  const [description, setDescription] = useState(saved.description);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerName, setBannerName] = useState<string | null>(null);
   const [bannerSizeLabel, setBannerSizeLabel] = useState<string | null>(null);
-  const [bannerBusy, setBannerBusy] = useState(false);
-  const [bannerError, setBannerError] = useState<string | null>(null);
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const onBannerFileSelected = useCallback((file: File | null) => {
     setBannerFile(file);
@@ -44,20 +61,30 @@ export function SectionEditor({ section, onSave, onDelete }: Props) {
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const isDirty =
+    title !== saved.title || description !== saved.description || bannerFile !== null;
+
   const handleSave = async () => {
-    setBannerError(null);
-    let banner_url = section.banner_url;
+    setError(null);
+    setSaving(true);
+
+    let banner_url = saved.bannerUrl;
     if (bannerFile) {
-      setBannerBusy(true);
+      setBannerUploading(true);
       const res = await uploadFormBanner(supabase, bannerFile);
-      setBannerBusy(false);
+      setBannerUploading(false);
       if (res.error) {
-        setBannerError(res.error);
+        setSaving(false);
+        setError(res.error);
         return;
       }
       banner_url = res.url;
     }
-    onSave({ title, description: description || null, banner_url });
+
+    await onSave({ title, description: description || null, banner_url });
+    setSaving(false);
+    setSaved({ title, description, bannerUrl: banner_url });
+    onBannerFileSelected(null);
   };
 
   return (
@@ -111,27 +138,22 @@ export function SectionEditor({ section, onSave, onDelete }: Props) {
               id={`section-banner-${section.id}`}
               accept="image/jpeg,image/png,image/webp,image/gif"
               hint="JPEG, PNG, WEBP, or GIF"
-              disabled={bannerBusy}
+              disabled={bannerUploading}
               fileName={bannerName}
               fileSizeLabel={bannerSizeLabel}
               onFileSelected={onBannerFileSelected}
             />
-            {section.banner_url && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Current:{" "}
-                <a
-                  href={section.banner_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 underline dark:text-blue-400"
-                >
-                  View banner
-                </a>
-                . Upload a new file to replace.
-              </p>
+            <UploadProgressBar active={bannerUploading} />
+            {saved.bannerUrl && !bannerFile && (
+              // eslint-disable-next-line @next/next/no-img-element -- Banner URLs come from storage / external hosts
+              <img
+                src={saved.bannerUrl}
+                alt=""
+                className="mt-2 max-h-32 w-full rounded-lg border border-border object-cover"
+              />
             )}
-            {bannerError && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{bannerError}</p>
+            {error && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>
             )}
           </div>
 
@@ -146,10 +168,14 @@ export function SectionEditor({ section, onSave, onDelete }: Props) {
             <button
               type="button"
               onClick={handleSave}
-              disabled={!title.trim() || bannerBusy}
-              className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
+              disabled={!title.trim() || saving || !isDirty}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+                isDirty
+                  ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700"
+                  : "border-border bg-background text-foreground hover:bg-muted"
+              }`}
             >
-              {bannerBusy ? "Uploading…" : "Save"}
+              {saving ? "Saving…" : "Save"}
             </button>
           </div>
         </div>

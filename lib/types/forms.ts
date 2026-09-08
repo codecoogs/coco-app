@@ -1,8 +1,9 @@
 /**
  * Types for the forms feature (public.forms, form_questions, form_responses, ...).
  * See supabase/migrations/20260721120000_forms_schema.sql,
- * supabase/migrations/20260908010000_form_sections.sql and
- * supabase/migrations/20260909000000_form_banners_and_text_blocks.sql for the
+ * supabase/migrations/20260908010000_form_sections.sql,
+ * supabase/migrations/20260909000000_form_banners_and_text_blocks.sql and
+ * supabase/migrations/20260910000000_form_question_images.sql for the
  * source of truth.
  */
 
@@ -20,6 +21,11 @@ export type QuestionType =
   | "file_upload"
   | "text_block";
 
+/**
+ * "text_block" is deliberately excluded here - it's added via its own "Add
+ * message" button in the builder rather than the Type dropdown, since it
+ * isn't really a question (see QuestionEditor's isTextBlock handling).
+ */
 export const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: "short_answer", label: "Short answer" },
   { value: "paragraph", label: "Paragraph" },
@@ -28,7 +34,6 @@ export const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: "dropdown", label: "Dropdown" },
   { value: "date", label: "Date" },
   { value: "file_upload", label: "File upload" },
-  { value: "text_block", label: "Text block / message" },
 ];
 
 /** Question types that need a list of options in the builder. */
@@ -77,6 +82,8 @@ export type FormQuestion = {
   autofill_source: AutofillSource | null;
   /** Null means the question sits before any section (the form's first page). */
   section_id: string | null;
+  /** Only meaningful for type "text_block" - an optional image under the message. */
+  image_url: string | null;
   options: FormQuestionOption[];
 };
 
