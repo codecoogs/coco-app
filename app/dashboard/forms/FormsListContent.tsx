@@ -35,7 +35,7 @@ export function FormsListContent({ forms }: Props) {
             </span>
           </div>
           {f.description && (
-            <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
+            <p className="mt-2 line-clamp-3 whitespace-pre-line text-sm text-muted-foreground">
               {f.description}
             </p>
           )}

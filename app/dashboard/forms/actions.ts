@@ -312,7 +312,7 @@ export async function getFormForEdit(formId: string): Promise<{
     gate.supabase
       .from("form_questions")
       .select(
-        "id, form_id, type, label, help_text, is_required, order_index, autofill_source, section_id, form_question_options(id, question_id, label, order_index)"
+        "id, form_id, type, label, help_text, is_required, order_index, autofill_source, section_id, image_url, form_question_options(id, question_id, label, order_index)"
       )
       .eq("form_id", formId)
       .order("order_index", { ascending: true }),
@@ -343,6 +343,7 @@ export async function getFormForEdit(formId: string): Promise<{
     order_index: q.order_index,
     autofill_source: q.autofill_source as AutofillSource | null,
     section_id: q.section_id,
+    image_url: q.image_url,
     options: ((q.form_question_options ?? []) as FormQuestionOption[])
       .slice()
       .sort((a, b) => a.order_index - b.order_index),
@@ -375,6 +376,8 @@ export type QuestionInput = {
   is_required: boolean;
   autofill_source: AutofillSource | null;
   options: string[];
+  /** Only meaningful for type "text_block". */
+  image_url: string | null;
 };
 
 export async function createQuestion(
@@ -419,6 +422,7 @@ export async function createQuestion(
       help_text: input.help_text?.trim() || null,
       is_required: input.is_required,
       autofill_source: input.autofill_source,
+      image_url: input.image_url,
       order_index: (questionCount ?? 0) + (sectionCount ?? 0),
       section_id: lastSection?.id ?? null,
     })
@@ -470,6 +474,7 @@ export async function updateQuestion(
       help_text: input.help_text?.trim() || null,
       is_required: input.is_required,
       autofill_source: input.autofill_source,
+      image_url: input.image_url,
     })
     .eq("id", questionId);
   if (error) return { error: error.message };
@@ -662,7 +667,7 @@ export async function getResponses(formId: string): Promise<{
   const { data: questionsData, error: questionsErr } = await gate.supabase
     .from("form_questions")
     .select(
-      "id, form_id, type, label, help_text, is_required, order_index, autofill_source, section_id, form_question_options(id, question_id, label, order_index)"
+      "id, form_id, type, label, help_text, is_required, order_index, autofill_source, section_id, image_url, form_question_options(id, question_id, label, order_index)"
     )
     .eq("form_id", formId)
     .order("order_index", { ascending: true });
@@ -678,6 +683,7 @@ export async function getResponses(formId: string): Promise<{
     order_index: q.order_index,
     autofill_source: q.autofill_source as AutofillSource | null,
     section_id: q.section_id,
+    image_url: q.image_url,
     options: ((q.form_question_options ?? []) as FormQuestionOption[])
       .slice()
       .sort((a, b) => a.order_index - b.order_index),
@@ -822,7 +828,7 @@ export async function getFormToFill(formId: string): Promise<{
     gate.supabase
       .from("form_questions")
       .select(
-        "id, form_id, type, label, help_text, is_required, order_index, autofill_source, section_id, form_question_options(id, question_id, label, order_index)"
+        "id, form_id, type, label, help_text, is_required, order_index, autofill_source, section_id, image_url, form_question_options(id, question_id, label, order_index)"
       )
       .eq("form_id", formId)
       .order("order_index", { ascending: true }),
@@ -851,6 +857,7 @@ export async function getFormToFill(formId: string): Promise<{
     order_index: q.order_index,
     autofill_source: q.autofill_source as AutofillSource | null,
     section_id: q.section_id,
+    image_url: q.image_url,
     options: ((q.form_question_options ?? []) as FormQuestionOption[])
       .slice()
       .sort((a, b) => a.order_index - b.order_index),

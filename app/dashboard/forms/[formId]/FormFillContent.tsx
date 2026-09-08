@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { groupFormPages, isQuestionAnswered, type AnswerValue } from "@/lib/types/forms";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ensureResponseId, submitResponse, type FillableForm } from "../actions";
 import { FormRenderer } from "../FormRenderer";
 
@@ -19,8 +19,22 @@ export function FormFillContent({ form, initialAnswers, initialResponseId }: Pro
   const [responseId, setResponseId] = useState<string | null>(initialResponseId);
   const [busy, setBusy] = useState(false);
   const [uploadingQuestionId, setUploadingQuestionId] = useState<string | null>(null);
+  const [filePreviewUrls, setFilePreviewUrls] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(
     null
+  );
+
+  // Object URLs are per-viewer local previews (the uploaded file itself lives
+  // in private storage) - revoke them on unmount so they don't leak.
+  const filePreviewUrlsRef = useRef(filePreviewUrls);
+  useEffect(() => {
+    filePreviewUrlsRef.current = filePreviewUrls;
+  }, [filePreviewUrls]);
+  useEffect(
+    () => () => {
+      Object.values(filePreviewUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
+    },
+    []
   );
 
   const closed = form.status === "closed";
@@ -35,14 +49,38 @@ export function FormFillContent({ form, initialAnswers, initialResponseId }: Pro
   const isLastPage = pageIndex >= pages.length - 1;
   const bannerUrl = page?.section?.banner_url ?? form.banner_url ?? null;
 
-  const handleAnswerChange = useCallback((questionId: string, next: AnswerValue) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: { ...prev[questionId], ...next } }));
+  const clearFilePreview = useCallback((questionId: string) => {
+    setFilePreviewUrls((prev) => {
+      const url = prev[questionId];
+      if (!url) return prev;
+      URL.revokeObjectURL(url);
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
   }, []);
+
+  const handleAnswerChange = useCallback(
+    (questionId: string, next: AnswerValue) => {
+      setAnswers((prev) => ({ ...prev, [questionId]: { ...prev[questionId], ...next } }));
+      if (next.fileName === null) clearFilePreview(questionId);
+    },
+    [clearFilePreview]
+  );
 
   const handleFileSelect = useCallback(
     async (questionId: string, file: File) => {
       setMessage(null);
       setUploadingQuestionId(questionId);
+
+      if (file.type.startsWith("image/")) {
+        const url = URL.createObjectURL(file);
+        setFilePreviewUrls((prev) => {
+          const old = prev[questionId];
+          if (old) URL.revokeObjectURL(old);
+          return { ...prev, [questionId]: url };
+        });
+      }
 
       let rid = responseId;
       if (!rid) {
@@ -115,7 +153,9 @@ export function FormFillContent({ form, initialAnswers, initialResponseId }: Pro
         </Link>
         <h1 className="mt-2 text-2xl font-bold text-foreground">{form.title}</h1>
         {form.description && (
-          <p className="mt-1 text-muted-foreground">{form.description}</p>
+          <p className="mt-1 whitespace-pre-line text-muted-foreground">
+            {form.description}
+          </p>
         )}
       </div>
 
@@ -164,7 +204,9 @@ export function FormFillContent({ form, initialAnswers, initialResponseId }: Pro
             <div>
               <h2 className="text-xl font-semibold text-foreground">{page.section.title}</h2>
               {page.section.description && (
-                <p className="mt-1 text-muted-foreground">{page.section.description}</p>
+                <p className="mt-1 whitespace-pre-line text-muted-foreground">
+                  {page.section.description}
+                </p>
               )}
             </div>
           )}
@@ -175,6 +217,7 @@ export function FormFillContent({ form, initialAnswers, initialResponseId }: Pro
             onAnswerChange={handleAnswerChange}
             onFileSelect={handleFileSelect}
             uploadingQuestionId={uploadingQuestionId}
+            filePreviewUrls={filePreviewUrls}
             disabled={closed}
           />
 

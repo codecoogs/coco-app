@@ -1,6 +1,7 @@
 "use client";
 
 import { Dropzone } from "@/app/components/ui/Dropzone";
+import { UploadProgressBar } from "@/app/components/ui/UploadProgressBar";
 import type { AnswerValue, FormQuestion } from "@/lib/types/forms";
 
 type Props = {
@@ -9,9 +10,13 @@ type Props = {
   onAnswerChange: (questionId: string, next: AnswerValue) => void;
   onFileSelect?: (questionId: string, file: File) => void;
   uploadingQuestionId?: string | null;
+  /** Question id -> local object URL, so an uploaded image shows a preview without a round trip. */
+  filePreviewUrls?: Record<string, string>;
   disabled?: boolean;
   previewMode?: boolean;
 };
+
+const IMAGE_NAME_PATTERN = /\.(png|jpe?g|gif|webp|svg)$/i;
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground disabled:opacity-60";
@@ -22,6 +27,7 @@ export function FormRenderer({
   onAnswerChange,
   onFileSelect,
   uploadingQuestionId,
+  filePreviewUrls,
   disabled = false,
   previewMode = false,
 }: Props) {
@@ -42,9 +48,17 @@ export function FormRenderer({
             >
               <h3 className="text-base font-semibold text-card-foreground">{q.label}</h3>
               {q.help_text && (
-                <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
                   {q.help_text}
                 </p>
+              )}
+              {q.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element -- Image URLs come from storage / external hosts
+                <img
+                  src={q.image_url}
+                  alt=""
+                  className="mt-3 max-h-80 w-full rounded-lg object-cover"
+                />
               )}
             </div>
           );
@@ -61,7 +75,9 @@ export function FormRenderer({
               {q.is_required && <span className="ml-1 text-red-500">*</span>}
             </label>
             {q.help_text && (
-              <p className="mt-1 text-xs text-muted-foreground">{q.help_text}</p>
+              <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">
+                {q.help_text}
+              </p>
             )}
 
             <div className="mt-2">
@@ -163,21 +179,32 @@ export function FormRenderer({
               {q.type === "file_upload" && (
                 <div className="space-y-2">
                   {answer.fileName ? (
-                    <div className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                      <span className="truncate text-foreground">
-                        {answer.fileName}
-                      </span>
-                      {!disabled && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onAnswerChange(q.id, { filePath: null, fileName: null })
-                          }
-                          className="ml-2 shrink-0 text-xs text-red-600 hover:underline dark:text-red-400"
-                        >
-                          Remove
-                        </button>
-                      )}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                        <span className="truncate text-foreground">
+                          {answer.fileName}
+                        </span>
+                        {!disabled && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onAnswerChange(q.id, { filePath: null, fileName: null })
+                            }
+                            className="ml-2 shrink-0 text-xs text-red-600 hover:underline dark:text-red-400"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      {IMAGE_NAME_PATTERN.test(answer.fileName) &&
+                        filePreviewUrls?.[q.id] && (
+                          // eslint-disable-next-line @next/next/no-img-element -- Object URL, not a static asset
+                          <img
+                            src={filePreviewUrls[q.id]}
+                            alt=""
+                            className="max-h-48 rounded-lg border border-border object-cover"
+                          />
+                        )}
                     </div>
                   ) : (
                     !disabled && (
@@ -193,7 +220,10 @@ export function FormRenderer({
                     )
                   )}
                   {uploadingQuestionId === q.id && (
-                    <p className="text-xs text-muted-foreground">Uploading…</p>
+                    <>
+                      <p className="text-xs text-muted-foreground">Uploading…</p>
+                      <UploadProgressBar active />
+                    </>
                   )}
                 </div>
               )}

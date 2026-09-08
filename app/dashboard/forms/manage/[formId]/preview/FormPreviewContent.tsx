@@ -2,7 +2,7 @@
 
 import { groupFormPages, isQuestionAnswered, type AnswerValue, type FormWithQuestions } from "@/lib/types/forms";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormRenderer } from "../../../FormRenderer";
 
 type Props = {
@@ -12,6 +12,18 @@ type Props = {
 export function FormPreviewContent({ form }: Props) {
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [filePreviewUrls, setFilePreviewUrls] = useState<Record<string, string>>({});
+
+  const filePreviewUrlsRef = useRef(filePreviewUrls);
+  useEffect(() => {
+    filePreviewUrlsRef.current = filePreviewUrls;
+  }, [filePreviewUrls]);
+  useEffect(
+    () => () => {
+      Object.values(filePreviewUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
+    },
+    []
+  );
 
   const pages = useMemo(
     () => groupFormPages(form.questions, form.sections),
@@ -24,11 +36,32 @@ export function FormPreviewContent({ form }: Props) {
 
   const handleAnswerChange = useCallback((questionId: string, next: AnswerValue) => {
     setAnswers((prev) => ({ ...prev, [questionId]: { ...prev[questionId], ...next } }));
+    if (next.fileName === null) {
+      setFilePreviewUrls((prev) => {
+        const url = prev[questionId];
+        if (!url) return prev;
+        URL.revokeObjectURL(url);
+        const rest = { ...prev };
+        delete rest[questionId];
+        return rest;
+      });
+    }
   }, []);
 
-  const handleFileSelect = useCallback((questionId: string, file: File) => {
-    handleAnswerChange(questionId, { fileName: file.name });
-  }, [handleAnswerChange]);
+  const handleFileSelect = useCallback(
+    (questionId: string, file: File) => {
+      if (file.type.startsWith("image/")) {
+        const url = URL.createObjectURL(file);
+        setFilePreviewUrls((prev) => {
+          const old = prev[questionId];
+          if (old) URL.revokeObjectURL(old);
+          return { ...prev, [questionId]: url };
+        });
+      }
+      handleAnswerChange(questionId, { fileName: file.name });
+    },
+    [handleAnswerChange]
+  );
 
   const handleNext = useCallback(() => {
     if (!page) return;
@@ -59,7 +92,9 @@ export function FormPreviewContent({ form }: Props) {
         </Link>
         <h1 className="mt-2 text-2xl font-bold text-foreground">{form.title}</h1>
         {form.description && (
-          <p className="mt-1 text-muted-foreground">{form.description}</p>
+          <p className="mt-1 whitespace-pre-line text-muted-foreground">
+            {form.description}
+          </p>
         )}
       </div>
 
@@ -84,7 +119,9 @@ export function FormPreviewContent({ form }: Props) {
             <div>
               <h2 className="text-xl font-semibold text-foreground">{page.section.title}</h2>
               {page.section.description && (
-                <p className="mt-1 text-muted-foreground">{page.section.description}</p>
+                <p className="mt-1 whitespace-pre-line text-muted-foreground">
+                  {page.section.description}
+                </p>
               )}
             </div>
           )}
@@ -94,6 +131,7 @@ export function FormPreviewContent({ form }: Props) {
             answers={answers}
             onAnswerChange={handleAnswerChange}
             onFileSelect={handleFileSelect}
+            filePreviewUrls={filePreviewUrls}
             previewMode
           />
 
