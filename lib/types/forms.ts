@@ -1,7 +1,9 @@
 /**
  * Types for the forms feature (public.forms, form_questions, form_responses, ...).
- * See supabase/migrations/20260721120000_forms_schema.sql and
- * supabase/migrations/20260908010000_form_sections.sql for the source of truth.
+ * See supabase/migrations/20260721120000_forms_schema.sql,
+ * supabase/migrations/20260908010000_form_sections.sql and
+ * supabase/migrations/20260909000000_form_banners_and_text_blocks.sql for the
+ * source of truth.
  */
 
 export type FormStatus = "draft" | "published" | "closed";
@@ -15,7 +17,8 @@ export type QuestionType =
   | "multi_select"
   | "dropdown"
   | "date"
-  | "file_upload";
+  | "file_upload"
+  | "text_block";
 
 export const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: "short_answer", label: "Short answer" },
@@ -25,6 +28,7 @@ export const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: "dropdown", label: "Dropdown" },
   { value: "date", label: "Date" },
   { value: "file_upload", label: "File upload" },
+  { value: "text_block", label: "Text block / message" },
 ];
 
 /** Question types that need a list of options in the builder. */
@@ -87,6 +91,8 @@ export type FormSection = {
   title: string;
   description: string | null;
   order_index: number;
+  /** Overrides the form's banner_url on this section's page when set. */
+  banner_url: string | null;
 };
 
 export type FormSummary = {
@@ -114,6 +120,7 @@ export type FormWithQuestions = {
   status: FormStatus;
   audience_type: FormAudienceType;
   is_active: boolean;
+  banner_url: string | null;
   role_ids: number[];
   position_ids: number[];
   questions: FormQuestion[];
@@ -139,3 +146,44 @@ export type ResponseRow = {
   updated_at: string;
   answers: Record<string, AnswerValue>;
 };
+
+/** True once a required question has something a respondent actually entered. */
+export function isQuestionAnswered(answer: AnswerValue | undefined): boolean {
+  return Boolean(
+    (answer?.value && answer.value.trim()) ||
+      (answer?.selectedOptionIds && answer.selectedOptionIds.length) ||
+      answer?.filePath
+  );
+}
+
+export type FormPage = {
+  /** Null for the page of questions before any section (the form's first page). */
+  section: FormSection | null;
+  questions: FormQuestion[];
+};
+
+/**
+ * Splits a form's flat questions into pages at each section, matching Google
+ * Forms: a section is a page break, and everything up to the next section
+ * renders as its own page. A leading page with no section and no questions
+ * (a form whose first item is a section) is dropped.
+ */
+export function groupFormPages(
+  questions: FormQuestion[],
+  sections: FormSection[]
+): FormPage[] {
+  const sortedSections = [...sections].sort((a, b) => a.order_index - b.order_index);
+  const sortedQuestions = [...questions].sort((a, b) => a.order_index - b.order_index);
+
+  const pages: FormPage[] = [
+    { section: null, questions: sortedQuestions.filter((q) => q.section_id === null) },
+  ];
+  for (const section of sortedSections) {
+    pages.push({
+      section,
+      questions: sortedQuestions.filter((q) => q.section_id === section.id),
+    });
+  }
+
+  return pages.filter((page) => page.section !== null || page.questions.length > 0);
+}

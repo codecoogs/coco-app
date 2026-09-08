@@ -39,6 +39,7 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
   );
 
   const isOptionBased = OPTION_BASED_TYPES.includes(type);
+  const isTextBlock = type === "text_block";
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -51,8 +52,10 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
       type,
       label,
       help_text: helpText || null,
-      is_required: isRequired,
-      autofill_source: isOptionBased ? null : autofillSource || null,
+      // A text block is a message, not a question - it never collects an
+      // answer, so "required" doesn't apply.
+      is_required: isTextBlock ? false : isRequired,
+      autofill_source: isOptionBased || isTextBlock ? null : autofillSource || null,
       options: options.filter((o) => o.trim()),
     });
   };
@@ -78,7 +81,7 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                Question
+                {isTextBlock ? "Heading" : "Question"}
               </label>
               <input
                 value={label}
@@ -106,13 +109,22 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
 
           <div>
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Help text (optional)
+              {isTextBlock ? "Message (optional)" : "Help text (optional)"}
             </label>
-            <input
-              value={helpText}
-              onChange={(e) => setHelpText(e.target.value)}
-              className={inputClass}
-            />
+            {isTextBlock ? (
+              <textarea
+                value={helpText}
+                onChange={(e) => setHelpText(e.target.value)}
+                rows={3}
+                className={inputClass}
+              />
+            ) : (
+              <input
+                value={helpText}
+                onChange={(e) => setHelpText(e.target.value)}
+                className={inputClass}
+              />
+            )}
           </div>
 
           {isOptionBased && (
@@ -154,7 +166,7 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
             </div>
           )}
 
-          {!isOptionBased && type !== "file_upload" && (
+          {!isOptionBased && type !== "file_upload" && !isTextBlock && (
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 Autofill from profile (optional)
@@ -177,14 +189,18 @@ export function QuestionEditor({ question, onSave, onDelete, busy }: Props) {
           )}
 
           <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-sm text-card-foreground">
-              <input
-                type="checkbox"
-                checked={isRequired}
-                onChange={(e) => setIsRequired(e.target.checked)}
-              />
-              Required
-            </label>
+            {isTextBlock ? (
+              <span />
+            ) : (
+              <label className="flex items-center gap-2 text-sm text-card-foreground">
+                <input
+                  type="checkbox"
+                  checked={isRequired}
+                  onChange={(e) => setIsRequired(e.target.checked)}
+                />
+                Required
+              </label>
+            )}
 
             <div className="flex gap-3">
               <button

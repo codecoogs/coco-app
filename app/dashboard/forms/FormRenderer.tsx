@@ -1,5 +1,6 @@
 "use client";
 
+import { Dropzone } from "@/app/components/ui/Dropzone";
 import type { AnswerValue, FormQuestion } from "@/lib/types/forms";
 
 type Props = {
@@ -33,6 +34,22 @@ export function FormRenderer({
       )}
 
       {questions.map((q) => {
+        if (q.type === "text_block") {
+          return (
+            <div
+              key={q.id}
+              className="rounded-xl border border-border bg-card p-4 shadow-sm"
+            >
+              <h3 className="text-base font-semibold text-card-foreground">{q.label}</h3>
+              {q.help_text && (
+                <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {q.help_text}
+                </p>
+              )}
+            </div>
+          );
+        }
+
         const answer = answers[q.id] ?? {};
         return (
           <div
@@ -145,7 +162,7 @@ export function FormRenderer({
 
               {q.type === "file_upload" && (
                 <div className="space-y-2">
-                  {answer.fileName && (
+                  {answer.fileName ? (
                     <div className="flex items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm">
                       <span className="truncate text-foreground">
                         {answer.fileName}
@@ -162,18 +179,18 @@ export function FormRenderer({
                         </button>
                       )}
                     </div>
-                  )}
-                  {!disabled && (
-                    <input
-                      type="file"
-                      disabled={uploadingQuestionId === q.id}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file && onFileSelect) onFileSelect(q.id, file);
-                        e.target.value = "";
-                      }}
-                      className="text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border file:border-border file:bg-card file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-card-foreground hover:file:bg-muted"
-                    />
+                  ) : (
+                    !disabled && (
+                      <Dropzone
+                        id={`file-upload-${q.id}`}
+                        accept="*/*"
+                        hint="Any file type"
+                        disabled={uploadingQuestionId === q.id}
+                        onFileSelected={(file) => {
+                          if (file && onFileSelect) onFileSelect(q.id, file);
+                        }}
+                      />
+                    )
                   )}
                   {uploadingQuestionId === q.id && (
                     <p className="text-xs text-muted-foreground">Uploading…</p>

@@ -46,6 +46,13 @@ export function FormResponsesContent({
 }: Props) {
   const [message, setMessage] = useState<string | null>(null);
 
+  // Text blocks are messages, not questions - they never collect an answer,
+  // so they don't belong as a column here.
+  const answerableQuestions = useMemo(
+    () => questions.filter((q) => q.type !== "text_block"),
+    [questions]
+  );
+
   const handleExport = useCallback(() => {
     const header = [
       "First name",
@@ -53,7 +60,7 @@ export function FormResponsesContent({
       "Email",
       "Submitted",
       "Updated",
-      ...questions.map((q) => q.label),
+      ...answerableQuestions.map((q) => q.label),
     ];
     const rows = initialResponses.map((r) => [
       r.first_name ?? "",
@@ -61,10 +68,10 @@ export function FormResponsesContent({
       r.email ?? "",
       r.submitted_at,
       r.updated_at,
-      ...questions.map((q) => answerText(q, r)),
+      ...answerableQuestions.map((q) => answerText(q, r)),
     ]);
     downloadCsv([header, ...rows], `${formTitle.replace(/[^a-zA-Z0-9-_]/g, "_")}-responses.csv`);
-  }, [formTitle, initialResponses, questions]);
+  }, [formTitle, initialResponses, answerableQuestions]);
 
   const handleViewFile = useCallback(async (filePath: string) => {
     setMessage(null);
@@ -77,8 +84,8 @@ export function FormResponsesContent({
   }, []);
 
   const fileQuestions = useMemo(
-    () => questions.filter((q) => q.type === "file_upload"),
-    [questions]
+    () => answerableQuestions.filter((q) => q.type === "file_upload"),
+    [answerableQuestions]
   );
 
   return (
@@ -123,7 +130,7 @@ export function FormResponsesContent({
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="px-4 py-3 font-medium">Respondent</th>
                 <th className="px-4 py-3 font-medium">Submitted</th>
-                {questions.map((q) => (
+                {answerableQuestions.map((q) => (
                   <th key={q.id} className="px-4 py-3 font-medium">
                     {q.label}
                   </th>
@@ -140,7 +147,7 @@ export function FormResponsesContent({
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(r.submitted_at).toLocaleString()}
                   </td>
-                  {questions.map((q) => (
+                  {answerableQuestions.map((q) => (
                     <td key={q.id} className="px-4 py-3 text-foreground">
                       {q.type === "file_upload" ? (
                         r.answers[q.id]?.filePath ? (
