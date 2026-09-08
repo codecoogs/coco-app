@@ -129,7 +129,10 @@ async function syncGoogleCalendar(
 ): Promise<{ google_event_id: string | null; error: string | null }> {
   const { data, error } = await supabase.functions.invoke(
     "google-calendar-sync",
-    { body: payload }
+    // Calendar sync is best-effort (see createEvent/updateEvent) - a bounded
+    // timeout ensures a hung Google API call can't leave event creation
+    // stuck in "Saving..." forever.
+    { body: payload, timeout: 15000 }
   );
 
   if (error) {
