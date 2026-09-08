@@ -1,6 +1,6 @@
 "use client";
 
-import type { UserPaymentInfo } from "@/lib/codecoogs-api";
+import type { UserPaymentRow } from "./page";
 import { useMemo, useState } from "react";
 
 const PAGE_SIZE = 20;
@@ -18,18 +18,13 @@ function formatDate(iso: string) {
   }
 }
 
-function isActiveMember(u: UserPaymentInfo): boolean {
-  if (u.membership !== "Yearly" && u.membership !== "Semester") return false;
-  const due = u.next_due_date?.trim();
-  if (!due) return false;
-  try {
-    return new Date(due) > new Date();
-  } catch {
-    return false;
-  }
+// `paid` is already "has a membership row that is active and not past its end
+// date", so active and paid are now the same predicate - see buildRows.
+function isActiveMember(u: UserPaymentRow): boolean {
+  return u.paid;
 }
 
-function fullName(u: UserPaymentInfo): string {
+function fullName(u: UserPaymentRow): string {
   const first = u.first_name?.trim() ?? "";
   const last = u.last_name?.trim() ?? "";
   return [first, last].filter(Boolean).join(" ") || "—";
@@ -38,7 +33,7 @@ function fullName(u: UserPaymentInfo): string {
 type SortKey = "first_name" | "last_name";
 type SortOrder = "asc" | "desc";
 
-type Props = { users: UserPaymentInfo[] };
+type Props = { users: UserPaymentRow[] };
 
 export function MembershipsContent({ users }: Props) {
   const [search, setSearch] = useState("");
@@ -92,7 +87,9 @@ export function MembershipsContent({ users }: Props) {
   const pageUsers = filteredAndSorted.slice(start, start + PAGE_SIZE);
 
   const membershipTypes = useMemo(() => {
-    const set = new Set(users.map((u) => u.membership).filter(Boolean));
+    const set = new Set(
+      users.map((u) => u.membership).filter((m): m is string => !!m)
+    );
     return Array.from(set).sort();
   }, [users]);
 
@@ -230,7 +227,7 @@ export function MembershipsContent({ users }: Props) {
                       {u.major || "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground sm:px-6">
-                      {u.membership}
+                      {u.membership || "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm sm:px-6">
                       <span
