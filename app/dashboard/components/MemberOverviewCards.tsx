@@ -1,17 +1,9 @@
 import type { MemberDashboardOverview } from "@/app/dashboard/member-dashboard-data";
+import { formatEventDateTime } from "@/lib/event-time";
 import Link from "next/link";
+import { MembersOnlyNotice } from "./MembersOnlyNotice";
 
-function formatEventWhen(iso: string | null) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch {
-    return "—";
-  }
-}
+const formatEventWhen = formatEventDateTime;
 
 type Props = {
   overview: MemberDashboardOverview;
@@ -204,7 +196,7 @@ export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
         </section>
       </div>
 
-      <div className={`grid gap-6 ${canSeeOpportunities ? "lg:grid-cols-2" : ""}`}>
+      <div className="grid gap-6 lg:grid-cols-2">
         <section
           className="rounded-xl border bg-card p-6 shadow-sm"
           style={upcomingEventsTone}
@@ -252,29 +244,34 @@ export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
           )}
         </section>
 
-        {canSeeOpportunities && (
-          <section
-            className="rounded-xl border bg-card p-6 shadow-sm"
-            style={opportunitiesTone}
-          >
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div>
-                <h2 className="text-lg font-semibold text-card-foreground">
-                  Opportunities
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Ways to get involved off the calendar
-                </p>
-              </div>
+        <section
+          className="rounded-xl border bg-card p-6 shadow-sm"
+          style={opportunitiesTone}
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold text-card-foreground">
+                Opportunities
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Ways to get involved off the calendar
+              </p>
+            </div>
+            {canSeeOpportunities && (
               <Link
                 href="/dashboard/opportunities"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground"
               >
                 Opportunities page →
               </Link>
-            </div>
+            )}
+          </div>
 
-            {opportunitiesFetchError ? (
+          {!canSeeOpportunities ? (
+            <div className="mt-4">
+              <MembersOnlyNotice feature="Opportunities" />
+            </div>
+          ) : opportunitiesFetchError ? (
               <p className="mt-4 text-sm text-muted-foreground">
                 Couldn&apos;t load opportunities: {opportunitiesFetchError}
               </p>
@@ -307,8 +304,7 @@ export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
                 ))}
               </ul>
             )}
-          </section>
-        )}
+        </section>
       </div>
     </div>
   );
