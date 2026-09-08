@@ -1,5 +1,6 @@
 import { ThemeScript } from "@/app/components/ThemeScript";
 import { ThemeProvider } from "@/app/contexts/ThemeContext";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -46,6 +47,7 @@ export default async function RootLayout({
         <ThemeScript />
         <ThemeProvider>{children}</ThemeProvider>
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
