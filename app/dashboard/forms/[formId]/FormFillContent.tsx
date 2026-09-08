@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import type { AnswerValue } from "@/lib/types/forms";
+import { groupFormPages, isQuestionAnswered, type AnswerValue } from "@/lib/types/forms";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { ensureResponseId, submitResponse, type FillableForm } from "../actions";
@@ -25,6 +25,15 @@ export function FormFillContent({ form, initialAnswers, initialResponseId }: Pro
 
   const closed = form.status === "closed";
   const alreadySubmitted = initialResponseId !== null;
+
+  const pages = useMemo(
+    () => groupFormPages(form.questions, form.sections),
+    [form.questions, form.sections]
+  );
+  const [pageIndex, setPageIndex] = useState(0);
+  const page = pages[pageIndex] ?? null;
+  const isLastPage = pageIndex >= pages.length - 1;
+  const bannerUrl = page?.section?.banner_url ?? form.banner_url ?? null;
 
   const handleAnswerChange = useCallback((questionId: string, next: AnswerValue) => {
     setAnswers((prev) => ({ ...prev, [questionId]: { ...prev[questionId], ...next } }));
@@ -64,6 +73,24 @@ export function FormFillContent({ form, initialAnswers, initialResponseId }: Pro
     },
     [form.id, handleAnswerChange, responseId, supabase]
   );
+
+  const handleNext = useCallback(() => {
+    if (!page) return;
+    const unanswered = page.questions.find(
+      (q) => q.is_required && !isQuestionAnswered(answers[q.id])
+    );
+    if (unanswered) {
+      setMessage({ type: "error", text: "Please answer all required questions on this page." });
+      return;
+    }
+    setMessage(null);
+    setPageIndex((i) => Math.min(i + 1, pages.length - 1));
+  }, [page, answers, pages.length]);
+
+  const handleBack = useCallback(() => {
+    setMessage(null);
+    setPageIndex((i) => Math.max(i - 1, 0));
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     setMessage(null);
@@ -118,24 +145,75 @@ export function FormFillContent({ form, initialAnswers, initialResponseId }: Pro
         </>
       )}
 
-      <FormRenderer
-        questions={form.questions}
-        answers={answers}
-        onAnswerChange={handleAnswerChange}
-        onFileSelect={handleFileSelect}
-        uploadingQuestionId={uploadingQuestionId}
-        disabled={closed}
-      />
+      {!pages.length ? (
+        <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
+          This form has no questions yet.
+        </div>
+      ) : (
+        <>
+          {bannerUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- Banner URLs come from storage / external hosts
+            <img
+              src={bannerUrl}
+              alt=""
+              className="max-h-64 w-full rounded-xl object-cover"
+            />
+          )}
 
-      {!closed && (
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={busy || uploadingQuestionId !== null}
-          className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
-        >
-          {busy ? "Submitting…" : alreadySubmitted ? "Update response" : "Submit"}
-        </button>
+          {page?.section && (
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">{page.section.title}</h2>
+              {page.section.description && (
+                <p className="mt-1 text-muted-foreground">{page.section.description}</p>
+              )}
+            </div>
+          )}
+
+          <FormRenderer
+            questions={page?.questions ?? []}
+            answers={answers}
+            onAnswerChange={handleAnswerChange}
+            onFileSelect={handleFileSelect}
+            uploadingQuestionId={uploadingQuestionId}
+            disabled={closed}
+          />
+
+          {!closed && (
+            <div className="flex items-center justify-between">
+              {pageIndex > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground hover:bg-muted"
+                >
+                  Back
+                </button>
+              ) : (
+                <span />
+              )}
+
+              {isLastPage ? (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={busy || uploadingQuestionId !== null}
+                  className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
+                >
+                  {busy ? "Submitting…" : alreadySubmitted ? "Update response" : "Submit"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={uploadingQuestionId !== null}
+                  className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground hover:bg-muted disabled:opacity-50"
+                >
+                  Next
+                </button>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -15,6 +15,8 @@ import {
 } from "@dnd-kit/sortable";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
+import { Dropzone, formatFileSize } from "@/app/components/ui/Dropzone";
+import { createClient } from "@/lib/supabase/client";
 import {
   createQuestion,
   createSection,
@@ -33,6 +35,7 @@ import {
   type RoleOption,
   type SectionInput,
 } from "../../../actions";
+import { uploadFormBanner } from "../../../uploadBanner";
 import type { FormAudienceType, FormQuestion, FormSection, FormWithQuestions } from "@/lib/types/forms";
 import { QuestionEditor } from "./QuestionEditor";
 import { SectionEditor } from "./SectionEditor";
@@ -70,6 +73,17 @@ export function FormBuilderContent({
     null
   );
 
+  const supabase = useMemo(() => createClient(), []);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerName, setBannerName] = useState<string | null>(null);
+  const [bannerSizeLabel, setBannerSizeLabel] = useState<string | null>(null);
+
+  const onBannerFileSelected = useCallback((file: File | null) => {
+    setBannerFile(file);
+    setBannerName(file?.name ?? null);
+    setBannerSizeLabel(file ? formatFileSize(file.size) : null);
+  }, []);
+
   const sensors = useSensors(useSensor(PointerSensor));
 
   const refresh = useCallback(async () => {
@@ -84,14 +98,28 @@ export function FormBuilderContent({
   const handleSaveMeta = useCallback(async () => {
     setBusy(true);
     setMessage(null);
-    const res = await updateFormMeta(form.id, { title, description });
+
+    let banner_url = form.banner_url;
+    if (bannerFile) {
+      const uploaded = await uploadFormBanner(supabase, bannerFile);
+      if (uploaded.error) {
+        setBusy(false);
+        setMessage({ type: "error", text: uploaded.error });
+        return;
+      }
+      banner_url = uploaded.url;
+    }
+
+    const res = await updateFormMeta(form.id, { title, description, banner_url });
     setBusy(false);
     if (res.error) {
       setMessage({ type: "error", text: res.error });
       return;
     }
+    setForm((prev) => ({ ...prev, banner_url }));
+    onBannerFileSelected(null);
     setMessage({ type: "ok", text: "Saved." });
-  }, [form.id, title, description]);
+  }, [form.id, form.banner_url, title, description, bannerFile, supabase, onBannerFileSelected]);
 
   const handleSaveAudience = useCallback(async () => {
     setBusy(true);
@@ -175,12 +203,17 @@ export function FormBuilderContent({
       form_id: form.id,
       title: "New section",
       description: null,
+      banner_url: null,
       order_index: builderItems.length,
     };
     setForm((prev) => ({ ...prev, sections: [...prev.sections, optimisticSection] }));
 
     void (async () => {
-      const res = await createSection(form.id, { title: "New section", description: null });
+      const res = await createSection(form.id, {
+        title: "New section",
+        description: null,
+        banner_url: null,
+      });
       if (res.error || !res.id) {
         setMessage({ type: "error", text: res.error ?? "Could not add section." });
         await refresh();
@@ -236,7 +269,14 @@ export function FormBuilderContent({
       setForm((prev) => ({
         ...prev,
         sections: prev.sections.map((s) =>
-          s.id === sectionId ? { ...s, title: input.title, description: input.description } : s
+          s.id === sectionId
+            ? {
+                ...s,
+                title: input.title,
+                description: input.description,
+                banner_url: input.banner_url,
+              }
+            : s
         ),
       }));
 
@@ -432,13 +472,42 @@ export function FormBuilderContent({
             className={inputClass}
           />
         </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-muted-foreground">
+            Banner (optional)
+          </label>
+          <Dropzone
+            id="form-banner"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            hint="JPEG, PNG, WEBP, or GIF"
+            disabled={busy}
+            fileName={bannerName}
+            fileSizeLabel={bannerSizeLabel}
+            onFileSelected={onBannerFileSelected}
+          />
+          {form.banner_url && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Current:{" "}
+              <a
+                href={form.banner_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline dark:text-blue-400"
+              >
+                View banner
+              </a>
+              . Upload a new file to replace. Shown on every page, unless a section has its
+              own banner.
+            </p>
+          )}
+        </div>
         <button
           type="button"
           onClick={handleSaveMeta}
           disabled={busy || !title.trim()}
           className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
         >
-          Save details
+          {busy ? "Saving…" : "Save details"}
         </button>
       </section>
 
