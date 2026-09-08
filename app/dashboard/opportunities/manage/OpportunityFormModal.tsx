@@ -96,6 +96,10 @@ export function OpportunityFormModal({ mode, opportunity, onClose, onSaved }: Pr
     const notify_members = (
       form.elements.namedItem("notify_members") as HTMLInputElement
     ).checked;
+    const website_viewable = (
+      form.elements.namedItem("website_viewable") as HTMLInputElement
+    ).checked;
+    const term = (form.elements.namedItem("term") as HTMLInputElement).value.trim();
 
     if (!title) {
       setMessage({ type: "error", text: "Title is required." });
@@ -122,6 +126,8 @@ export function OpportunityFormModal({ mode, opportunity, onClose, onSaved }: Pr
       salary: salary || null,
       expires_at: expires_at_raw ? new Date(expires_at_raw).toISOString() : null,
       notify_members,
+      website_viewable,
+      term: term || null,
     };
 
     setBusy(true);
@@ -368,6 +374,38 @@ export function OpportunityFormModal({ mode, opportunity, onClose, onSaved }: Pr
                 doesn&apos;t notify everyone at once.
               </p>
             ) : null}
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                name="website_viewable"
+                defaultChecked={opportunity?.website_viewable ?? false}
+              />
+              Show on codecoogs.com
+            </label>
+            {linkMode === "form" ? (
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                The public site only links out to external URLs, so an
+                internal-form opportunity shows there with no way to apply.
+              </p>
+            ) : null}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-muted-foreground">
+              Application window (optional)
+            </label>
+            <input
+              name="term"
+              placeholder="e.g. Spring 2026"
+              defaultValue={opportunity?.term ?? ""}
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Shown on the website card above the description.
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-2 pt-2">

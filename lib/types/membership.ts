@@ -117,3 +117,50 @@ export type Payment = {
 export function isMembershipCurrent(membership: Pick<Membership, "status" | "ends_at">): boolean {
   return membership.status === "active" && membership.ends_at >= new Date().toISOString().slice(0, 10);
 }
+
+/** A payments row joined with the paying member and plan, for the admin Payments tab. */
+export type PaymentWithUser = Payment & {
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  plan_name: string | null;
+};
+
+/**
+ * A payments row that's stuck at "pending" while Stripe shows the checkout
+ * session actually resolved - the webhook missed it (downtime, a type it
+ * doesn't handle, etc). See previewStripeReconciliation.
+ */
+export type StalePendingPayment = {
+  paymentId: string;
+  stripeCheckoutSessionId: string;
+  currentStatus: "pending";
+  newStatus: PaymentStatus;
+  userEmail: string | null;
+  amount: number | null;
+  currency: string;
+  createdAt: string;
+};
+
+/**
+ * A completed Stripe Checkout Session tagged for membership dues with no
+ * matching payments row at all - e.g. a Payment Link or a purchase made
+ * before this app's checkout flow existed. Needs a human to pick the member
+ * before it can become a payments row (no user_id to go on).
+ */
+export type UnmatchedStripePayment = {
+  stripeCheckoutSessionId: string;
+  stripePaymentIntentId: string | null;
+  amount: number | null;
+  currency: string;
+  customerEmail: string | null;
+  metadataUserId: string | null;
+  createdAt: string;
+};
+
+export type StripeReconciliationPreview = {
+  stalePending: StalePendingPayment[];
+  unmatched: UnmatchedStripePayment[];
+  sessionsScanned: number;
+  scanCapped: boolean;
+};

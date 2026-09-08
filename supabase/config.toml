@@ -10,7 +10,7 @@ enabled = true
 port = 54321
 # Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
 # endpoints. `public` and `graphql_public` schemas are included by default.
-schemas = ["public", "graphql_public"]
+schemas = ["public", "storage", "graphql_public"]
 # Extra schemas to add to the search_path of every request.
 extra_search_path = ["public", "extensions"]
 # The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
@@ -398,8 +398,10 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
-# Function secrets: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN,
-# and optional GOOGLE_CALENDAR_ID (defaults to "primary" if unset).
+# Function secrets: GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+# and GOOGLE_CALENDAR_ID. The calendar must be shared with the service account
+# with "Make changes to events"; GOOGLE_CALENDAR_ID is not really optional -- the
+# "primary" fallback is the service account own empty calendar.
 [functions.google-calendar-sync]
 enabled = true
 verify_jwt = true
@@ -410,3 +412,56 @@ entrypoint = "./functions/google-calendar-sync/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/google-calendar-sync/*.html" ]
+
+# ============================================================================
+# Remote branch overrides
+# ============================================================================
+# Everything above this line is the LOCAL dev profile. The branching workflow's
+# "Configure" step applies config.toml on top of a branch's cloned config, so
+# without these blocks a deploy would push local-only values (localhost site_url,
+# MFA off, 168h session timebox) onto a real environment. Each block below pins
+# the values that must survive a deploy. project_id must match an existing
+# branch — check with `supabase branches list --experimental`.
+
+[remotes.production]
+project_id = "hbhahqephsndzjtqdzin"
+
+[remotes.production.auth]
+site_url = "http://app.codecoogs.com/dashboard"
+additional_redirect_urls = [
+  "http://localhost:3000",
+  "https://www.codecoogs.com",
+  "http://localhost:3000/dashboard",
+]
+
+[remotes.production.auth.email]
+max_frequency = "30s"
+
+[remotes.production.auth.sessions]
+timebox = "0s"
+
+[remotes.production.auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[remotes.dev]
+project_id = "plkogchblccmresvdsvm"
+
+# Persistent branches do not seed automatically the way preview branches do,
+# so this has to be declared per-remote. seed.sql is idempotent (fixed ids +
+# ON CONFLICT DO UPDATE), so re-running it on every dev deploy is safe.
+[remotes.dev.db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+# Without this, dev inherits the local [auth] block and its site_url becomes
+# localhost:3000 -- every OAuth callback and email link on the deployed dev
+# site would redirect to a developer machine.
+[remotes.dev.auth]
+site_url = "https://coco-app-git-dev-coco-wizards-projects.vercel.app/dashboard"
+additional_redirect_urls = [
+  "https://coco-app-git-dev-coco-wizards-projects.vercel.app",
+  "https://coco-app-git-dev-coco-wizards-projects.vercel.app/dashboard",
+  "http://localhost:3000",
+  "http://localhost:3000/dashboard",
+]

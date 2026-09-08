@@ -1,6 +1,8 @@
 import { ThemeScript } from "@/app/components/ThemeScript";
 import { ThemeProvider } from "@/app/contexts/ThemeContext";
 import { getSiteUrl } from "@/lib/site-url";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
@@ -55,6 +57,8 @@ export default async function RootLayout({
       <body className="antialiased">
         <ThemeScript />
         <ThemeProvider>{children}</ThemeProvider>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );

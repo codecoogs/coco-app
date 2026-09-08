@@ -11,13 +11,14 @@ import type {
   FormAudienceSelection,
   FormQuestion,
   FormQuestionOption,
+  FormSection,
   FormStatus,
   FormSummary,
   FormWithQuestions,
   QuestionType,
   ResponseRow,
 } from "@/lib/types/forms";
-import { OPTION_BASED_TYPES } from "@/lib/types/forms";
+import { isQuestionAnswered, OPTION_BASED_TYPES } from "@/lib/types/forms";
 import { revalidatePath } from "next/cache";
 
 const SERVICE_ROLE_ERROR =
@@ -168,7 +169,7 @@ export async function createForm(
 
 export async function updateFormMeta(
   formId: string,
-  input: { title: string; description: string | null }
+  input: { title: string; description: string | null; banner_url: string | null }
 ): Promise<{ error: string | null }> {
   const gate = await requireManageForms();
   if (!gate.ok) return { error: gate.error };
@@ -181,6 +182,7 @@ export async function updateFormMeta(
     .update({
       title: trimmed,
       description: input.description?.trim() || null,
+      banner_url: input.banner_url,
       updated_by: gate.appUserId,
     })
     .eq("id", formId);
@@ -300,18 +302,23 @@ export async function getFormForEdit(formId: string): Promise<{
 
   const { data: form, error: formErr } = await gate.supabase
     .from("forms")
-    .select("id, title, description, status, audience_type, is_active")
+    .select("id, title, description, status, audience_type, is_active, banner_url")
     .eq("id", formId)
     .maybeSingle();
   if (formErr) return { data: null, error: formErr.message };
   if (!form) return { data: null, error: "Form not found." };
 
-  const [questionsRes, rolesRes, positionsRes] = await Promise.all([
+  const [questionsRes, sectionsRes, rolesRes, positionsRes] = await Promise.all([
     gate.supabase
       .from("form_questions")
       .select(
-        "id, form_id, type, label, help_text, is_required, order_index, autofill_source, form_question_options(id, question_id, label, order_index)"
+        "id, form_id, type, label, help_text, is_required, order_index, autofill_source, section_id, form_question_options(id, question_id, label, order_index)"
       )
+      .eq("form_id", formId)
+      .order("order_index", { ascending: true }),
+    gate.supabase
+      .from("form_sections")
+      .select("id, form_id, title, description, order_index, banner_url")
       .eq("form_id", formId)
       .order("order_index", { ascending: true }),
     gate.supabase.from("form_audience_roles").select("role_id").eq("form_id", formId),
@@ -322,6 +329,7 @@ export async function getFormForEdit(formId: string): Promise<{
   ]);
 
   if (questionsRes.error) return { data: null, error: questionsRes.error.message };
+  if (sectionsRes.error) return { data: null, error: sectionsRes.error.message };
   if (rolesRes.error) return { data: null, error: rolesRes.error.message };
   if (positionsRes.error) return { data: null, error: positionsRes.error.message };
 
@@ -334,10 +342,13 @@ export async function getFormForEdit(formId: string): Promise<{
     is_required: q.is_required,
     order_index: q.order_index,
     autofill_source: q.autofill_source as AutofillSource | null,
+    section_id: q.section_id,
     options: ((q.form_question_options ?? []) as FormQuestionOption[])
       .slice()
       .sort((a, b) => a.order_index - b.order_index),
   }));
+
+  const sections: FormSection[] = (sectionsRes.data ?? []) as FormSection[];
 
   return {
     data: {
@@ -347,9 +358,11 @@ export async function getFormForEdit(formId: string): Promise<{
       status: form.status,
       audience_type: form.audience_type,
       is_active: form.is_active,
+      banner_url: form.banner_url,
       role_ids: (rolesRes.data ?? []).map((r) => r.role_id),
       position_ids: (positionsRes.data ?? []).map((p) => p.position_id),
       questions,
+      sections,
     },
     error: null,
   };
@@ -374,10 +387,28 @@ export async function createQuestion(
   const trimmedLabel = input.label.trim();
   if (!trimmedLabel) return { id: null, error: "Question label is required." };
 
-  const { count } = await gate.supabase
-    .from("form_questions")
-    .select("id", { count: "exact", head: true })
-    .eq("form_id", formId);
+  // Sections and questions share one order_index sequence per form (see
+  // supabase/migrations/20260908010000_form_sections.sql) - a new question
+  // appends after everything, including any sections, and lands on the last
+  // section's page if one exists.
+  const [{ count: questionCount }, { count: sectionCount }, { data: lastSection }] =
+    await Promise.all([
+      gate.supabase
+        .from("form_questions")
+        .select("id", { count: "exact", head: true })
+        .eq("form_id", formId),
+      gate.supabase
+        .from("form_sections")
+        .select("id", { count: "exact", head: true })
+        .eq("form_id", formId),
+      gate.supabase
+        .from("form_sections")
+        .select("id")
+        .eq("form_id", formId)
+        .order("order_index", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
 
   const { data: question, error } = await gate.supabase
     .from("form_questions")
@@ -388,7 +419,8 @@ export async function createQuestion(
       help_text: input.help_text?.trim() || null,
       is_required: input.is_required,
       autofill_source: input.autofill_source,
-      order_index: count ?? 0,
+      order_index: (questionCount ?? 0) + (sectionCount ?? 0),
+      section_id: lastSection?.id ?? null,
     })
     .select("id")
     .single();
@@ -482,22 +514,132 @@ export async function deleteQuestion(
   return { error: null };
 }
 
-export async function reorderQuestions(
+export type SectionInput = {
+  title: string;
+  description: string | null;
+  banner_url: string | null;
+};
+
+export async function createSection(
   formId: string,
-  orderedQuestionIds: string[]
+  input: SectionInput
+): Promise<{ id: string | null; error: string | null }> {
+  const gate = await requireManageForms();
+  if (!gate.ok) return { id: null, error: gate.error };
+
+  const trimmedTitle = input.title.trim();
+  if (!trimmedTitle) return { id: null, error: "Section title is required." };
+
+  const [{ count: questionCount }, { count: sectionCount }] = await Promise.all([
+    gate.supabase
+      .from("form_questions")
+      .select("id", { count: "exact", head: true })
+      .eq("form_id", formId),
+    gate.supabase
+      .from("form_sections")
+      .select("id", { count: "exact", head: true })
+      .eq("form_id", formId),
+  ]);
+
+  const { data: section, error } = await gate.supabase
+    .from("form_sections")
+    .insert({
+      form_id: formId,
+      title: trimmedTitle,
+      description: input.description?.trim() || null,
+      banner_url: input.banner_url,
+      order_index: (questionCount ?? 0) + (sectionCount ?? 0),
+    })
+    .select("id")
+    .single();
+
+  if (error) return { id: null, error: error.message };
+  revalidatePath(`/dashboard/forms/manage/${formId}/edit`);
+  return { id: section.id as string, error: null };
+}
+
+export async function updateSection(
+  sectionId: string,
+  input: SectionInput
 ): Promise<{ error: string | null }> {
   const gate = await requireManageForms();
   if (!gate.ok) return { error: gate.error };
 
-  const results = await Promise.all(
-    orderedQuestionIds.map((id, idx) =>
-      gate.supabase
-        .from("form_questions")
+  const trimmedTitle = input.title.trim();
+  if (!trimmedTitle) return { error: "Section title is required." };
+
+  const { data: existing, error: fetchErr } = await gate.supabase
+    .from("form_sections")
+    .select("form_id")
+    .eq("id", sectionId)
+    .maybeSingle();
+  if (fetchErr) return { error: fetchErr.message };
+  if (!existing) return { error: "Section not found." };
+
+  const { error } = await gate.supabase
+    .from("form_sections")
+    .update({
+      title: trimmedTitle,
+      description: input.description?.trim() || null,
+      banner_url: input.banner_url,
+    })
+    .eq("id", sectionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/forms/manage/${existing.form_id}/edit`);
+  return { error: null };
+}
+
+/** Questions in the deleted section fall back to section_id null (ON DELETE SET NULL) - they move to the form's first page rather than being deleted. */
+export async function deleteSection(
+  sectionId: string,
+  formId: string
+): Promise<{ error: string | null }> {
+  const gate = await requireManageForms();
+  if (!gate.ok) return { error: gate.error };
+
+  const { error } = await gate.supabase.from("form_sections").delete().eq("id", sectionId);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/dashboard/forms/manage/${formId}/edit`);
+  return { error: null };
+}
+
+export type FormItemRef = { id: string; kind: "question" | "section" };
+
+/**
+ * Persists a full reorder of the builder's unified question+section list.
+ * Every item's order_index is rewritten to its array position, and each
+ * question's section_id is set to the nearest preceding section in the new
+ * order (or null if none precedes it) - section membership is entirely
+ * derived from position, so dragging a question across a section boundary
+ * moves it between pages automatically.
+ */
+export async function reorderFormItems(
+  formId: string,
+  items: FormItemRef[]
+): Promise<{ error: string | null }> {
+  const gate = await requireManageForms();
+  if (!gate.ok) return { error: gate.error };
+
+  let currentSectionId: string | null = null;
+  const updates = items.map((item, idx) => {
+    if (item.kind === "section") {
+      currentSectionId = item.id;
+      return gate.supabase
+        .from("form_sections")
         .update({ order_index: idx })
-        .eq("id", id)
-        .eq("form_id", formId)
-    )
-  );
+        .eq("id", item.id)
+        .eq("form_id", formId);
+    }
+    return gate.supabase
+      .from("form_questions")
+      .update({ order_index: idx, section_id: currentSectionId })
+      .eq("id", item.id)
+      .eq("form_id", formId);
+  });
+
+  const results = await Promise.all(updates);
   const failed = results.find((r) => r.error);
   if (failed?.error) return { error: failed.error.message };
 
@@ -520,7 +662,7 @@ export async function getResponses(formId: string): Promise<{
   const { data: questionsData, error: questionsErr } = await gate.supabase
     .from("form_questions")
     .select(
-      "id, form_id, type, label, help_text, is_required, order_index, autofill_source, form_question_options(id, question_id, label, order_index)"
+      "id, form_id, type, label, help_text, is_required, order_index, autofill_source, section_id, form_question_options(id, question_id, label, order_index)"
     )
     .eq("form_id", formId)
     .order("order_index", { ascending: true });
@@ -535,6 +677,7 @@ export async function getResponses(formId: string): Promise<{
     is_required: q.is_required,
     order_index: q.order_index,
     autofill_source: q.autofill_source as AutofillSource | null,
+    section_id: q.section_id,
     options: ((q.form_question_options ?? []) as FormQuestionOption[])
       .slice()
       .sort((a, b) => a.order_index - b.order_index),
@@ -653,7 +796,9 @@ export type FillableForm = {
   title: string;
   description: string | null;
   status: FormStatus;
+  banner_url: string | null;
   questions: FormQuestion[];
+  sections: FormSection[];
 };
 
 export async function getFormToFill(formId: string): Promise<{
@@ -667,22 +812,34 @@ export async function getFormToFill(formId: string): Promise<{
 
   const { data: form, error: formErr } = await gate.supabase
     .from("forms")
-    .select("id, title, description, status")
+    .select("id, title, description, status, banner_url")
     .eq("id", formId)
     .maybeSingle();
   if (formErr) return { form: null, answers: {}, responseId: null, error: formErr.message };
   if (!form) return { form: null, answers: {}, responseId: null, error: "Form not found." };
 
-  const { data: questionsData, error: questionsErr } = await gate.supabase
-    .from("form_questions")
-    .select(
-      "id, form_id, type, label, help_text, is_required, order_index, autofill_source, form_question_options(id, question_id, label, order_index)"
-    )
-    .eq("form_id", formId)
-    .order("order_index", { ascending: true });
+  const [questionsRes, sectionsRes] = await Promise.all([
+    gate.supabase
+      .from("form_questions")
+      .select(
+        "id, form_id, type, label, help_text, is_required, order_index, autofill_source, section_id, form_question_options(id, question_id, label, order_index)"
+      )
+      .eq("form_id", formId)
+      .order("order_index", { ascending: true }),
+    gate.supabase
+      .from("form_sections")
+      .select("id, form_id, title, description, order_index, banner_url")
+      .eq("form_id", formId)
+      .order("order_index", { ascending: true }),
+  ]);
+  const { data: questionsData, error: questionsErr } = questionsRes;
   if (questionsErr) {
     return { form: null, answers: {}, responseId: null, error: questionsErr.message };
   }
+  if (sectionsRes.error) {
+    return { form: null, answers: {}, responseId: null, error: sectionsRes.error.message };
+  }
+  const sections: FormSection[] = (sectionsRes.data ?? []) as FormSection[];
 
   const questions: FormQuestion[] = (questionsData ?? []).map((q) => ({
     id: q.id,
@@ -693,6 +850,7 @@ export async function getFormToFill(formId: string): Promise<{
     is_required: q.is_required,
     order_index: q.order_index,
     autofill_source: q.autofill_source as AutofillSource | null,
+    section_id: q.section_id,
     options: ((q.form_question_options ?? []) as FormQuestionOption[])
       .slice()
       .sort((a, b) => a.order_index - b.order_index),
@@ -734,7 +892,9 @@ export async function getFormToFill(formId: string): Promise<{
       title: form.title,
       description: form.description,
       status: form.status,
+      banner_url: form.banner_url,
       questions,
+      sections,
     },
     answers,
     responseId: existingResponse?.id ?? null,
@@ -793,12 +953,9 @@ export async function submitResponse(
 
   for (const q of questions ?? []) {
     if (!q.is_required) continue;
-    const a = answers[q.id];
-    const filled =
-      (a?.value && a.value.trim()) ||
-      (a?.selectedOptionIds && a.selectedOptionIds.length) ||
-      a?.filePath;
-    if (!filled) return { error: "Please answer all required questions." };
+    if (!isQuestionAnswered(answers[q.id])) {
+      return { error: "Please answer all required questions." };
+    }
   }
 
   const ensured = await ensureResponseId(formId);

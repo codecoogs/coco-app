@@ -2,9 +2,7 @@
 
 import { PasswordInput } from "@/app/components/ui/PasswordInput";
 import { createClient } from "@/lib/supabase/client";
-import { getSiteUrl } from "@/lib/site-url";
 import { validateEmail, validatePassword } from "@/lib/validation";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -62,18 +60,6 @@ export function SignInModal({
     onClose();
     router.push(next);
     router.refresh();
-  };
-
-  const handleOAuthLogin = async (provider: "discord") => {
-    setLoading(true);
-    setMessage(null);
-    await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
-    setLoading(false);
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -192,30 +178,6 @@ export function SignInModal({
             {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
-
-        <div className="mt-6 flex items-center gap-4">
-          <span className="h-px flex-1 bg-zinc-700" />
-          <span className="text-sm text-zinc-400">or</span>
-          <span className="h-px flex-1 bg-zinc-700" />
-        </div>
-
-        <div className="mt-6">
-          <button
-            type="button"
-            onClick={() => handleOAuthLogin("discord")}
-            disabled={loading}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-zinc-600 bg-transparent py-3 font-medium text-white transition hover:border-zinc-500 hover:bg-zinc-800/50 disabled:opacity-50 hover:cursor-pointer"
-          >
-            <Image
-              src="/images/icons/discord-round-black-icon.svg"
-              alt=""
-              width={24}
-              height={24}
-              className="h-6 w-6 shrink-0 invert"
-            />
-            Sign in with Discord
-          </button>
-        </div>
 
         <p className="mt-6 text-center text-sm text-zinc-400">
           Don&apos;t have an account?{" "}
