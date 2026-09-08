@@ -4,7 +4,7 @@ import { fetchUserProfile } from "@/lib/supabase/profile";
 import { createClient } from "@/lib/supabase/server";
 import { hasActiveMembership } from "@/lib/supabase/membership";
 import { canAccessMemberOnlyFeatures, hasPermission } from "@/lib/types/rbac";
-import { redirect } from "next/navigation";
+import { ExecutiveDashboard } from "@/app/dashboard/executive/ExecutiveDashboard";
 
 function softCardTone(seed: string) {
   const accent = `color-mix(in oklab, ${seed} 65%, var(--accent) 35%)`;
@@ -26,8 +26,11 @@ export default async function DashboardPage() {
   }
 
   const profile = await fetchUserProfile(supabase, user.id);
+  // Rendered here rather than redirect("/dashboard/executive"): a server
+  // redirect during render trips React #310 inside Next's own Router, which
+  // white-screens above global-error. See ExecutiveDashboard for the detail.
   if (hasPermission(profile, "view_executive_dashboard")) {
-    redirect("/dashboard/executive");
+    return <ExecutiveDashboard />;
   }
 
   const [overview, hasMembership] = await Promise.all([

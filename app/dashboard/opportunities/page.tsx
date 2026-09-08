@@ -31,25 +31,30 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
 
   const sp = await searchParams;
   const parsedPage = parseInt(sp.page ?? "1", 10);
-  const page = Number.isFinite(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
+  const requestedPage = Number.isFinite(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
   const search = sp.search?.trim() ?? "";
   const location = sp.location?.trim() ?? "";
 
-  const [oppsRes, locationsRes] = await Promise.all([
-    getActiveOpportunities({ page, pageSize: OPPORTUNITIES_PAGE_SIZE, search, location }),
+  const [requestedRes, locationsRes] = await Promise.all([
+    getActiveOpportunities({ page: requestedPage, pageSize: OPPORTUNITIES_PAGE_SIZE, search, location }),
     getOpportunityLocations(),
   ]);
 
   const totalPages =
-    oppsRes.totalCount > 0 ? Math.max(1, Math.ceil(oppsRes.totalCount / OPPORTUNITIES_PAGE_SIZE)) : 1;
+    requestedRes.totalCount > 0 ? Math.max(1, Math.ceil(requestedRes.totalCount / OPPORTUNITIES_PAGE_SIZE)) : 1;
 
-  if (oppsRes.error == null && oppsRes.totalCount > 0 && page > totalPages) {
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    if (location) params.set("location", location);
-    params.set("page", String(totalPages));
-    redirect(`/dashboard/opportunities?${params.toString()}`);
-  }
+  // An out-of-range page is clamped and refetched rather than redirect()ed: a
+  // server redirect during a client navigation forces an MPA navigation, and
+  // Next's own Router throws React #310 on that flag - above global-error, so
+  // it white-screens. See app/dashboard/executive/ExecutiveDashboard.tsx.
+  const page =
+    requestedRes.error == null && requestedRes.totalCount > 0
+      ? Math.min(requestedPage, totalPages)
+      : requestedPage;
+  const oppsRes =
+    page === requestedPage
+      ? requestedRes
+      : await getActiveOpportunities({ page, pageSize: OPPORTUNITIES_PAGE_SIZE, search, location });
 
   return (
     <div className="space-y-8">
