@@ -398,8 +398,10 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
-# Function secrets: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN,
-# and optional GOOGLE_CALENDAR_ID (defaults to "primary" if unset).
+# Function secrets: GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+# and GOOGLE_CALENDAR_ID. The calendar must be shared with the service account
+# with "Make changes to events"; GOOGLE_CALENDAR_ID is not really optional -- the
+# "primary" fallback is the service account own empty calendar.
 [functions.google-calendar-sync]
 enabled = true
 verify_jwt = true
