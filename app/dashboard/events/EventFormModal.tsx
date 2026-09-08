@@ -1,5 +1,6 @@
 "use client";
 
+import { Dropzone, formatFileSize } from "@/app/components/ui/Dropzone";
 import { createClient } from "@/lib/supabase/client";
 import {
   createEvent,
@@ -55,6 +56,15 @@ export function EventFormModal({
     type: "error" | "ok";
     text: string;
   } | null>(null);
+  const [flyerFile, setFlyerFile] = useState<File | null>(null);
+  const [flyerName, setFlyerName] = useState<string | null>(null);
+  const [flyerSizeLabel, setFlyerSizeLabel] = useState<string | null>(null);
+
+  const onFlyerFileSelected = useCallback((file: File | null) => {
+    setFlyerFile(file);
+    setFlyerName(file?.name ?? null);
+    setFlyerSizeLabel(file ? formatFileSize(file.size) : null);
+  }, []);
 
   const defaultPointCategoryName = useMemo(
     () => pickPointCategoryName(event, categories),
@@ -103,8 +113,6 @@ export function EventFormModal({
     ).value;
     const is_public = (form.elements.namedItem("is_public") as HTMLInputElement)
       .checked;
-    const flyerInput = form.elements.namedItem("flyer") as HTMLInputElement;
-    const flyerFile = flyerInput?.files?.[0];
 
     if (!title) {
       setMessage({ type: "error", text: "Title is required." });
@@ -154,22 +162,24 @@ export function EventFormModal({
       is_public,
     };
 
-    const result =
-      mode === "create"
-        ? await createEvent(payload)
-        : event
-          ? await updateEvent(event.id, payload)
-          : { error: "Missing event." };
+    try {
+      const result =
+        mode === "create"
+          ? await createEvent(payload)
+          : event
+            ? await updateEvent(event.id, payload)
+            : { error: "Missing event." };
 
-    setBusy(false);
+      if (result.error) {
+        setMessage({ type: "error", text: result.error });
+        return;
+      }
 
-    if (result.error) {
-      setMessage({ type: "error", text: result.error });
-      return;
+      await onSaved();
+      onClose();
+    } finally {
+      setBusy(false);
     }
-
-    await onSaved();
-    onClose();
   };
 
   if (!categories.length) {
@@ -314,11 +324,14 @@ export function EventFormModal({
             <label className="mb-1 block text-sm font-medium text-muted-foreground">
               Flyer (image)
             </label>
-            <input
-              name="flyer"
-              type="file"
+            <Dropzone
+              id="event-flyer"
               accept="image/jpeg,image/png,image/webp,image/gif"
-              className="w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-2 file:text-sm file:font-medium"
+              hint="JPEG, PNG, WEBP, or GIF"
+              disabled={busy}
+              fileName={flyerName}
+              fileSizeLabel={flyerSizeLabel}
+              onFileSelected={onFlyerFileSelected}
             />
             {event?.flyer_url ? (
               <p className="mt-1 text-xs text-muted-foreground">
