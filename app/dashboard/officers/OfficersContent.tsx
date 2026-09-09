@@ -1,5 +1,7 @@
 "use client";
 
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/shadcn/tabs";
+import { filterUsersByQuery } from "@/lib/user-search";
 import { useProfileOptional } from "@/app/contexts/ProfileContext";
 import {
   createOfficer,
@@ -51,30 +53,6 @@ function userOptionLabel(u: {
   const d = u.discord?.trim();
   if (d) base += ` · ${d}`;
   return base;
-}
-
-function filterUsersWithoutPosition(
-  users: {
-    id: string;
-    email: string;
-    first_name: string;
-    last_name: string;
-    discord?: string;
-  }[],
-  query: string,
-  limit = 40
-) {
-  const trimmed = query.trim().toLowerCase();
-  if (!trimmed) return [];
-  const tokens = trimmed.split(/\s+/).filter(Boolean);
-  const scored = users.filter((u) => {
-    const name = [u.first_name, u.last_name].filter(Boolean).join(" ").toLowerCase();
-    const email = u.email.toLowerCase();
-    const discord = (u.discord ?? "").toLowerCase();
-    const haystack = `${name} ${email} ${discord}`;
-    return tokens.every((t) => haystack.includes(t));
-  });
-  return scored.slice(0, limit);
 }
 
 function filterPositionTitles(titles: PositionTitleOption[], query: string, limit = 40) {
@@ -248,7 +226,7 @@ export function OfficersContent({
   );
 
   const userSearchMatches = useMemo(
-    () => filterUsersWithoutPosition(usersWithoutPosition, userSearchQuery),
+    () => filterUsersByQuery(usersWithoutPosition, userSearchQuery),
     [usersWithoutPosition, userSearchQuery]
   );
 
@@ -273,64 +251,14 @@ export function OfficersContent({
 
       {canManage && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div
-            className="inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted/40 p-0.5"
-            role="tablist"
-            aria-label="Officers sections"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mainTab === "assignments"}
-              onClick={() => setMainTab("assignments")}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-                mainTab === "assignments"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Position assignments
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mainTab === "positions"}
-              onClick={() => setMainTab("positions")}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-                mainTab === "positions"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Positions
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mainTab === "branches"}
-              onClick={() => setMainTab("branches")}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-                mainTab === "branches"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Branches
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mainTab === "roles"}
-              onClick={() => setMainTab("roles")}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-                mainTab === "roles"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Roles
-            </button>
-          </div>
+          <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as typeof mainTab)}>
+        <TabsList>
+            <TabsTrigger value="assignments">Position assignments</TabsTrigger>
+            <TabsTrigger value="positions">Positions</TabsTrigger>
+            <TabsTrigger value="branches">Branches</TabsTrigger>
+            <TabsTrigger value="roles">Roles</TabsTrigger>
+          </TabsList>
+      </Tabs>
           {mainTab === "assignments" && (
             <button
               type="button"

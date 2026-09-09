@@ -1,5 +1,6 @@
 "use client";
 
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/shadcn/tabs";
 import { Dropzone, formatFileSize } from "@/app/components/ui/Dropzone";
 import { formatEventDateTime } from "@/lib/event-time";
 import confetti from "canvas-confetti";
@@ -338,37 +339,12 @@ export function AddEventAttendanceModal({ event, onClose, onRecorded }: Props) {
           {event.start_time ? ` · ${formatEventDateTime(event.start_time)}` : null}
         </p>
 
-        <div
-          className="mt-4 inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted/40 p-0.5"
-          role="tablist"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === "member"}
-            onClick={() => setSubTab("member")}
-            className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-              subTab === "member"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Search members
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === "csv"}
-            onClick={() => setSubTab("csv")}
-            className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-              subTab === "csv"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Upload CSV
-          </button>
-        </div>
+        <Tabs value={subTab} onValueChange={(v) => setSubTab(v as typeof subTab)}>
+        <TabsList>
+          <TabsTrigger value="member">Search members</TabsTrigger>
+          <TabsTrigger value="csv">Upload CSV</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
         {formMessage && (
           <div

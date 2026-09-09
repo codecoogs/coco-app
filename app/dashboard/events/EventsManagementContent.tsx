@@ -1,5 +1,6 @@
 "use client";
 
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/shadcn/tabs";
 import type { Resource } from "@/lib/types/resources";
 import { compareAsc, isPast, parseISO } from "date-fns";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -438,53 +439,15 @@ export function EventsManagementContent({
         </div>
       )}
 
-      <div
-        className="inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted/40 p-0.5"
-        role="tablist"
-        aria-label="Event management sections"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mainTab === "events"}
-          onClick={() => setMainTab("events")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            mainTab === "events"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Events
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mainTab === "attendance"}
-          onClick={() => setMainTab("attendance")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            mainTab === "attendance"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Attendance
-        </button>
+      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as typeof mainTab)}>
+        <TabsList>
+        <TabsTrigger value="events">Events</TabsTrigger>
+        <TabsTrigger value="attendance">Attendance</TabsTrigger>
         {canManageResources && (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mainTab === "resources"}
-            onClick={() => setMainTab("resources")}
-            className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-              mainTab === "resources"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Resources
-          </button>
+          <TabsTrigger value="resources">Resources</TabsTrigger>
         )}
-      </div>
+      </TabsList>
+      </Tabs>
 
       {mainTab !== "resources" && (
         <div className="flex flex-wrap items-center gap-4">

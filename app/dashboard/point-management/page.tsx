@@ -3,7 +3,7 @@ import { fetchUserProfile } from "@/lib/supabase/profile";
 import { hasAnyPermission, hasPermission } from "@/lib/types/rbac";
 import { redirect } from "next/navigation";
 import { listPointCategories } from "../point-information/actions";
-import { getUsersWithPointsForManagement } from "./actions";
+import { getAwardablePeople } from "./actions";
 import { PointManagementContent } from "./PointManagementContent";
 
 export default async function PointManagementPage() {
@@ -28,7 +28,7 @@ export default async function PointManagementPage() {
 
   const [categoriesRes, usersRes] = await Promise.all([
     listPointCategories(),
-    canViewPointsTransactions ? getUsersWithPointsForManagement() : Promise.resolve({ data: [], error: null }),
+    canViewPointsTransactions ? getAwardablePeople() : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (categoriesRes.error) {
@@ -42,7 +42,7 @@ export default async function PointManagementPage() {
         canManageCategories={canManageCategories}
         canManagePoints={canManagePoints}
         canViewPointsTransactions={canViewPointsTransactions}
-        usersWithPoints={usersRes.data}
+        people={usersRes.data}
       />
     </div>
   );
