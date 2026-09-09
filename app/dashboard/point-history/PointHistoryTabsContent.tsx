@@ -1,5 +1,6 @@
 "use client";
 
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/shadcn/tabs";
 import { useState } from "react";
 import type { PointHistoryBundle } from "./queries";
 import { PointHistoryContent } from "./PointHistoryContent";
@@ -33,39 +34,13 @@ export function PointHistoryTabsContent({
         <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>
       </div>
 
-      <div
-        className="inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted/40 p-0.5"
-        role="tablist"
-        aria-label="Point views"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "mine"}
-          onClick={() => setTab("mine")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            tab === "mine"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          My Points
-        </button>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+        <TabsList>
+        <TabsTrigger value="mine">My Points</TabsTrigger>
 
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "all_users"}
-          onClick={() => setTab("all_users")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            tab === "all_users"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Point Information
-        </button>
-      </div>
+        <TabsTrigger value="all_users">Point Information</TabsTrigger>
+      </TabsList>
+      </Tabs>
 
       {tab === "mine" ? (
         myPointsMissingProfile ? (

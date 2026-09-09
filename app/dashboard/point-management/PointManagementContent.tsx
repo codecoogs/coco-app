@@ -1,10 +1,13 @@
 "use client";
 
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/shadcn/tabs";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import type { PointCategoryRow } from "../point-information/actions";
 import { PointInformationContent } from "../point-information/PointInformationContent";
+import { useRouter } from "next/navigation";
+import { filterUsersByQuery } from "@/lib/user-search";
 import type {
-  UsersWithPointsOption,
+  AwardablePerson,
   ManagedPointTransactionRow,
   CreateIndividualPointTransactionInput,
 } from "./actions";
@@ -15,7 +18,7 @@ type Props = {
   canManageCategories: boolean;
   canManagePoints: boolean;
   canViewPointsTransactions: boolean;
-  usersWithPoints: UsersWithPointsOption[];
+  people: AwardablePerson[];
 };
 
 type TabKey = "point_information" | "individual_transaction" | "all_transactions";
@@ -25,8 +28,9 @@ export function PointManagementContent({
   canManageCategories,
   canManagePoints,
   canViewPointsTransactions,
-  usersWithPoints,
+  people,
 }: Props) {
+  const router = useRouter();
   const [tab, setTab] = useState<TabKey>("point_information");
   const [message, setMessage] = useState<{ type: "error" | "ok"; text: string } | null>(null);
 
@@ -36,14 +40,30 @@ export function PointManagementContent({
   }, [initialCategories]);
 
   // Individual transaction form
-  const [txUserId, setTxUserId] = useState<string>(usersWithPoints[0]?.user_id ?? "");
+  const [txUserId, setTxUserId] = useState<string>("");
   const [txCategoryId, setTxCategoryId] = useState<string>(categories[0]?.id ?? "");
-  const [txPointsEarned, setTxPointsEarned] = useState<number>(0);
   const [txBusy, setTxBusy] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [membersOnly, setMembersOnly] = useState(true);
+  const [txResult, setTxResult] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
-  useEffect(() => {
-    if (!txUserId && usersWithPoints[0]?.user_id) setTxUserId(usersWithPoints[0].user_id);
-  }, [usersWithPoints, txUserId]);
+  const searchPool = useMemo(
+    () => (membersOnly ? people.filter((p) => p.is_member) : people),
+    [people, membersOnly]
+  );
+  const memberMatches = useMemo(
+    () => filterUsersByQuery(searchPool, memberSearch),
+    [searchPool, memberSearch]
+  );
+  const selectedPerson = useMemo(
+    () => people.find((p) => p.user_id === txUserId) ?? null,
+    [people, txUserId]
+  );
+  // The award is the category's value; the server reads it again on submit.
+  const selectedCategory = useMemo(
+    () => categories.find((c) => c.id === txCategoryId) ?? null,
+    [categories, txCategoryId]
+  );
 
   useEffect(() => {
     if (!txCategoryId && categories[0]?.id) setTxCategoryId(categories[0].id);
@@ -95,30 +115,33 @@ export function PointManagementContent({
         setMessage({ type: "error", text: "Please choose a point category." });
         return;
       }
-      if (!Number.isFinite(txPointsEarned)) {
-        setMessage({ type: "error", text: "Points must be a number." });
-        return;
-      }
-
       setTxBusy(true);
+      setTxResult(null);
       const payload: CreateIndividualPointTransactionInput = {
         user_id: txUserId,
         category_id: txCategoryId,
-        points_earned: txPointsEarned,
       };
 
       const res = await createIndividualPointTransactionForUser(payload);
       setTxBusy(false);
       if (res.error) {
-        setMessage({ type: "error", text: res.error });
+        setTxResult({ type: "error", text: res.error });
         return;
       }
-      setMessage({ type: "ok", text: "Point transaction created." });
+      setTxResult({ type: "ok", text: "Point transaction created." });
 
-      // Refresh current subtab data.
-      await loadTxs();
+      // Hold the confirmation briefly, then clear the form and pull fresh data.
+      // router.refresh() rather than a reload so the officer keeps this tab and
+      // can award again immediately.
+      window.setTimeout(() => {
+        setTxUserId("");
+        setMemberSearch("");
+        setTxResult(null);
+        router.refresh();
+        void loadTxs();
+      }, 1000);
     },
-    [canManagePoints, loadTxs, txCategoryId, txPointsEarned, txUserId]
+    [canManagePoints, loadTxs, router, txCategoryId, txUserId]
   );
 
   return (
@@ -142,53 +165,19 @@ export function PointManagementContent({
         </div>
       ) : null}
 
-      <div className="inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted/40 p-0.5" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "point_information"}
-          onClick={() => setTab("point_information")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            tab === "point_information"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Point Information
-        </button>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+        <TabsList>
+        <TabsTrigger value="point_information">Point Information</TabsTrigger>
 
         {canManagePoints ? (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "individual_transaction"}
-            onClick={() => setTab("individual_transaction")}
-            className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-              tab === "individual_transaction"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Individual point transaction
-          </button>
+          <TabsTrigger value="individual_transaction">Individual point transaction</TabsTrigger>
         ) : null}
 
         {canViewPointsTransactions ? (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "all_transactions"}
-            onClick={() => setTab("all_transactions")}
-            className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-              tab === "all_transactions"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Point transactions (all)
-          </button>
+          <TabsTrigger value="all_transactions">Point transactions (all)</TabsTrigger>
         ) : null}
-      </div>
+      </TabsList>
+      </Tabs>
 
       {tab === "point_information" ? (
         <PointInformationContent initialCategories={categories} canManage={canManageCategories} />
@@ -202,27 +191,115 @@ export function PointManagementContent({
           </p>
 
           <form onSubmit={submitIndividual} className="mt-6 space-y-4">
+            {txResult ? (
+              <p
+                role="status"
+                className={`text-sm font-medium ${
+                  txResult.type === "ok"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {txResult.text}
+              </p>
+            ) : null}
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-muted-foreground">
-                  Member
-                </label>
-                <select
-                  value={txUserId}
-                  onChange={(e) => setTxUserId(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
-                  required
-                  disabled={!canManagePoints || usersWithPoints.length === 0}
-                >
-                  {usersWithPoints.length === 0 ? (
-                    <option value="">No users with points</option>
-                  ) : null}
-                  {usersWithPoints.map((u) => (
-                    <option key={u.user_id} value={u.user_id}>
-                      {(u.first_name ?? "")?.trim()} {(u.last_name ?? "")?.trim()} {"·"} {u.total_points ?? 0} pts
-                    </option>
-                  ))}
-                </select>
+              <div className="relative">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <label className="block text-sm font-medium text-muted-foreground">
+                    Member
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={membersOnly}
+                      onChange={(e) => {
+                        setMembersOnly(e.target.checked);
+                        setTxUserId("");
+                      }}
+                      className="h-3.5 w-3.5 rounded border-border"
+                    />
+                    Members only
+                  </label>
+                </div>
+
+                {selectedPerson ? (
+                  <div className="flex items-start justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-card-foreground">
+                        {[selectedPerson.first_name, selectedPerson.last_name]
+                          .filter(Boolean)
+                          .join(" ") || "Unnamed member"}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {selectedPerson.email ?? "No email on file"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTxUserId("");
+                        setMemberSearch("");
+                      }}
+                      className="shrink-0 text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="search"
+                      autoComplete="off"
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      placeholder="Search by name, email, or Discord…"
+                      disabled={!canManagePoints}
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+                      aria-label="Search members"
+                    />
+                    {memberSearch.trim() ? (
+                      <ul
+                        className="absolute left-0 right-0 z-20 mt-1 max-h-52 overflow-auto rounded-lg border border-border bg-card py-1 shadow-md"
+                        role="listbox"
+                        aria-label="Matching members"
+                      >
+                        {memberMatches.length === 0 ? (
+                          <li className="px-3 py-2 text-sm text-muted-foreground">
+                            {membersOnly
+                              ? "No members match. Untick Members only to search everyone."
+                              : "No users match that search."}
+                          </li>
+                        ) : (
+                          memberMatches.map((p) => (
+                            <li key={p.user_id}>
+                              <button
+                                type="button"
+                                role="option"
+                                aria-selected={p.user_id === txUserId}
+                                onClick={() => {
+                                  setTxUserId(p.user_id);
+                                  setMemberSearch("");
+                                }}
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                              >
+                                <span className="block text-card-foreground">
+                                  {[p.first_name, p.last_name].filter(Boolean).join(" ") ||
+                                    "Unnamed member"}
+                                </span>
+                                <span className="block text-xs text-muted-foreground">
+                                  {p.email ?? "No email"} · {p.total_points} pts
+                                  {p.is_member ? "" : " · not a member"}
+                                </span>
+                              </button>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    ) : null}
+                  </>
+                )}
               </div>
 
               <div>
@@ -249,19 +326,18 @@ export function PointManagementContent({
                 <label className="mb-1 block text-sm font-medium text-muted-foreground">
                   Points to award
                 </label>
-                <input
-                  type="number"
-                  step={1}
-                  value={txPointsEarned}
-                  onChange={(e) => setTxPointsEarned(Number(e.target.value))}
-                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
-                  required
-                />
+                {/* Read-only: the award is the category's value, and the server
+                    reads it again on submit rather than trusting this field. */}
+                <p className="w-full rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">
+                  {selectedCategory
+                    ? `${selectedCategory.points_value} pts`
+                    : "Choose a category"}
+                </p>
               </div>
               <div className="flex items-end">
                 <button
                   type="submit"
-                  disabled={txBusy || !canManagePoints}
+                  disabled={txBusy || !canManagePoints || !txUserId}
                   className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {txBusy ? "Creating..." : "Create transaction"}
@@ -269,11 +345,20 @@ export function PointManagementContent({
               </div>
             </div>
 
-            {usersWithPoints.length === 0 ? (
-              <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-                No members currently have points in the leaderboard.
-              </div>
-            ) : null}
+            <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
+              {selectedPerson ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Current points</span>
+                  <span className="text-lg font-semibold tabular-nums text-card-foreground">
+                    {selectedPerson.total_points}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-muted-foreground">
+                  Search for a member above to see their current points.
+                </span>
+              )}
+            </div>
           </form>
         </section>
       ) : null}

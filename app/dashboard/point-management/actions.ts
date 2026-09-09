@@ -14,6 +14,25 @@ export type UsersWithPointsOption = {
   total_points: number | null;
 };
 
+/**
+ * A person points can be awarded to. Everyone is awardable - `is_member` only
+ * drives the "Members only" filter in the picker.
+ *
+ * Deliberately not restricted to paid members: production has 437 users but
+ * only 3 active memberships, while 66 users already have point history. A
+ * members-only list would make it impossible to award points to almost anyone
+ * who earns them.
+ */
+export type AwardablePerson = {
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  discord: string | null;
+  total_points: number;
+  is_member: boolean;
+};
+
 export type ManagedPointTransactionRow = {
   id: string;
   user_id: string;
@@ -57,6 +76,71 @@ type TxRow = {
   created_at: string | null;
   created_by: string | null;
 };
+
+export async function getAwardablePeople(): Promise<{
+  data: AwardablePerson[];
+  error: string | null;
+}> {
+  const supabase = await createClient();
+  const { data: authRes, error: authErr } = await supabase.auth.getUser();
+  if (authErr) return { data: [], error: authErr.message };
+  if (!authRes.user?.id) return { data: [], error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, authRes.user.id);
+  if (!hasViewTransactions(profile)) {
+    return { data: [], error: "You do not have permission to view point transactions." };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  // ponytail: a plain select() caps at 1000 rows and there are ~440 users.
+  // Move to .range() pagination (or a server-side search) past that.
+  const [usersRes, lbRes, memRes] = await Promise.all([
+    supabase
+      .from("users")
+      .select("id, first_name, last_name, email, discord")
+      .is("deleted_at", null),
+    supabase.from("leaderboard").select("user_id, total_points"),
+    supabase
+      .from("memberships")
+      .select("user_id")
+      .eq("status", "active")
+      .gte("ends_at", today),
+  ]);
+
+  const failure = usersRes.error ?? lbRes.error ?? memRes.error;
+  if (failure) return { data: [], error: failure.message };
+
+  const pointsByUser = new Map<string, number>(
+    ((lbRes.data ?? []) as LeaderboardRow[]).map((r) => [
+      String(r.user_id),
+      r.total_points ?? 0,
+    ])
+  );
+  const memberIds = new Set(
+    ((memRes.data ?? []) as { user_id: string | null }[])
+      .map((m) => (m.user_id ? String(m.user_id) : ""))
+      .filter(Boolean)
+  );
+
+  const rows = (usersRes.data ?? []) as (UserRow & {
+    email: string | null;
+    discord: string | null;
+  })[];
+
+  return {
+    data: rows.map((u) => ({
+      user_id: String(u.id),
+      first_name: u.first_name ?? null,
+      last_name: u.last_name ?? null,
+      email: u.email ?? null,
+      discord: u.discord ?? null,
+      // Absent from the leaderboard just means zero, not unknown.
+      total_points: pointsByUser.get(String(u.id)) ?? 0,
+      is_member: memberIds.has(String(u.id)),
+    })),
+    error: null,
+  };
+}
 
 export async function getUsersWithPointsForManagement(): Promise<{
   data: UsersWithPointsOption[];
@@ -232,7 +316,8 @@ export async function getManagedPointTransactionsForUsersWithPoints(
 export type CreateIndividualPointTransactionInput = {
   user_id: string;
   category_id: string;
-  points_earned: number;
+  // points_earned is intentionally absent: the server reads it from the
+  // category so the client cannot choose the award amount.
 };
 
 export async function createIndividualPointTransactionForUser(
@@ -253,11 +338,26 @@ export async function createIndividualPointTransactionForUser(
 
   const userId = input.user_id;
   const categoryId = input.category_id;
-  const pts = Math.trunc(input.points_earned);
 
   if (!userId) return { error: "User is required." };
   if (!categoryId) return { error: "Category is required." };
-  if (!Number.isFinite(pts)) return { error: "Points must be a number." };
+
+  // The award is whatever the category is worth, read here rather than taken
+  // from the request. The form shows it read-only, but a read-only input is a
+  // UI affordance, not a control - this insert runs with the service role and
+  // bypasses RLS, so trusting a client-supplied number would let anyone with
+  // manage_points grant themselves any total.
+  const { data: categoryRow, error: categoryErr } = await supabase
+    .from("point_categories")
+    .select("points_value")
+    .eq("id", categoryId)
+    .maybeSingle();
+
+  if (categoryErr) return { error: categoryErr.message };
+  if (!categoryRow) return { error: "That point category no longer exists." };
+
+  const pts = Math.trunc(Number(categoryRow.points_value));
+  if (!Number.isFinite(pts)) return { error: "That category has no point value set." };
 
   // Use service role so this insert isn't blocked by RLS policies.
   const admin = getServiceRoleClient();
@@ -269,7 +369,9 @@ export async function createIndividualPointTransactionForUser(
     points_earned: pts,
     created_by: appUserId,
     updated_by: appUserId,
-    updated_on: new Date().toISOString(),
+    // No updated_on: the column is updated_at and defaults to now(). Writing
+    // the wrong name made every insert fail on the schema cache, so creating a
+    // transaction here has never worked.
   });
 
   if (error) return { error: error.message };

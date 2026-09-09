@@ -85,12 +85,29 @@ export function FormResponsesContent({
 
   const handleViewFile = useCallback(async (filePath: string) => {
     setMessage(null);
+
+    // Opened synchronously, before awaiting the signed URL: a window.open that
+    // runs after an await has lost the click's user-activation and gets blocked
+    // as a popup. Also no features string - passing one makes browsers open a
+    // stripped popup window rather than a normal tab.
+    const tab = window.open("", "_blank");
+
     const res = await getSignedFileUrl(filePath);
     if (res.error || !res.url) {
+      tab?.close();
       setMessage(res.error ?? "Could not open file.");
       return;
     }
-    window.open(res.url, "_blank", "noopener,noreferrer");
+
+    if (tab) {
+      // Stand in for rel="noopener" now that the features string is gone.
+      tab.opener = null;
+      tab.location.replace(res.url);
+    } else {
+      // Popups blocked entirely - fall back to the current tab rather than
+      // silently doing nothing.
+      window.location.href = res.url;
+    }
   }, []);
 
   const fileQuestions = useMemo(
@@ -228,7 +245,7 @@ export function FormResponsesContent({
                 type="button"
                 onClick={() => setOpenResponseId(null)}
                 aria-label="Close"
-                className="shrink-0 rounded-md px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="shrink-0 rounded-md px-2 py-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
               >
                 ✕
               </button>

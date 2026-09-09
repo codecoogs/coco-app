@@ -308,7 +308,7 @@ export function TicketManagementContent({
                 type="button"
                 onClick={() => setOpenTicketId(null)}
                 aria-label="Close"
-                className="shrink-0 rounded-md px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="shrink-0 rounded-md px-2 py-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
               >
                 ✕
               </button>
