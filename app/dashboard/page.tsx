@@ -5,6 +5,37 @@ import { createClient } from "@/lib/supabase/server";
 import { hasActiveMembership } from "@/lib/supabase/membership";
 import { canAccessMemberOnlyFeatures, hasPermission } from "@/lib/types/rbac";
 import { ExecutiveDashboard } from "@/app/dashboard/executive/ExecutiveDashboard";
+import {
+  CheckInResultModal,
+  type CheckInOutcome,
+} from "@/app/dashboard/components/CheckInResultModal";
+import { getServiceRoleClient } from "@/lib/supabase/service-role";
+
+const CHECK_IN_OUTCOMES = [
+  "ok",
+  "already",
+  "expired",
+  "closed",
+  "invalid",
+  "error",
+] as const;
+
+function parseOutcome(value: string | undefined): CheckInOutcome | null {
+  return CHECK_IN_OUTCOMES.includes(value as CheckInOutcome)
+    ? (value as CheckInOutcome)
+    : null;
+}
+
+/** Title for the check-in modal. Read with the service role because a scanner
+ *  who just signed up cannot select a non-public event under RLS. */
+async function checkInEventTitle(eventId: string | undefined): Promise<string | null> {
+  const id = Number(eventId);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const admin = getServiceRoleClient();
+  if (!admin) return null;
+  const { data } = await admin.from("events").select("title").eq("id", id).maybeSingle();
+  return (data?.title as string | undefined) ?? null;
+}
 
 function softCardTone(seed: string) {
   const accent = `color-mix(in oklab, ${seed} 65%, var(--accent) 35%)`;
@@ -15,7 +46,12 @@ function softCardTone(seed: string) {
   } as const;
 }
 
-export default async function DashboardPage() {
+type Props = {
+  searchParams: Promise<{ checkin?: string; event?: string }>;
+};
+
+export default async function DashboardPage({ searchParams }: Props) {
+  const { checkin, event: checkInEventId } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -26,11 +62,26 @@ export default async function DashboardPage() {
   }
 
   const profile = await fetchUserProfile(supabase, user.id);
+
+  const outcome = parseOutcome(checkin);
+  const checkInModal = outcome ? (
+    <CheckInResultModal
+      outcome={outcome}
+      eventTitle={await checkInEventTitle(checkInEventId)}
+      pendingPoints={outcome === "ok" && !(await hasActiveMembership(supabase))}
+    />
+  ) : null;
+
   // Rendered here rather than redirect("/dashboard/executive"): a server
   // redirect during render trips React #310 inside Next's own Router, which
   // white-screens above global-error. See ExecutiveDashboard for the detail.
   if (hasPermission(profile, "view_executive_dashboard")) {
-    return <ExecutiveDashboard />;
+    return (
+      <>
+        {checkInModal}
+        <ExecutiveDashboard />
+      </>
+    );
   }
 
   const [overview, hasMembership] = await Promise.all([
@@ -42,6 +93,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {checkInModal}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
       </div>
