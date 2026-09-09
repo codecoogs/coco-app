@@ -16,7 +16,7 @@ export default async function MembershipPlansPage() {
   }
 
   const profile = await fetchUserProfile(supabase, user.id);
-  if (!hasPermission(profile, "manage_memberships")) {
+  if (!hasPermission(profile, "manage_membership_plans")) {
     redirect("/dashboard");
   }
 

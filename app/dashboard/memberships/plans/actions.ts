@@ -16,7 +16,7 @@ import { revalidatePath } from "next/cache";
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
-async function requireManageMemberships(): Promise<
+async function requireManagePlans(): Promise<
   | { ok: true; supabase: ServerSupabaseClient }
   | { ok: false; error: string }
 > {
@@ -27,17 +27,17 @@ async function requireManageMemberships(): Promise<
   if (!user?.id) return { ok: false, error: "Not signed in." };
 
   const profile = await fetchUserProfile(supabase, user.id);
-  if (!hasPermission(profile, "manage_memberships")) {
+  if (!hasPermission(profile, "manage_membership_plans")) {
     return { ok: false, error: "You do not have permission to manage membership plans." };
   }
   return { ok: true, supabase };
 }
 
-async function requireManageMembershipsWithAppUser(): Promise<
+async function requireManagePlansWithAppUser(): Promise<
   | { ok: true; supabase: ServerSupabaseClient; appUserId: string }
   | { ok: false; error: string }
 > {
-  const auth = await requireManageMemberships();
+  const auth = await requireManagePlans();
   if (!auth.ok) return auth;
 
   const appUserId = await getCurrentAppUserId(auth.supabase);
@@ -64,7 +64,7 @@ export async function getMembershipPlansForManage(): Promise<{
   data: MembershipPlanWithPeriod[];
   error: string | null;
 }> {
-  const auth = await requireManageMemberships();
+  const auth = await requireManagePlans();
   if (!auth.ok) return { data: [], error: auth.error };
   const { supabase } = auth;
 
@@ -116,7 +116,7 @@ export async function getPeriodOptions(): Promise<{
   academicYears: AcademicYear[];
   error: string | null;
 }> {
-  const auth = await requireManageMemberships();
+  const auth = await requireManagePlans();
   if (!auth.ok) return { semesters: [], academicYears: [], error: auth.error };
   const { supabase } = auth;
 
@@ -141,7 +141,7 @@ export async function getPeriodOptions(): Promise<{
 export async function createMembershipPlan(
   input: MembershipPlanInput
 ): Promise<{ error: string | null }> {
-  const auth = await requireManageMemberships();
+  const auth = await requireManagePlans();
   if (!auth.ok) return { error: auth.error };
 
   const { error } = await auth.supabase.from("membership_plans").insert(input);
@@ -156,7 +156,7 @@ export async function updateMembershipPlan(
   id: string,
   input: MembershipPlanInput
 ): Promise<{ error: string | null }> {
-  const auth = await requireManageMemberships();
+  const auth = await requireManagePlans();
   if (!auth.ok) return { error: auth.error };
 
   const { error } = await auth.supabase.from("membership_plans").update(input).eq("id", id);
@@ -171,7 +171,7 @@ export async function setMembershipPlanActive(
   id: string,
   isActive: boolean
 ): Promise<{ error: string | null }> {
-  const auth = await requireManageMemberships();
+  const auth = await requireManagePlans();
   if (!auth.ok) return { error: auth.error };
 
   const { error } = await auth.supabase
@@ -192,7 +192,7 @@ export async function setMembershipPlanActive(
 export async function createAcademicYear(
   input: AcademicYearInput
 ): Promise<{ error: string | null }> {
-  const auth = await requireManageMembershipsWithAppUser();
+  const auth = await requireManagePlansWithAppUser();
   if (!auth.ok) return { error: auth.error };
   const { supabase, appUserId } = auth;
 
@@ -218,7 +218,7 @@ export async function updateAcademicYear(
   id: string,
   input: AcademicYearInput
 ): Promise<{ error: string | null }> {
-  const auth = await requireManageMembershipsWithAppUser();
+  const auth = await requireManagePlansWithAppUser();
   if (!auth.ok) return { error: auth.error };
   const { supabase, appUserId } = auth;
 
@@ -243,7 +243,7 @@ export async function updateAcademicYear(
 }
 
 export async function deleteAcademicYear(id: string): Promise<{ error: string | null }> {
-  const auth = await requireManageMemberships();
+  const auth = await requireManagePlans();
   if (!auth.ok) return { error: auth.error };
 
   const { error } = await auth.supabase.from("academic_years").delete().eq("id", id);
@@ -260,7 +260,7 @@ export async function deleteAcademicYear(id: string): Promise<{ error: string | 
 export async function createSemester(
   input: SemesterInput
 ): Promise<{ error: string | null }> {
-  const auth = await requireManageMembershipsWithAppUser();
+  const auth = await requireManagePlansWithAppUser();
   if (!auth.ok) return { error: auth.error };
   const { supabase, appUserId } = auth;
 
@@ -285,7 +285,7 @@ export async function updateSemester(
   id: string,
   input: SemesterInput
 ): Promise<{ error: string | null }> {
-  const auth = await requireManageMembershipsWithAppUser();
+  const auth = await requireManagePlansWithAppUser();
   if (!auth.ok) return { error: auth.error };
   const { supabase, appUserId } = auth;
 
@@ -309,7 +309,7 @@ export async function updateSemester(
 }
 
 export async function deleteSemester(id: string): Promise<{ error: string | null }> {
-  const auth = await requireManageMemberships();
+  const auth = await requireManagePlans();
   if (!auth.ok) return { error: auth.error };
 
   const { error } = await auth.supabase.from("semesters").delete().eq("id", id);
