@@ -11,15 +11,6 @@ type Props = {
   canSeeOpportunities: boolean;
 };
 
-function softCardTone(seed: string) {
-  const accent = `color-mix(in oklab, ${seed} 65%, var(--accent) 35%)`;
-  return {
-    backgroundColor: `color-mix(in oklab, ${accent} 10%, var(--card) 90%)`,
-    borderColor: `color-mix(in oklab, ${accent} 26%, var(--border) 74%)`,
-    boxShadow: `inset 0 1px 0 color-mix(in oklab, ${accent} 16%, transparent 84%)`,
-  } as const;
-}
-
 export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
   const {
     hasLinkedProfile,
@@ -35,19 +26,12 @@ export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
     eventsFetchError,
     opportunitiesFetchError,
   } = overview;
-  const pointsTone = softCardTone("#facc15");
-  const teamTone = softCardTone("#60a5fa");
-  const attendanceTone = softCardTone("#fb923c");
-  const leaderboardTone = softCardTone("#4ade80");
-  const upcomingEventsTone = softCardTone("#a78bfa");
-  const opportunitiesTone = softCardTone("#f472b6");
 
   return (
     <div className="space-y-8">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <section
-          className="rounded-xl border bg-card p-5 shadow-sm"
-          style={pointsTone}
+          className="rounded-xl border border-border bg-card p-5 shadow-sm"
         >
           <h2 className="text-sm font-medium text-muted-foreground">
             Total points
@@ -77,8 +61,7 @@ export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
         </section>
 
         <section
-          className="rounded-xl border bg-card p-5 shadow-sm"
-          style={teamTone}
+          className="rounded-xl border border-border bg-card p-5 shadow-sm"
         >
           <h2 className="text-sm font-medium text-muted-foreground">
             Team assignment
@@ -117,8 +100,7 @@ export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
         </section>
 
         <section
-          className="rounded-xl border bg-card p-5 shadow-sm"
-          style={attendanceTone}
+          className="rounded-xl border border-border bg-card p-5 shadow-sm"
         >
           <h2 className="text-sm font-medium text-muted-foreground">
             Event attendance
@@ -152,8 +134,7 @@ export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
         </section>
 
         <section
-          className="rounded-xl border bg-card p-5 shadow-sm"
-          style={leaderboardTone}
+          className="rounded-xl border border-border bg-card p-5 shadow-sm"
         >
           <h2 className="text-sm font-medium text-muted-foreground">
             Leaderboard rank
@@ -198,8 +179,7 @@ export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section
-          className="rounded-xl border bg-card p-6 shadow-sm"
-          style={upcomingEventsTone}
+          className="rounded-xl border border-border bg-card p-6 shadow-sm"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div>
@@ -245,8 +225,7 @@ export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
         </section>
 
         <section
-          className="rounded-xl border bg-card p-6 shadow-sm"
-          style={opportunitiesTone}
+          className="rounded-xl border border-border bg-card p-6 shadow-sm"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div>
@@ -287,14 +266,15 @@ export function MemberOverviewCards({ overview, canSeeOpportunities }: Props) {
                     key={o.id}
                     className="border-b border-border pb-3 last:border-0 last:pb-0"
                   >
-                    <a
-                      href={o.link_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    {/* Opens the listing's detail panel on the Opportunities
+                        page rather than jumping straight off-site, so the
+                        description and apply link are seen in context. */}
+                    <Link
+                      href={`/dashboard/opportunities?opportunity=${o.id}`}
                       className="font-medium text-accent hover:underline"
                     >
                       {o.title}
-                    </a>
+                    </Link>
                     {o.category ? (
                       <p className="mt-1 text-xs text-muted-foreground">
                         {o.category}

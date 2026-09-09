@@ -9,6 +9,13 @@
   --muted: oklch(0.97 0 0); /* zinc-100 */
   --muted-foreground: oklch(0.556 0 0); /* zinc-600 */
   --border: oklch(0.922 0 0); /* zinc-200 */
+  /* Scrollbar thumb, derived from the theme's own muted foreground so all six
+   * themes (dark, latte, pink-sorbet, frappe, macchiato, mocha) follow along
+   * without each redefining it. Must be mixed here in a custom property, not
+   * inline in scrollbar-color - color-mix() there fails to compile and the
+   * whole rule is silently dropped. */
+  --scrollbar-thumb: color-mix(in oklab, var(--muted-foreground) 38%, transparent);
+  --scrollbar-thumb-hover: color-mix(in oklab, var(--muted-foreground) 62%, transparent);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   /* Accent used for active nav, links, etc. */
@@ -616,5 +623,36 @@ input[type="radio"]:disabled {
   }
   html {
     @apply font-sans;
+  }
+
+  /* Scrollbars.
+   *
+   * Colour comes from --scrollbar-thumb, which is mixed from the active
+   * theme's --muted-foreground, so every theme follows automatically.
+   *
+   * Two declarations on purpose: `scrollbar-width`/`scrollbar-color` are the
+   * standard properties (Firefox, Chrome 121+), and the ::-webkit- rules cover
+   * Safari and older Chrome, which ignore them. Applied to `*` so inner
+   * scrollers - dropdowns, modal bodies, wide tables - match the page.
+   */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
   }
 }

@@ -9,7 +9,13 @@ import { getActiveOpportunities, getOpportunityLocations } from "./actions";
 import { OpportunitiesPageContent } from "./OpportunitiesPageContent";
 
 type PageProps = {
-  searchParams: Promise<{ page?: string; search?: string; location?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    search?: string;
+    location?: string;
+    /** Opens this opportunity's detail panel on load - see the dashboard cards. */
+    opportunity?: string;
+  }>;
 };
 
 export default async function OpportunitiesPage({ searchParams }: PageProps) {
@@ -82,6 +88,7 @@ export default async function OpportunitiesPage({ searchParams }: PageProps) {
           pageSize={OPPORTUNITIES_PAGE_SIZE}
           search={search}
           location={location}
+          selectedId={sp.opportunity?.trim() || null}
         />
       )}
     </div>

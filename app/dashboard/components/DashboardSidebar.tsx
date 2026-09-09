@@ -419,7 +419,7 @@ export function DashboardSidebar() {
                 "manage_points",
             ]) ||
             hasAnyPermission(profile, ["manage_officers"]) ||
-            hasAnyPermission(profile, ["manage_memberships"]) ||
+            hasAnyPermission(profile, ["manage_memberships", "manage_membership_plans"]) ||
             hasAnyPermission(profile, ["manage_forms"]) ||
             hasAnyPermission(profile, ["manage_opportunities"]) ||
             canSeeTeamManagement ||
@@ -732,7 +732,7 @@ export function DashboardSidebar() {
                             </Link>
                         ) : null}
 
-                        {can("manage_memberships") ? (
+                        {can("manage_membership_plans") ? (
                             <Link
                                 href="/dashboard/memberships/plans"
                                 onClick={closeMobile}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/shadcn/tabs";
 import { useState, useTransition } from "react";
 import { updateMyTeam, type MyTeamView } from "./actions";
 
@@ -28,38 +29,12 @@ export function MyTeamContent({ initial }: { initial: MyTeamView }) {
 
   return (
     <div className="space-y-6">
-      <div
-        className="inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted/40 p-0.5"
-        role="tablist"
-        aria-label="My team sections"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "overview"}
-          onClick={() => setTab("overview")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            tab === "overview"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Overview
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "manage"}
-          onClick={() => setTab("manage")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            tab === "manage"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Manage
-        </button>
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList>
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="manage">Manage</TabsTrigger>
+      </TabsList>
+      </Tabs>
 
       {initial.loadError ? (
         <section className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">

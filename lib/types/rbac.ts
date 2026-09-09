@@ -71,6 +71,8 @@ export function isTeamAllowed(profile: UserProfile | null): boolean {
  * - DB may use singular names (e.g. manage_officer); hasPermission() accepts both for officers.
  * - view_events / manage_events: events page (view_any) vs create/edit/cancel.
  * - view_point_categories / manage_point_categories: read vs edit point_categories (RLS).
+ * - manage_memberships: member/payment records (User Management page).
+ * - manage_membership_plans: plans, academic years, semesters (Membership plans page).
  * - view_finances / manage_finances: finance ledger, categories, sponsors, budgets.
  * - manage_finance_sources: narrower than manage_finances; configuring Stripe/bank accounts only.
  * - view_executive_dashboard: executive-tier growth dashboard (sign-ups, memberships, form submissions).
@@ -80,6 +82,7 @@ export const PERMISSION_NAMES = [
   "manage_officers",
   "view_memberships",
   "manage_memberships",
+  "manage_membership_plans",
   "view_points",
   "manage_points",
   "view_point_categories",

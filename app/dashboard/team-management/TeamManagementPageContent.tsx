@@ -1,5 +1,6 @@
 "use client";
 
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/shadcn/tabs";
 import { useState } from "react";
 import type {
   AcademicYearOption,
@@ -43,51 +44,13 @@ export function TeamManagementPageContent({
 
   return (
     <div className="space-y-6">
-      <div
-        className="inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted/40 p-0.5"
-        role="tablist"
-        aria-label="Team management sections"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "teams"}
-          onClick={() => setTab("teams")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            tab === "teams"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Teams
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "leads"}
-          onClick={() => setTab("leads")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            tab === "leads"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Team leads
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "members"}
-          onClick={() => setTab("members")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            tab === "members"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Team members
-        </button>
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList>
+        <TabsTrigger value="teams">Teams</TabsTrigger>
+        <TabsTrigger value="leads">Team leads</TabsTrigger>
+        <TabsTrigger value="members">Team members</TabsTrigger>
+      </TabsList>
+      </Tabs>
 
       {tab === "teams" ? (
         <TeamsContent

@@ -25,7 +25,13 @@ export default async function EventsPage() {
     )
     .eq("is_public", true)
     .not("start_time", "is", null)
-    .gte("start_time", nowIso)
+    // Filter on the END of the event, not the start: filtering on start_time
+    // dropped an event the moment it began, so a 5:30-7:00 meeting vanished at
+    // 5:30 - exactly when members needed it. end_time is nullable, so fall back
+    // to start_time for rows that have none.
+    .or(
+      `end_time.gte.${nowIso},and(end_time.is.null,start_time.gte.${nowIso})`,
+    )
     .order("start_time", { ascending: true, nullsFirst: false });
 
   if (error) {

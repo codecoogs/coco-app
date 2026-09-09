@@ -1,5 +1,6 @@
 "use client";
 
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/shadcn/tabs";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -356,51 +357,13 @@ export function PermissionsContent({
         </section>
       ) : null}
 
-      <div
-        className="inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted/40 p-0.5"
-        role="tablist"
-        aria-label="Permissions management sections"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "permissions"}
-          onClick={() => setTab("permissions")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            tab === "permissions"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Permissions
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "role_permissions"}
-          onClick={() => setTab("role_permissions")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            tab === "role_permissions"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Role permissions
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "position_permissions"}
-          onClick={() => setTab("position_permissions")}
-          className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-            tab === "position_permissions"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Position permissions
-        </button>
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList>
+        <TabsTrigger value="permissions">Permissions</TabsTrigger>
+        <TabsTrigger value="role_permissions">Role permissions</TabsTrigger>
+        <TabsTrigger value="position_permissions">Position permissions</TabsTrigger>
+      </TabsList>
+      </Tabs>
 
       {tab === "permissions" ? (
         <>
@@ -422,52 +385,17 @@ export function PermissionsContent({
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Filter
             </label>
-            <div className="inline-flex max-w-full flex-wrap rounded-lg border border-border bg-muted/40 p-0.5">
-              <button
-                type="button"
-                onClick={() => setPrefixFilter("all")}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                  prefixFilter === "all"
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrefixFilter("view")}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                  prefixFilter === "view"
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                view_*
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrefixFilter("manage")}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                  prefixFilter === "manage"
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                manage_*
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrefixFilter("other")}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                  prefixFilter === "other"
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Other
-              </button>
-            </div>
+            <Tabs
+              value={prefixFilter}
+              onValueChange={(v) => setPrefixFilter(v as typeof prefixFilter)}
+            >
+              <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="view">view_*</TabsTrigger>
+              <TabsTrigger value="manage">manage_*</TabsTrigger>
+              <TabsTrigger value="other">Other</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
       </section>
