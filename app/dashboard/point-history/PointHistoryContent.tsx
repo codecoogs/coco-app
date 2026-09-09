@@ -141,20 +141,44 @@ export function PointHistoryContent({ initial }: Props) {
                     ? categoryMap.get(tx.category_id)
                     : undefined;
                   const pts = tx.points_earned ?? 0;
+                  const pending = tx.status === "pending";
                   const created = tx.created_at
                     ? new Date(tx.created_at).toLocaleDateString(undefined, {
                         dateStyle: "medium",
                       })
                     : "—";
                   return (
-                    <tr key={tx.id} className="hover:bg-muted">
+                    <tr
+                      key={tx.id}
+                      className={
+                        pending
+                          ? "bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/40 dark:hover:bg-orange-950/60"
+                          : "hover:bg-muted"
+                      }
+                    >
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-card-foreground sm:px-6">
                         {created}
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground sm:px-6">
-                        {cat?.name ?? tx.category_id ?? "—"}
+                        <span className="flex flex-wrap items-center gap-2">
+                          {cat?.name ?? tx.category_id ?? "—"}
+                          {pending ? (
+                            <span
+                              className="rounded-full border border-orange-300 bg-orange-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-orange-800 dark:border-orange-700 dark:bg-orange-900/60 dark:text-orange-200"
+                              title="Awarded once you buy a membership."
+                            >
+                              Pending
+                            </span>
+                          ) : null}
+                        </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-card-foreground sm:px-6">
+                      <td
+                        className={`whitespace-nowrap px-4 py-3 text-right text-sm font-medium sm:px-6 ${
+                          pending
+                            ? "text-orange-700 dark:text-orange-300"
+                            : "text-card-foreground"
+                        }`}
+                      >
                         +{pts}
                       </td>
                     </tr>

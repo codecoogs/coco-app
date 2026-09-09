@@ -11,6 +11,8 @@ export type PointHistoryTransaction = {
   category_id: string | null;
   points_earned: number | null;
   created_at: string | null;
+  /** "pending" = earned at an event but held until a membership is bought. */
+  status?: string | null;
 };
 
 export type PointHistoryBundle = {
