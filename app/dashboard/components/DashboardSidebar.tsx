@@ -3,7 +3,6 @@
 import { useProfileOptional } from "@/app/contexts/ProfileContext";
 import { useThemeOptional } from "@/app/contexts/ThemeContext";
 import {
-    canAccessMemberOnlyFeatures,
     hasAnyPermission,
     isStaffRole,
     type PermissionName,
@@ -20,8 +19,6 @@ type NavItem = {
     requiredPermission?: PermissionName;
     /** If set, shown when user has any of these permissions (or is_admin). */
     requiredAnyPermissions?: readonly PermissionName[];
-    /** If set, only shown to paid members or staff (officers/execs/admins) - see canAccessMemberOnlyFeatures. */
-    requiresMemberOrStaff?: boolean;
     /**
      * If set, hidden when the user HAS this permission. For links whose page
      * redirects elsewhere for those users, so the redirect target is not
@@ -136,7 +133,6 @@ const navItems: NavItem[] = [
     {
         href: "/dashboard/opportunities",
         label: "Opportunities",
-        requiresMemberOrStaff: true,
         icon: (
             <svg
                 className="h-5 w-5 shrink-0"
@@ -175,7 +171,6 @@ const navItems: NavItem[] = [
     {
         href: "/dashboard/teams",
         label: "Teams",
-        requiresMemberOrStaff: true,
         icon: (
             <svg
                 className="h-5 w-5 shrink-0"
@@ -195,7 +190,6 @@ const navItems: NavItem[] = [
     {
         href: "/dashboard/my-team",
         label: "My team",
-        requiresMemberOrStaff: true,
         icon: (
             <svg
                 className="h-5 w-5 shrink-0"
@@ -372,7 +366,6 @@ export function DashboardSidebar() {
         [profileContext?.can],
     );
     const profile = profileContext?.profile ?? null;
-    const hasActiveMembership = profileContext?.hasActiveMembership ?? false;
     const shell = useDashboardShellOptional();
     const mobileOpen = shell?.mobileSidebarOpen ?? false;
 
@@ -380,18 +373,10 @@ export function DashboardSidebar() {
 
     const hasAtLeastIntern = useMemo(() => isStaffRole(profile), [profile]);
 
-    const canSeeMemberOnlyNav = useMemo(
-        () => canAccessMemberOnlyFeatures(profile, hasActiveMembership),
-        [profile, hasActiveMembership],
-    );
-
     const visibleNavItems = useMemo(
         () =>
             navItems.filter((item) => {
                 if (item.hiddenWithPermission && can(item.hiddenWithPermission)) {
-                    return false;
-                }
-                if (item.requiresMemberOrStaff && !canSeeMemberOnlyNav) {
                     return false;
                 }
                 if (item.requiredAnyPermissions?.length) {
@@ -405,7 +390,7 @@ export function DashboardSidebar() {
                 }
                 return true;
             }),
-        [can, profile, canSeeMemberOnlyNav],
+        [can, profile],
     );
 
     const canSeeTeamManagement = useMemo(

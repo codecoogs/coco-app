@@ -1,5 +1,6 @@
 "use client";
 
+import { formatEventDateTime } from "@/lib/event-time";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type EventsPublicRow = {
@@ -15,19 +16,16 @@ export type EventsPublicRow = {
 };
 
 function formatWhen(iso: string | null) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  } catch {
-    return "—";
-  }
+  return formatEventDateTime(iso, {
+    dateStyle: undefined,
+    timeStyle: undefined,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function statusTone(status: string | null | undefined) {

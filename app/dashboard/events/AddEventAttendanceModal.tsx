@@ -1,6 +1,7 @@
 "use client";
 
 import { Dropzone, formatFileSize } from "@/app/components/ui/Dropzone";
+import { formatEventDateTime } from "@/lib/event-time";
 import confetti from "canvas-confetti";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -334,12 +335,7 @@ export function AddEventAttendanceModal({ event, onClose, onRecorded }: Props) {
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           <span className="font-medium text-card-foreground">{event.title}</span>
-          {event.start_time
-            ? ` · ${new Date(event.start_time).toLocaleString(undefined, {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })}`
-            : null}
+          {event.start_time ? ` · ${formatEventDateTime(event.start_time)}` : null}
         </p>
 
         <div

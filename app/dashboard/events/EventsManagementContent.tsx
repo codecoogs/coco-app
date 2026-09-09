@@ -15,32 +15,12 @@ import {
   type UnassignedAttendanceRow,
 } from "./actions";
 import { AddEventAttendanceModal } from "./AddEventAttendanceModal";
+import { formatEventDateTime } from "@/lib/event-time";
 import { EventFormModal } from "./EventFormModal";
 import { ResourcesTab } from "./resources/ResourcesTab";
 
-function formatWhen(iso: string | null) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch {
-    return "—";
-  }
-}
-
-function formatAttendedAt(iso: string | null) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch {
-    return "—";
-  }
-}
+const formatWhen = formatEventDateTime;
+const formatAttendedAt = formatEventDateTime;
 
 const ATTENDANCE_DETAIL_PAGE_SIZE = 15;
 
