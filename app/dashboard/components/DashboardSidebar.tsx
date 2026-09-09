@@ -220,6 +220,7 @@ const ALL_NAV_HREFS = [
     "/dashboard/leaderboard",
     "/dashboard/events",
     "/dashboard/events/manage",
+    "/dashboard/attendance",
     "/dashboard/opportunities",
     "/dashboard/opportunities/manage",
     "/dashboard/forms",
@@ -269,6 +270,7 @@ function getActiveHref(pathname: string): string | null {
 function isManagementPath(pathname: string): boolean {
     return (
         pathname.startsWith("/dashboard/events/manage") ||
+        pathname.startsWith("/dashboard/attendance") ||
         pathname.startsWith("/dashboard/officers") ||
         pathname.startsWith("/dashboard/permissions") ||
         pathname.startsWith("/dashboard/memberships") ||
@@ -413,6 +415,7 @@ export function DashboardSidebar() {
 
         return (
             hasAnyPermission(profile, ["manage_events"]) ||
+            hasAnyPermission(profile, ["manage_attendance"]) ||
             hasAnyPermission(profile, ["manage_tickets"]) ||
             hasAnyPermission(profile, [
                 "manage_point_categories",
@@ -555,6 +558,34 @@ export function DashboardSidebar() {
                                     />
                                 </svg>
                                 <span>Events management</span>
+                            </Link>
+                        ) : null}
+
+                        {can("manage_attendance") ? (
+                            <Link
+                                href="/dashboard/attendance"
+                                onClick={closeMobile}
+                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                                    activeHref === "/dashboard/attendance"
+                                        ? "nav-accent-active border shadow-sm"
+                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                } border border-transparent`}
+                            >
+                                <svg
+                                    className="h-5 w-5 shrink-0"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                    aria-hidden
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                                    />
+                                </svg>
+                                <span>Attendance</span>
                             </Link>
                         ) : null}
 

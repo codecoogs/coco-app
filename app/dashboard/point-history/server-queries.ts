@@ -18,9 +18,12 @@ function emptyBundle(): PointHistoryBundle {
 }
 
 function sumPointsFromTransactions(
-  rows: { points_earned: number | null }[]
+  rows: { points_earned: number | null; status?: string | null }[]
 ): number {
-  return rows.reduce((s, t) => s + (Number(t.points_earned) || 0), 0);
+  return rows.reduce(
+    (s, t) => (t.status === "pending" ? s : s + (Number(t.points_earned) || 0)),
+    0
+  );
 }
 
 /**
@@ -104,7 +107,7 @@ async function fetchPointHistoryViaRls(
 
   let txQuery = supabase
     .from("point_transactions")
-    .select("id, category_id, points_earned, created_at")
+    .select("id, category_id, points_earned, created_at, status")
     .eq("user_id", appUserId)
     .order("created_at", { ascending: false });
   if (currentYearId) txQuery = txQuery.eq("academic_year_id", currentYearId);
@@ -185,7 +188,7 @@ export async function fetchPointHistoryForSignedInUser(
 
   let txQuery = admin
     .from("point_transactions")
-    .select("id, category_id, points_earned, created_at")
+    .select("id, category_id, points_earned, created_at, status")
     .in("user_id", userIds)
     .order("created_at", { ascending: false });
   if (currentYearId) txQuery = txQuery.eq("academic_year_id", currentYearId);
