@@ -1,7 +1,17 @@
 "use client";
 
+import {
+  canAddToCalendar,
+  googleCalendarUrl,
+  icsFileContent,
+} from "@/lib/calendar-link";
+import {
+  EVENT_STATE_LABEL,
+  EVENT_STATE_TONE,
+  getEventState,
+} from "@/lib/event-status";
 import { formatEventDateTime } from "@/lib/event-time";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type EventsPublicRow = {
   id: number;
@@ -28,15 +38,22 @@ function formatWhen(iso: string | null) {
   });
 }
 
-function statusTone(status: string | null | undefined) {
-  const v = (status ?? "").trim().toLowerCase();
-  if (v === "cancelled") {
-    return "border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300";
-  }
-  if (v === "scheduled") {
-    return "border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300";
-  }
-  return "border-border bg-muted text-muted-foreground";
+function downloadIcs(event: EventsPublicRow) {
+  if (!event.start_time || !event.end_time) return;
+  const ics = icsFileContent({
+    title: event.title,
+    description: event.description,
+    location: event.location,
+    start_time: event.start_time,
+    end_time: event.end_time,
+  });
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${event.title.replace(/[^a-zA-Z0-9-_]/g, "_") || "event"}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function EventsPageContent({
@@ -49,6 +66,9 @@ export function EventsPageContent({
 
   const safeIndex = events.length === 0 ? 0 : Math.min(index, events.length - 1);
   const current = events[safeIndex] ?? null;
+  // Derived per render rather than stored: an event becomes "active" purely by
+  // the clock passing its start time.
+  const currentState = useMemo(() => getEventState(current ?? {}), [current]);
 
   const go = useCallback(
     (delta: number) => {
@@ -122,11 +142,11 @@ export function EventsPageContent({
                 </h2>
                 <div className="mt-3 flex justify-center">
                   <span
-                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${statusTone(
-                      current?.status,
-                    )}`}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${
+                      EVENT_STATE_TONE[currentState]
+                    }`}
                   >
-                    {(current?.status ?? "scheduled").replaceAll("_", " ")}
+                    {EVENT_STATE_LABEL[currentState]}
                   </span>
                 </div>
                 <p className="mt-2 text-center text-sm text-muted-foreground">
@@ -156,6 +176,32 @@ export function EventsPageContent({
                 )}
               </div>
             </article>
+
+            {current && canAddToCalendar(current) ? (
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <a
+                  href={googleCalendarUrl({
+                    title: current.title,
+                    description: current.description,
+                    location: current.location,
+                    start_time: current.start_time!,
+                    end_time: current.end_time!,
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-500"
+                >
+                  Add to calendar
+                </a>
+                <button
+                  type="button"
+                  onClick={() => downloadIcs(current)}
+                  className="inline-flex shrink-0 items-center justify-center rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium transition hover:bg-muted"
+                >
+                  Download .ics
+                </button>
+              </div>
+            ) : null}
 
             <div className="mt-3 flex items-center justify-between gap-2 sm:gap-4">
               <button

@@ -13,6 +13,8 @@ type Props = {
   pageSize: number;
   search: string;
   location: string;
+  /** Opportunity to open on load, from ?opportunity=<id> (dashboard deep link). */
+  selectedId?: string | null;
 };
 
 function badgeText(o: ActiveOpportunity): string | null {
@@ -65,11 +67,17 @@ export function OpportunitiesPageContent({
   pageSize,
   search,
   location,
+  selectedId = null,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [selected, setSelected] = useState<ActiveOpportunity | null>(null);
+  // ponytail: only matches within the current page of results. Every listing
+  // fits on page 1 today (4 in production, page size 20); paginate the lookup
+  // server-side if the board ever outgrows one page.
+  const [selected, setSelected] = useState<ActiveOpportunity | null>(
+    () => opportunities.find((o) => String(o.id) === selectedId) ?? null
+  );
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(search);
 

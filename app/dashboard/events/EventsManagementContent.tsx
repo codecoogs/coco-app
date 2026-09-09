@@ -15,6 +15,11 @@ import {
   type UnassignedAttendanceRow,
 } from "./actions";
 import { AddEventAttendanceModal } from "./AddEventAttendanceModal";
+import {
+  EVENT_STATE_LABEL,
+  EVENT_STATE_TONE,
+  getEventState,
+} from "@/lib/event-status";
 import { formatEventDateTime } from "@/lib/event-time";
 import { EventFormModal } from "./EventFormModal";
 import { ResourcesTab } from "./resources/ResourcesTab";
@@ -163,6 +168,16 @@ export function EventsManagementContent({
   const [hidePast, setHidePast] = useState(false);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (confirmCancelId === null) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setConfirmCancelId(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [confirmCancelId]);
   const [message, setMessage] = useState<{
     type: "error" | "ok";
     text: string;
@@ -395,11 +410,7 @@ export function EventsManagementContent({
 
   const handleCancel = useCallback(
     async (id: number) => {
-      if (
-        !confirm("Cancel this event? It will stay in the list as cancelled.")
-      ) {
-        return;
-      }
+      setConfirmCancelId(null);
       setBusyId(id);
       setMessage(null);
       const { error } = await cancelEvent(id);
@@ -592,15 +603,16 @@ export function EventsManagementContent({
                         {row.is_public ? "Public" : "Private"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 sm:px-6">
-                        {cancelled ? (
-                          <span className="inline-flex rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100">
-                            Cancelled
-                          </span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            Active
-                          </span>
-                        )}
+                        {(() => {
+                          const state = getEventState(row);
+                          return (
+                            <span
+                              className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${EVENT_STATE_TONE[state]}`}
+                            >
+                              {EVENT_STATE_LABEL[state]}
+                            </span>
+                          );
+                        })()}
                       </td>
                       {canManage && (
                         <td className="whitespace-nowrap px-4 py-3 text-right text-sm sm:px-6">
@@ -626,7 +638,7 @@ export function EventsManagementContent({
                             <button
                               type="button"
                               disabled={busyId === row.id || cancelled}
-                              onClick={() => handleCancel(row.id)}
+                              onClick={() => setConfirmCancelId(row.id)}
                               className="rounded-md border border-border px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-950/40"
                             >
                               Cancel event
@@ -1174,6 +1186,44 @@ export function EventsManagementContent({
           onClose={() => setAddAttendanceForEvent(null)}
           onRecorded={reloadAttendance}
         />
+      )}
+
+      {confirmCancelId !== null && (
+        // Backdrop and Escape both mean "No" - a destructive action must never
+        // be the outcome of dismissing its own dialog.
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Cancel event"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setConfirmCancelId(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        >
+          <div className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl">
+            <p className="text-sm text-card-foreground">
+              Cancel this event? It will stay in the list as cancelled.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setConfirmCancelId(null)}
+                className="rounded-lg border border-border bg-muted px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted/70"
+              >
+                No
+              </button>
+              <button
+                type="button"
+                disabled={busyId === confirmCancelId}
+                onClick={() => void handleCancel(confirmCancelId)}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500 disabled:opacity-50"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
