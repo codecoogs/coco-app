@@ -5,14 +5,14 @@ import { PasswordInput } from "@/app/components/ui/PasswordInput";
 import { validateEmail, validatePassword } from "@/lib/validation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useResendCountdown } from "@/lib/otp/use-resend-countdown";
 import {
   requestPasswordResetOtp,
   resendPasswordResetOtp,
   verifyPasswordResetOtpAndSetPassword,
 } from "./actions";
 
-const RESEND_COOLDOWN_MS = 30_000;
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -22,27 +22,12 @@ export default function ForgotPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [step, setStep] = useState<"email" | "reset">("email");
   const [loading, setLoading] = useState(false);
-  const [resendReady, setResendReady] = useState(false);
-  const resendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { secondsLeft, ready: resendReady, start: startResendCooldown } =
+    useResendCountdown();
   const [message, setMessage] = useState<{
     type: "error" | "success";
     text: string;
   } | null>(null);
-
-  const startResendCooldown = () => {
-    setResendReady(false);
-    if (resendTimer.current) clearTimeout(resendTimer.current);
-    resendTimer.current = setTimeout(
-      () => setResendReady(true),
-      RESEND_COOLDOWN_MS
-    );
-  };
-
-  useEffect(() => {
-    return () => {
-      if (resendTimer.current) clearTimeout(resendTimer.current);
-    };
-  }, []);
 
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,11 +41,11 @@ export default function ForgotPasswordPage() {
     }
     setLoading(true);
     setMessage(null);
-    await requestPasswordResetOtp(email);
+    const { retryAfterSeconds } = await requestPasswordResetOtp(email);
     setLoading(false);
     setCode("");
     setStep("reset");
-    startResendCooldown();
+    startResendCooldown(retryAfterSeconds);
     setMessage({
       type: "success",
       text: "If that email has an account, we sent it a 6-digit code.",
@@ -71,9 +56,9 @@ export default function ForgotPasswordPage() {
     if (!resendReady) return;
     setLoading(true);
     setMessage(null);
-    await resendPasswordResetOtp(email);
+    const { retryAfterSeconds } = await resendPasswordResetOtp(email);
     setLoading(false);
-    startResendCooldown();
+    startResendCooldown(retryAfterSeconds);
     setMessage({ type: "success", text: "Code resent." });
   };
 
@@ -183,7 +168,7 @@ export default function ForgotPasswordPage() {
               disabled={loading || !resendReady}
               className="w-full text-center text-sm font-medium text-zinc-400 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {resendReady ? "Resend code" : "Resend code available shortly…"}
+              {resendReady ? "Resend code" : `Resend code in ${secondsLeft}s`}
             </button>
           </form>
         ) : (

@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requestOtp, verifyOtp } from "@/lib/otp/store";
+import { RESEND_COOLDOWN_SECONDS } from "@/lib/otp/cooldown";
 import { sendOtpEmail } from "@/lib/otp/send-email";
 import { SIGNUP_MAJOR_OPTIONS } from "@/lib/signup-options";
 import {
@@ -30,7 +31,7 @@ async function findUserByEmail(email: string) {
 }
 
 export type StartSignupResult =
-  | { ok: true; authId: string; email: string }
+  | { ok: true; authId: string; email: string; retryAfterSeconds: number }
   | { ok: false; error: string };
 
 export async function startSignup(input: {
@@ -149,16 +150,21 @@ export async function startSignup(input: {
     return { ok: false, error: "Something went wrong creating your account." };
   }
 
-  const { code } = await requestOtp(authId, "signup");
-  const { error: sendError } = await sendOtpEmail({
-    authId,
-    email,
-    purpose: "signup",
-    code,
-  });
-  if (sendError) return { ok: false, error: sendError };
+  // Honour the cooldown here too. This path used to send unconditionally, so
+  // re-submitting the form mailed a code on every click while the "Resend"
+  // button was throttled - the asymmetry that let the mailer be flooded.
+  const { code, shouldSend, retryAfterSeconds } = await requestOtp(authId, "signup");
+  if (shouldSend) {
+    const { error: sendError } = await sendOtpEmail({
+      authId,
+      email,
+      purpose: "signup",
+      code,
+    });
+    if (sendError) return { ok: false, error: sendError };
+  }
 
-  return { ok: true, authId, email };
+  return { ok: true, authId, email, retryAfterSeconds };
 }
 
 export type VerifySignupOtpResult =
@@ -202,14 +208,16 @@ export async function verifySignupOtp(
   return { ok: true, sessionEstablished: !sessionError };
 }
 
-export type ResendOtpResult = { ok: true } | { ok: false; error: string };
+export type ResendOtpResult =
+  | { ok: true; retryAfterSeconds: number }
+  | { ok: false; error: string };
 
 export async function resendSignupOtp(
   authId: string,
   email: string
 ): Promise<ResendOtpResult> {
-  const { code, shouldSend } = await requestOtp(authId, "signup");
-  if (!shouldSend) return { ok: true };
+  const { code, shouldSend, retryAfterSeconds } = await requestOtp(authId, "signup");
+  if (!shouldSend) return { ok: true, retryAfterSeconds };
   const { error } = await sendOtpEmail({
     authId,
     email,
@@ -217,5 +225,5 @@ export async function resendSignupOtp(
     code,
   });
   if (error) return { ok: false, error };
-  return { ok: true };
+  return { ok: true, retryAfterSeconds: RESEND_COOLDOWN_SECONDS };
 }

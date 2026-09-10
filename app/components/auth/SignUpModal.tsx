@@ -15,10 +15,10 @@ import {
 } from "@/lib/validation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useResendCountdown } from "@/lib/otp/use-resend-countdown";
+import { useEffect, useState } from "react";
 import { resendSignupOtp, startSignup, verifySignupOtp } from "./signup-actions";
 
-const RESEND_COOLDOWN_MS = 30_000;
 
 type SignUpModalProps = {
   open: boolean;
@@ -58,23 +58,8 @@ export function SignUpModal({
   const [otpCode, setOtpCode] = useState("");
   const [pendingAuthId, setPendingAuthId] = useState<string | null>(null);
   const [pendingEmail, setPendingEmail] = useState("");
-  const [resendReady, setResendReady] = useState(false);
-  const resendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const startResendCooldown = () => {
-    setResendReady(false);
-    if (resendTimer.current) clearTimeout(resendTimer.current);
-    resendTimer.current = setTimeout(
-      () => setResendReady(true),
-      RESEND_COOLDOWN_MS
-    );
-  };
-
-  useEffect(() => {
-    return () => {
-      if (resendTimer.current) clearTimeout(resendTimer.current);
-    };
-  }, []);
+  const { secondsLeft, ready: resendReady, start: startResendCooldown } =
+    useResendCountdown();
 
   useEffect(() => {
     if (!open) return;
@@ -219,7 +204,7 @@ export function SignUpModal({
     setPendingEmail(result.email);
     setOtpCode("");
     setStep("otp");
-    startResendCooldown();
+    startResendCooldown(result.retryAfterSeconds);
     setMessage({
       type: "success",
       text: `We sent a 6-digit code to ${result.email}.`,
@@ -258,11 +243,11 @@ export function SignUpModal({
     setMessage(null);
     const result = await resendSignupOtp(pendingAuthId, pendingEmail);
     setLoading(false);
-    startResendCooldown();
     if (!result.ok) {
       setMessage({ type: "error", text: result.error });
       return;
     }
+    startResendCooldown(result.retryAfterSeconds);
     setMessage({ type: "success", text: "Code resent." });
   };
 
@@ -354,7 +339,7 @@ export function SignUpModal({
               disabled={loading || !resendReady}
               className="w-full text-center text-sm font-medium text-zinc-400 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {resendReady ? "Resend code" : "Resend code available shortly…"}
+              {resendReady ? "Resend code" : `Resend code in ${secondsLeft}s`}
             </button>
           </form>
         ) : (
