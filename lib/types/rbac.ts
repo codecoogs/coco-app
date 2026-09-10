@@ -73,6 +73,7 @@ export function isTeamAllowed(profile: UserProfile | null): boolean {
  * - view_point_categories / manage_point_categories: read vs edit point_categories (RLS).
  * - manage_memberships: member/payment records (User Management page).
  * - manage_membership_plans: plans, academic years, semesters (Membership plans page).
+ * - manage_payments: record a payment collected outside the app checkout.
  * - manage_attendance: QR check-in screen (Attendance page).
  * - view_finances / manage_finances: finance ledger, categories, sponsors, budgets.
  * - manage_finance_sources: narrower than manage_finances; configuring Stripe/bank accounts only.
@@ -84,6 +85,7 @@ export const PERMISSION_NAMES = [
   "view_memberships",
   "manage_memberships",
   "manage_membership_plans",
+  "manage_payments",
   "view_points",
   "manage_points",
   "view_point_categories",

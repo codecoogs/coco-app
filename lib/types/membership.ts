@@ -98,6 +98,14 @@ export type MembershipWithPlan = Membership & {
 
 export type PaymentStatus = "pending" | "succeeded" | "failed" | "refunded";
 
+/** Plan option in the "add payment" modal (Payments tab, manage_payments). */
+export type ManualPaymentPlan = {
+  id: string;
+  name: string;
+  kind: MembershipPlanKind;
+  amount_cents: number;
+};
+
 export type Payment = {
   id: string;
   user_id: string;
