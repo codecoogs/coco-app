@@ -4,7 +4,10 @@ import { formatCents } from "@/lib/finance/format";
 import type { PaymentStatus, PaymentWithUser } from "@/lib/types/membership";
 import { useCallback, useMemo, useState } from "react";
 import { getPayments } from "./actions";
+import { AddPaymentModal } from "./AddPaymentModal";
 import { StripeReconciliationPanel } from "./StripeReconciliationPanel";
+import { useProfileOptional } from "@/app/contexts/ProfileContext";
+import { hasPermission } from "@/lib/types/rbac";
 
 const PAGE_SIZE = 20;
 
@@ -43,6 +46,9 @@ export function PaymentsTab({ initialPayments, initialError = null }: Props) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
+  const [addingPayment, setAddingPayment] = useState(false);
+  const profile = useProfileOptional()?.profile ?? null;
+  const canAddPayment = hasPermission(profile, "manage_payments");
 
   const refresh = useCallback(async () => {
     const res = await getPayments();
@@ -90,6 +96,13 @@ export function PaymentsTab({ initialPayments, initialError = null }: Props) {
 
       <StripeReconciliationPanel onReconciled={refresh} />
 
+      {addingPayment && (
+        <AddPaymentModal
+          onClose={() => setAddingPayment(false)}
+          onRecorded={refresh}
+        />
+      )}
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <input
           type="search"
@@ -101,7 +114,8 @@ export function PaymentsTab({ initialPayments, initialError = null }: Props) {
           }}
           className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
         />
-        <select
+        <div className="flex items-center gap-3">
+          <select
           value={statusFilter}
           onChange={(e) => {
             setStatusFilter(e.target.value);
@@ -115,7 +129,18 @@ export function PaymentsTab({ initialPayments, initialError = null }: Props) {
               {s}
             </option>
           ))}
-        </select>
+          </select>
+
+          {canAddPayment && (
+            <button
+              type="button"
+              onClick={() => setAddingPayment(true)}
+              className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-card-foreground transition hover:bg-muted"
+            >
+              Add payment
+            </button>
+          )}
+        </div>
       </div>
 
       <section className="rounded-xl border border-border bg-card shadow-sm">

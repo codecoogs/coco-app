@@ -2,10 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceRoleClient } from "@/lib/supabase/service-role";
+import { getCurrentAppUserId } from "@/lib/supabase/get-current-app-user";
 import { getStripeClient } from "@/lib/stripe/client";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import { hasPermission } from "@/lib/types/rbac";
 import type {
+  ManualPaymentPlan,
   Payment,
   PaymentStatus,
   PaymentWithUser,
@@ -136,6 +138,98 @@ export async function searchMembersForPaymentMatch(
     }
   }
   return { data: [...merged.values()].slice(0, 25), error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Manual payment entry (manage_payments)
+// ---------------------------------------------------------------------------
+
+/**
+ * Separate from manage_memberships: recording money is a narrower, admin-only
+ * act than editing membership records, and manage_payments already exists as
+ * the write gate on public.payments.
+ */
+async function requireManagePayments(): Promise<
+  | { ok: true; supabase: ServerSupabaseClient; actorId: string | null }
+  | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.id) return { ok: false, error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, user.id);
+  if (!hasPermission(profile, "manage_payments")) {
+    return { ok: false, error: "You do not have permission to record payments." };
+  }
+  return { ok: true, supabase, actorId: await getCurrentAppUserId(supabase) };
+}
+
+/** Active plans for the "add payment" picker, cheapest field set. */
+export async function getPlansForManualPayment(): Promise<{
+  data: ManualPaymentPlan[];
+  error: string | null;
+}> {
+  const gate = await requireManagePayments();
+  if (!gate.ok) return { data: [], error: gate.error };
+
+  const { data, error } = await gate.supabase
+    .from("membership_plans")
+    .select("id, name, kind, amount_cents")
+    .eq("is_active", true)
+    .order("name");
+
+  if (error) return { data: [], error: error.message };
+  return { data: (data ?? []) as ManualPaymentPlan[], error: null };
+}
+
+/**
+ * Records a payment collected outside the app's checkout, plus the membership
+ * it buys. All the real work is in the record_manual_payment SQL function, so
+ * the payment and the membership land in one transaction and cannot half-apply
+ * - and so the "already a member" and period-derivation rules live next to the
+ * data rather than being re-checked here.
+ *
+ * This writes nothing to Stripe. The money has already moved; duplicating it
+ * as a fresh Stripe object would either double-charge the member or invent a
+ * record that never reconciles against the real deposit.
+ */
+export async function recordManualPayment(input: {
+  userId: string;
+  planId: string;
+  amountCents: number;
+  currency?: string;
+  stripeCheckoutSessionId?: string;
+  stripePaymentIntentId?: string;
+}): Promise<{ error: string | null }> {
+  const gate = await requireManagePayments();
+  if (!gate.ok) return { error: gate.error };
+
+  const admin = getServiceRoleClient();
+  if (!admin) return { error: SERVICE_ROLE_ERROR };
+
+  const { error } = await admin.rpc("record_manual_payment", {
+    p_user_id: input.userId,
+    p_plan_id: input.planId,
+    p_amount_cents: Math.round(input.amountCents),
+    p_currency: input.currency ?? "usd",
+    p_stripe_checkout_session_id: input.stripeCheckoutSessionId ?? null,
+    p_stripe_payment_intent_id: input.stripePaymentIntentId ?? null,
+    p_actor_id: gate.actorId,
+  });
+
+  if (error) {
+    // The unique indexes on the Stripe ids are what stop the same payment
+    // being entered twice; say so in words rather than leaking the index name.
+    if (error.code === "23505") {
+      return { error: "That Stripe payment has already been recorded." };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/dashboard/memberships");
+  return { error: null };
 }
 
 // ---------------------------------------------------------------------------
