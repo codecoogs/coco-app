@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requestOtp, verifyOtp } from "@/lib/otp/store";
+import { RESEND_COOLDOWN_SECONDS } from "@/lib/otp/cooldown";
 import { sendOtpEmail } from "@/lib/otp/send-email";
 import { validatePassword } from "@/lib/validation";
 
@@ -27,24 +28,31 @@ async function findConfirmedUserByEmail(email: string) {
  */
 export async function requestPasswordResetOtp(
   email: string
-): Promise<{ ok: true }> {
+): Promise<{ ok: true; retryAfterSeconds: number }> {
   const user = await findConfirmedUserByEmail(email);
   if (user) {
-    const { code } = await requestOtp(user.id, "password_reset");
-    await sendOtpEmail({
-      authId: user.id,
-      email: email.trim(),
-      purpose: "password_reset",
-      code,
-    });
+    // Honour the cooldown here too. This path used to send unconditionally, so
+    // re-submitting the form mailed a code on every click while the "Resend"
+    // button was throttled - the asymmetry that let the mailer be flooded.
+    const { code, shouldSend } = await requestOtp(user.id, "password_reset");
+    if (shouldSend) {
+      await sendOtpEmail({
+        authId: user.id,
+        email: email.trim(),
+        purpose: "password_reset",
+        code,
+      });
+    }
   }
-  return { ok: true };
+  // Always the full cooldown, never the real remaining time: a shorter wait for
+  // a registered address would turn this countdown into an account oracle.
+  return { ok: true, retryAfterSeconds: RESEND_COOLDOWN_SECONDS };
 }
 
 /** Same idempotent semantics as the initial request: reuses the active code while resending. */
 export async function resendPasswordResetOtp(
   email: string
-): Promise<{ ok: true }> {
+): Promise<{ ok: true; retryAfterSeconds: number }> {
   const user = await findConfirmedUserByEmail(email);
   if (user) {
     const { code, shouldSend } = await requestOtp(user.id, "password_reset");
@@ -57,7 +65,8 @@ export async function resendPasswordResetOtp(
       });
     }
   }
-  return { ok: true };
+  // Constant for the same anti-enumeration reason as the initial request.
+  return { ok: true, retryAfterSeconds: RESEND_COOLDOWN_SECONDS };
 }
 
 export type ResetPasswordResult = { ok: true } | { ok: false; error: string };
