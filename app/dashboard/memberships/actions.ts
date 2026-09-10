@@ -16,6 +16,12 @@ import type {
   UnmatchedStripePayment,
 } from "@/lib/types/membership";
 import { revalidatePath } from "next/cache";
+import { getSiteUrl } from "@/lib/site-url";
+import {
+  sendAttendanceInviteEmail,
+  sendReinviteEmail,
+} from "@/lib/email/invites";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -452,6 +458,7 @@ export type AuthAccountRow = {
   createdAt: string;
   lastSignInAt: string | null;
   memberName: string | null;
+  lastInvitedAt: string | null;
 };
 
 /**
@@ -501,28 +508,18 @@ export async function getAuthAccounts(): Promise<{
   const admin = getServiceRoleClient();
   if (!admin) return { data: [], error: ACCOUNTS_SERVICE_ROLE_ERROR };
 
-  const accounts: AuthAccountRow[] = [];
-  // listUsers is paginated and has no "all" mode. Ten pages is ~2000 accounts,
-  // far past the ~390 the club has; stopping there keeps a runaway loop off the
-  // request path if the API ever stops reporting a short final page.
-  for (let page = 1; page <= 10; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({
-      page,
-      perPage: 200,
-    });
-    if (error) return { data: [], error: error.message };
-    for (const user of data.users) {
-      accounts.push({
-        authId: user.id,
-        email: user.email ?? null,
-        verified: Boolean(user.email_confirmed_at),
-        createdAt: user.created_at,
-        lastSignInAt: user.last_sign_in_at ?? null,
-        memberName: null,
-      });
-    }
-    if (data.users.length < 200) break;
-  }
+  const { users: authUsers, error: listError } = await listAllAuthUsers(admin);
+  if (listError) return { data: [], error: listError };
+
+  const accounts: AuthAccountRow[] = authUsers.map((user) => ({
+    authId: user.id,
+    email: user.email,
+    verified: Boolean(user.emailConfirmedAt),
+    createdAt: user.createdAt,
+    lastSignInAt: user.lastSignInAt,
+    memberName: null,
+    lastInvitedAt: null,
+  }));
 
   // Names come from the member record, linked by auth_id. A missing row is
   // normal (unverified signup, or a Dashboard invite nobody accepted), so this
@@ -542,8 +539,16 @@ export async function getAuthAccounts(): Promise<{
     if (member.auth_id && name) nameByAuthId.set(member.auth_id, name);
   }
 
+  const invitedAt = await lastInviteByEmail(
+    admin,
+    accounts.map((account) => account.email)
+  );
+
   for (const account of accounts) {
     account.memberName = nameByAuthId.get(account.authId) ?? null;
+    account.lastInvitedAt = account.email
+      ? invitedAt.get(account.email.toLowerCase()) ?? null
+      : null;
   }
 
   return { data: sortAccounts(accounts), error: null };
@@ -569,6 +574,251 @@ export async function markAccountVerified(
   });
   if (error) return { ok: false, error: error.message };
 
+  revalidatePath("/dashboard/memberships");
+  return { ok: true };
+}
+
+/**
+ * listUsers is paginated and has no "all" mode. Ten pages is ~2000 accounts,
+ * far past the ~390 the club has; stopping there keeps a runaway loop off the
+ * request path if the API ever stops reporting a short final page.
+ */
+type AuthUserSummary = {
+  id: string;
+  email: string | null;
+  emailConfirmedAt: string | null;
+  createdAt: string;
+  lastSignInAt: string | null;
+};
+
+async function listAllAuthUsers(
+  admin: SupabaseClient
+): Promise<{ users: AuthUserSummary[]; error: string | null }> {
+  const users: AuthUserSummary[] = [];
+  for (let page = 1; page <= 10; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+    if (error) return { users: [], error: error.message };
+    for (const user of data.users) {
+      users.push({
+        id: user.id,
+        email: user.email ?? null,
+        emailConfirmedAt: user.email_confirmed_at ?? null,
+        createdAt: user.created_at,
+        lastSignInAt: user.last_sign_in_at ?? null,
+      });
+    }
+    if (data.users.length < 200) break;
+  }
+  return { users, error: null };
+}
+
+/** Most recent send per address, lowercased, for the "last invited" columns. */
+async function lastInviteByEmail(
+  admin: SupabaseClient,
+  emails: (string | null)[]
+): Promise<Map<string, string>> {
+  const wanted = new Set(
+    emails
+      .filter((email): email is string => Boolean(email))
+      .map((email) => email.toLowerCase())
+  );
+  if (wanted.size === 0) return new Map();
+
+  const { data } = await admin
+    .from("invite_sends")
+    .select("email, sent_at")
+    .order("sent_at", { ascending: false });
+
+  const latest = new Map<string, string>();
+  for (const row of data ?? []) {
+    const key = (row.email as string).toLowerCase();
+    // Rows arrive newest-first, so the first hit per address is the latest.
+    if (wanted.has(key) && !latest.has(key)) {
+      latest.set(key, row.sent_at as string);
+    }
+  }
+  return latest;
+}
+
+async function recordInviteSend(
+  admin: SupabaseClient,
+  email: string,
+  kind: "reinvite" | "attendance_invite",
+  sentBy: string | null
+): Promise<void> {
+  const { error } = await admin
+    .from("invite_sends")
+    .insert({ email: email.toLowerCase(), kind, sent_by: sentBy });
+  // The email has already gone out. Failing the action here would tell the
+  // officer it did not send and invite a duplicate, so log and move on.
+  if (error) console.error(`Could not record invite send: ${error.message}`);
+}
+
+/**
+ * Re-invites an account that exists but was never verified. The email points
+ * at the password reset flow, which mails a code and confirms the address on
+ * completion - so finishing it both sets a password and clears the unverified
+ * state that was blocking sign-in.
+ */
+export async function sendAccountReinvite(
+  authId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const gate = await requireManageAccounts();
+  if (!gate.ok) return { ok: false, error: gate.error };
+
+  const admin = getServiceRoleClient();
+  if (!admin) return { ok: false, error: ACCOUNTS_SERVICE_ROLE_ERROR };
+
+  const { data: userData, error: getUserError } =
+    await admin.auth.admin.getUserById(authId);
+  const email = userData?.user?.email;
+  if (getUserError || !email) {
+    return { ok: false, error: getUserError?.message ?? "Account not found." };
+  }
+  if (userData.user.email_confirmed_at) {
+    return { ok: false, error: "That account is already verified." };
+  }
+
+  const { data: member } = await admin
+    .from("users")
+    .select("first_name")
+    .eq("auth_id", authId)
+    .maybeSingle();
+
+  const { error: sendError } = await sendReinviteEmail({
+    firstName: (member?.first_name as string | null) ?? null,
+    email,
+    siteUrl: getSiteUrl(),
+  });
+  if (sendError) return { ok: false, error: sendError };
+
+  await recordInviteSend(
+    admin,
+    email,
+    "reinvite",
+    await getCurrentAppUserId(gate.supabase)
+  );
+  revalidatePath("/dashboard/memberships");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Event contacts with no account (manage_accounts)
+// ---------------------------------------------------------------------------
+
+/**
+ * Someone who signed in at an event but has no account. One row per address
+ * rather than per attendance record - the same person turns up at several
+ * events and should only ever be invited once.
+ */
+export type InvitableContact = {
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  lastAttendedAt: string | null;
+  lastInvitedAt: string | null;
+};
+
+export async function getInvitableContacts(): Promise<{
+  data: InvitableContact[];
+  error: string | null;
+}> {
+  const gate = await requireManageAccounts();
+  if (!gate.ok) return { data: [], error: gate.error };
+
+  const admin = getServiceRoleClient();
+  if (!admin) return { data: [], error: ACCOUNTS_SERVICE_ROLE_ERROR };
+
+  const { data: rows, error } = await admin
+    .from("unassigned_attendance")
+    .select("first_name, last_name, personal_email, cougarnet_email, attended_at")
+    .order("attended_at", { ascending: false });
+  if (error) return { data: [], error: error.message };
+
+  // Cougarnet wins when both are present: it is the address the club actually
+  // reaches people on, and the one their account is most likely to use.
+  const byEmail = new Map<string, InvitableContact>();
+  for (const row of rows ?? []) {
+    const raw =
+      (row.cougarnet_email as string | null)?.trim() ||
+      (row.personal_email as string | null)?.trim();
+    if (!raw) continue;
+    const email = raw.toLowerCase();
+    // Rows arrive newest-first, so the first hit per address is the most
+    // recent sighting and the freshest spelling of their name.
+    if (byEmail.has(email)) continue;
+    byEmail.set(email, {
+      email,
+      firstName: (row.first_name as string | null) ?? null,
+      lastName: (row.last_name as string | null) ?? null,
+      lastAttendedAt: (row.attended_at as string | null) ?? null,
+      lastInvitedAt: null,
+    });
+  }
+
+  // is_user on the attendance row is a snapshot from check-in time and goes
+  // stale the moment someone signs up, so the account list is the authority on
+  // who still needs an invite.
+  const { users: authUsers, error: listError } = await listAllAuthUsers(admin);
+  if (listError) return { data: [], error: listError };
+  for (const user of authUsers) {
+    if (user.email) byEmail.delete(user.email.toLowerCase());
+  }
+
+  const contacts = [...byEmail.values()];
+  const invitedAt = await lastInviteByEmail(
+    admin,
+    contacts.map((contact) => contact.email)
+  );
+  for (const contact of contacts) {
+    contact.lastInvitedAt = invitedAt.get(contact.email) ?? null;
+  }
+
+  // Never-invited first, then most recently seen: the people worth chasing.
+  contacts.sort((a, b) => {
+    if (Boolean(a.lastInvitedAt) !== Boolean(b.lastInvitedAt)) {
+      return a.lastInvitedAt ? 1 : -1;
+    }
+    return (b.lastAttendedAt ?? "").localeCompare(a.lastAttendedAt ?? "");
+  });
+  return { data: contacts, error: null };
+}
+
+export async function sendAttendanceInvite(
+  email: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const gate = await requireManageAccounts();
+  if (!gate.ok) return { ok: false, error: gate.error };
+
+  const admin = getServiceRoleClient();
+  if (!admin) return { ok: false, error: ACCOUNTS_SERVICE_ROLE_ERROR };
+
+  // Re-derived rather than trusted from the client: the caller could name any
+  // address, and this one has to be a contact we actually hold and that still
+  // has no account.
+  const { data: contacts, error } = await getInvitableContacts();
+  if (error) return { ok: false, error };
+  const contact = contacts.find((c) => c.email === email.trim().toLowerCase());
+  if (!contact) {
+    return { ok: false, error: "That address is not an invitable contact." };
+  }
+
+  const { error: sendError } = await sendAttendanceInviteEmail({
+    firstName: contact.firstName,
+    email: contact.email,
+    siteUrl: getSiteUrl(),
+  });
+  if (sendError) return { ok: false, error: sendError };
+
+  await recordInviteSend(
+    admin,
+    contact.email,
+    "attendance_invite",
+    await getCurrentAppUserId(gate.supabase)
+  );
   revalidatePath("/dashboard/memberships");
   return { ok: true };
 }
