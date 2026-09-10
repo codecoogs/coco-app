@@ -26,14 +26,20 @@ export type InviteParams = {
 export type RenderedEmail = { subject: string; html: string };
 
 /**
- * Served from the deployed app rather than embedded: mail clients strip
- * data: URIs, and inlining a 250KB attachment on every send is worse than a
- * cached fetch. Most clients block remote images until the reader allows
- * them, so the wordmark below it carries the branding on its own and the img
- * is decorative (empty alt) with explicit dimensions, so a blocked image
- * leaves a fixed gap instead of reflowing the card.
+ * A 176px copy of coco-nice, not the 2000px original: this renders at 88px,
+ * and the full-size asset is 250KB for the privilege. Served from the
+ * deployed app rather than embedded, because mail clients strip data: URIs.
+ *
+ * Most clients block remote images until the reader allows them, so the
+ * wordmark below carries the branding on its own; the img is decorative
+ * (empty alt) with explicit dimensions, so a blocked image leaves a fixed gap
+ * instead of reflowing the card.
+ *
+ * This resolves against getSiteUrl(), so NEXT_PUBLIC_SITE_URL has to be a
+ * publicly reachable origin wherever mail is actually sent - a localhost
+ * value produces an image and a button that work for nobody.
  */
-const LOGO_PATH = "/images/icons/coco-nice.png";
+const LOGO_PATH = "/images/icons/coco-nice-email.png";
 
 /** First names and emails are member-supplied and land inside markup. */
 function escapeHtml(value: string): string {

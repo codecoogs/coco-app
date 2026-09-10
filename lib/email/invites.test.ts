@@ -74,7 +74,7 @@ test("the mascot is an absolute URL on the site, since email cannot resolve a re
       email: "ada@example.com",
       siteUrl: SITE,
     });
-    assert.ok(html.includes(`${SITE}/images/icons/coco-nice.png`));
+    assert.ok(html.includes(`${SITE}/images/icons/coco-nice-email.png`));
     assert.ok(!html.includes('src="/images'));
     // Decorative: the wordmark carries the branding when images are blocked.
     assert.ok(html.includes('alt=""'));
