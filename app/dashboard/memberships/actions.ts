@@ -434,3 +434,141 @@ export async function resolveUnmatchedPayment(
   revalidatePath("/dashboard/memberships");
   return { error: null };
 }
+
+// ---------------------------------------------------------------------------
+// Sign-in accounts (manage_accounts)
+// ---------------------------------------------------------------------------
+
+/**
+ * One row of the Accounts tab: an auth account, not a member record. The two
+ * are not the same set - an account that never finished verification has no
+ * business in the members table yet, and a member imported from the old system
+ * may have no account at all - which is the whole reason this tab exists.
+ */
+export type AuthAccountRow = {
+  authId: string;
+  email: string | null;
+  verified: boolean;
+  createdAt: string;
+  lastSignInAt: string | null;
+  memberName: string | null;
+};
+
+/**
+ * Separate from manage_memberships: marking an email verified bypasses the
+ * ownership proof the OTP flow asks for, so it is gated on its own permission
+ * rather than on the one that edits member and payment rows.
+ */
+async function requireManageAccounts(): Promise<
+  | { ok: true; supabase: ServerSupabaseClient }
+  | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.id) return { ok: false, error: "Not signed in." };
+
+  const profile = await fetchUserProfile(supabase, user.id);
+  if (!hasPermission(profile, "manage_accounts")) {
+    return { ok: false, error: "You do not have permission to manage accounts." };
+  }
+  return { ok: true, supabase };
+}
+
+const ACCOUNTS_SERVICE_ROLE_ERROR =
+  "SUPABASE_SERVICE_ROLE_KEY is not set on the server. The Accounts tab needs the service role key to read sign-in accounts.";
+
+/**
+ * Unverified first, then newest: the accounts that need an officer to look at
+ * them are the ones stuck unverified, so they should not be buried under a
+ * hundred healthy rows.
+ */
+function sortAccounts(rows: AuthAccountRow[]): AuthAccountRow[] {
+  return rows.sort((a, b) => {
+    if (a.verified !== b.verified) return a.verified ? 1 : -1;
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+}
+
+export async function getAuthAccounts(): Promise<{
+  data: AuthAccountRow[];
+  error: string | null;
+}> {
+  const gate = await requireManageAccounts();
+  if (!gate.ok) return { data: [], error: gate.error };
+
+  const admin = getServiceRoleClient();
+  if (!admin) return { data: [], error: ACCOUNTS_SERVICE_ROLE_ERROR };
+
+  const accounts: AuthAccountRow[] = [];
+  // listUsers is paginated and has no "all" mode. Ten pages is ~2000 accounts,
+  // far past the ~390 the club has; stopping there keeps a runaway loop off the
+  // request path if the API ever stops reporting a short final page.
+  for (let page = 1; page <= 10; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+    if (error) return { data: [], error: error.message };
+    for (const user of data.users) {
+      accounts.push({
+        authId: user.id,
+        email: user.email ?? null,
+        verified: Boolean(user.email_confirmed_at),
+        createdAt: user.created_at,
+        lastSignInAt: user.last_sign_in_at ?? null,
+        memberName: null,
+      });
+    }
+    if (data.users.length < 200) break;
+  }
+
+  // Names come from the member record, linked by auth_id. A missing row is
+  // normal (unverified signup, or a Dashboard invite nobody accepted), so this
+  // fills in what it can and leaves the rest null rather than dropping rows.
+  const { data: members, error: membersError } = await gate.supabase
+    .from("users")
+    .select("auth_id, first_name, last_name")
+    .not("auth_id", "is", null);
+  if (membersError) return { data: [], error: membersError.message };
+
+  const nameByAuthId = new Map<string, string>();
+  for (const member of members ?? []) {
+    const name = [member.first_name, member.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    if (member.auth_id && name) nameByAuthId.set(member.auth_id, name);
+  }
+
+  for (const account of accounts) {
+    account.memberName = nameByAuthId.get(account.authId) ?? null;
+  }
+
+  return { data: sortAccounts(accounts), error: null };
+}
+
+/**
+ * Marks an account's email verified by hand. The normal route is the member
+ * entering a code we mailed them - this is the escape hatch for when that
+ * cannot happen (a dead address, a mailer outage), so it is deliberately a
+ * per-account action with no bulk form behind it.
+ */
+export async function markAccountVerified(
+  authId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const gate = await requireManageAccounts();
+  if (!gate.ok) return { ok: false, error: gate.error };
+
+  const admin = getServiceRoleClient();
+  if (!admin) return { ok: false, error: ACCOUNTS_SERVICE_ROLE_ERROR };
+
+  const { error } = await admin.auth.admin.updateUserById(authId, {
+    email_confirm: true,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/dashboard/memberships");
+  return { ok: true };
+}
