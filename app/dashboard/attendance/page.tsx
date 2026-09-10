@@ -38,8 +38,7 @@ export default async function AttendancePage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Attendance</h1>
         <p className="mt-1 text-muted-foreground">
-          Show this code on a projector or laptop. Attendees scan it to check in,
-          and it refreshes every 15 seconds so a screenshot is useless.
+          Show this code on a projector or laptop.
         </p>
       </div>
 

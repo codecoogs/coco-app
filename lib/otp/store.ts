@@ -1,10 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateOtpCode } from "./generate";
 import { getOtpExpiryMinutes } from "./env";
+import { RESEND_COOLDOWN_SECONDS } from "./cooldown";
 
 export type OtpPurpose = "signup" | "password_reset";
 
-const RESEND_COOLDOWN_SECONDS = 30;
 const MAX_ATTEMPTS = 5;
 
 type OtpRow = {
@@ -35,6 +35,8 @@ export type RequestOtpResult = {
   code: string;
   /** False when an active code exists but is still within the resend cooldown. */
   shouldSend: boolean;
+  /** Seconds until another send is allowed; 0 when shouldSend is true. */
+  retryAfterSeconds: number;
 };
 
 /**
@@ -57,14 +59,18 @@ export async function requestOtp(
       const elapsedSeconds =
         (now.getTime() - new Date(existing.last_sent_at).getTime()) / 1000;
       if (elapsedSeconds < RESEND_COOLDOWN_SECONDS) {
-        return { code: existing.code, shouldSend: false };
+        return {
+          code: existing.code,
+          shouldSend: false,
+          retryAfterSeconds: Math.ceil(RESEND_COOLDOWN_SECONDS - elapsedSeconds),
+        };
       }
       const { error } = await admin
         .from("otp_codes")
         .update({ last_sent_at: now.toISOString() })
         .eq("id", existing.id);
       if (error) throw new Error(error.message);
-      return { code: existing.code, shouldSend: true };
+      return { code: existing.code, shouldSend: true, retryAfterSeconds: 0 };
     }
     // Expired but never used/deleted: clear it so a fresh row can be created.
     const { error } = await admin
@@ -86,7 +92,7 @@ export async function requestOtp(
     last_sent_at: now.toISOString(),
   });
   if (error) throw new Error(error.message);
-  return { code, shouldSend: true };
+  return { code, shouldSend: true, retryAfterSeconds: 0 };
 }
 
 export type VerifyOtpResult =
