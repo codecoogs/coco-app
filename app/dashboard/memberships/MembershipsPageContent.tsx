@@ -10,8 +10,9 @@ import type { PaymentWithUser } from "@/lib/types/membership";
 import { AccountsTab } from "./AccountsTab";
 import { MembershipsContent } from "./MembershipsContent";
 import type { UserPaymentRow } from "./page";
+import { InvitesTab } from "./InvitesTab";
 import { PaymentsTab } from "./PaymentsTab";
-import type { AuthAccountRow } from "./actions";
+import type { AuthAccountRow, InvitableContact } from "./actions";
 
 type Props = {
   users: UserPaymentRow[];
@@ -19,6 +20,8 @@ type Props = {
   paymentsError: string | null;
   accounts: AuthAccountRow[];
   accountsError: string | null;
+  contacts: InvitableContact[];
+  contactsError: string | null;
   /** Member and payment tabs; false for someone who only holds manage_accounts. */
   canManageMemberships: boolean;
   canManageAccounts: boolean;
@@ -30,6 +33,8 @@ export function MembershipsPageContent({
   paymentsError,
   accounts,
   accountsError,
+  contacts,
+  contactsError,
   canManageMemberships,
   canManageAccounts,
 }: Props) {
@@ -43,7 +48,10 @@ export function MembershipsPageContent({
           </>
         )}
         {canManageAccounts && (
-          <TabsTrigger value="accounts">Accounts</TabsTrigger>
+          <>
+            <TabsTrigger value="accounts">Accounts</TabsTrigger>
+            <TabsTrigger value="invites">Invites</TabsTrigger>
+          </>
         )}
       </TabsList>
 
@@ -60,9 +68,15 @@ export function MembershipsPageContent({
       )}
 
       {canManageAccounts && (
-        <TabsContent value="accounts" className="mt-4">
-          <AccountsTab accounts={accounts} initialError={accountsError} />
-        </TabsContent>
+        <>
+          <TabsContent value="accounts" className="mt-4">
+            <AccountsTab accounts={accounts} initialError={accountsError} />
+          </TabsContent>
+
+          <TabsContent value="invites" className="mt-4">
+            <InvitesTab contacts={contacts} initialError={contactsError} />
+          </TabsContent>
+        </>
       )}
     </Tabs>
   );

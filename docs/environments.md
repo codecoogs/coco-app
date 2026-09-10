@@ -121,6 +121,21 @@ it.
 **Before merging anything that touches `config.toml`, check whether production
 disagrees with the new value, and pin it if so.**
 
+`[remotes.production.auth.rate_limit] email_sent = 400` was added on 2026-09-10
+for exactly this reason. Production had been raised to 400 emails/hour through
+the dashboard while the root block still held the CLI default of `2`. It had
+survived every merge so far only because the setting is conditional on custom
+SMTP — the stock comment reads "Requires auth.email.smtp to be enabled", and no
+environment enables it — so the value was being skipped rather than applied.
+Turning SMTP on anywhere would have made the root default live and cut
+production to 2/hour. Checked at the same time: every other limit in the root
+block (`sms_sent`, `token_refresh`, `token_verifications`, `anonymous_users`,
+`sign_in_sign_ups`, `web3`) already matches production, so `email_sent` is the
+only one that needs a pin.
+
+`[remotes.production.auth] site_url` was also `http://app.codecoogs.com/dashboard`
+until 2026-09-10 — plain http on a production domain — and is now https.
+
 ## Vercel environment variables
 
 Vercel has two environments: Production (`main`) and Preview (everything else).

@@ -11,7 +11,11 @@ import {
 } from "@/app/components/ui/shadcn/dialog";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { markAccountVerified, type AuthAccountRow } from "./actions";
+import {
+  markAccountVerified,
+  sendAccountReinvite,
+  type AuthAccountRow,
+} from "./actions";
 
 const PAGE_SIZE = 20;
 
@@ -40,6 +44,9 @@ export function AccountsTab({ accounts, initialError }: Props) {
   const [page, setPage] = useState(1);
   const [confirming, setConfirming] = useState<AuthAccountRow | null>(null);
   const [error, setError] = useState<string | null>(initialError);
+  const [notice, setNotice] = useState<string | null>(null);
+  // Which row is mid-send, so only that button shows a spinner.
+  const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -66,6 +73,7 @@ export function AccountsTab({ accounts, initialError }: Props) {
 
   const handleVerify = (account: AuthAccountRow) => {
     setError(null);
+    setNotice(null);
     startTransition(async () => {
       const result = await markAccountVerified(account.authId);
       if (!result.ok) {
@@ -73,6 +81,23 @@ export function AccountsTab({ accounts, initialError }: Props) {
         return;
       }
       setConfirming(null);
+      setNotice(`${account.email ?? "That account"} is now verified.`);
+      router.refresh();
+    });
+  };
+
+  const handleReinvite = (account: AuthAccountRow) => {
+    setError(null);
+    setNotice(null);
+    setSendingTo(account.authId);
+    startTransition(async () => {
+      const result = await sendAccountReinvite(account.authId);
+      setSendingTo(null);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setNotice(`Invite sent to ${account.email}.`);
       router.refresh();
     });
   };
@@ -120,6 +145,11 @@ export function AccountsTab({ accounts, initialError }: Props) {
           {error}
         </div>
       )}
+      {notice && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+          {notice}
+        </div>
+      )}
 
       <section className="rounded-xl border border-border bg-card shadow-sm">
         <div className="border-b border-border px-4 py-4 sm:px-6">
@@ -136,23 +166,29 @@ export function AccountsTab({ accounts, initialError }: Props) {
           <table className="min-w-full divide-y divide-border">
             <thead>
               <tr>
-                {["Name", "Email", "Status", "Created", "Last sign-in", ""].map(
-                  (heading) => (
-                    <th
-                      key={heading}
-                      className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6"
-                    >
-                      {heading}
-                    </th>
-                  )
-                )}
+                {[
+                  "Name",
+                  "Email",
+                  "Status",
+                  "Created",
+                  "Last sign-in",
+                  "Last invited",
+                  "",
+                ].map((heading, i) => (
+                  <th
+                    key={heading || `actions-${i}`}
+                    className="bg-muted px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6"
+                  >
+                    {heading}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border bg-card">
               {pageAccounts.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-muted-foreground sm:px-6"
                   >
                     No accounts match the current filters.
@@ -184,15 +220,31 @@ export function AccountsTab({ accounts, initialError }: Props) {
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground sm:px-6">
                       {formatDate(account.lastSignInAt)}
                     </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground sm:px-6">
+                      {formatDate(account.lastInvitedAt)}
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right text-sm sm:px-6">
                       {!account.verified && (
-                        <Button
-                          size="sm"
-                          onClick={() => setConfirming(account)}
-                          disabled={pending}
-                        >
-                          Mark verified
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleReinvite(account)}
+                            loading={pending && sendingTo === account.authId}
+                            disabled={pending}
+                          >
+                            {account.lastInvitedAt
+                              ? "Send again"
+                              : "Send invite"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setConfirming(account)}
+                            disabled={pending}
+                          >
+                            Mark verified
+                          </Button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -238,9 +290,9 @@ export function AccountsTab({ accounts, initialError }: Props) {
             <DialogDescription>
               This marks {confirming?.email ?? "this account"} as verified
               without the member entering a code, so it skips the check that
-              they actually own the address. Only do this when you have
-              confirmed who they are some other way — normally they should use
-              &ldquo;Forgot password?&rdquo; to verify themselves.
+              they actually own the address. Prefer &ldquo;Send invite&rdquo; —
+              that emails them a link to verify themselves. Use this only when
+              you have confirmed who they are some other way.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
