@@ -101,11 +101,9 @@ export async function startSignup(input: {
   }
 
   // Created via the admin API (not the client-side signUp()) so nothing
-  // auto-sends Supabase's own confirmation email — that email would render
-  // {{ .Data.otp_code }} empty since our code isn't generated yet at this
-  // point, and a second, later send collides with Supabase's own
-  // per-address send-rate cooldown. We trigger the single real email
-  // ourselves once the code exists (see sendOtpEmail below).
+  // auto-sends Supabase's own confirmation email: the member would get two
+  // mails, and only ours carries the code that public.otp_codes will accept.
+  // We send that one ourselves once the code exists (see sendOtpEmail below).
   const { data, error } = await admin.auth.admin.createUser({
     email,
     password: input.password,
@@ -156,7 +154,6 @@ export async function startSignup(input: {
   const { code, shouldSend, retryAfterSeconds } = await requestOtp(authId, "signup");
   if (shouldSend) {
     const { error: sendError } = await sendOtpEmail({
-      authId,
       email,
       purpose: "signup",
       code,
@@ -219,7 +216,6 @@ export async function resendSignupOtp(
   const { code, shouldSend, retryAfterSeconds } = await requestOtp(authId, "signup");
   if (!shouldSend) return { ok: true, retryAfterSeconds };
   const { error } = await sendOtpEmail({
-    authId,
     email,
     purpose: "signup",
     code,

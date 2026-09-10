@@ -54,7 +54,17 @@ export function SignInModal({
     });
     setLoading(false);
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      // Supabase's own wording ("Email not confirmed") leaves an account that
+      // never finished signup with nowhere to go: it can't sign in, and the
+      // signup form rejects the address as taken. The reset flow re-mails a
+      // code and confirms the address on completion, so point at that.
+      setMessage({
+        type: "error",
+        text:
+          error.code === "email_not_confirmed"
+            ? "Your email isn't verified yet. Use “Forgot password?” below to get a code and finish setting up your account."
+            : error.message,
+      });
       return;
     }
     onClose();

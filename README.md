@@ -53,6 +53,10 @@ NEXT_PUBLIC_CODECOOGS_API_URL=https://api.codecoogs.com/v1
 NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
 
+# Email (OTP codes for signup + password reset, sent via Resend)
+RESEND_API_KEY=<your-resend-api-key>
+OTP_EMAIL_FROM=CodeCoogs <noreply@codecoogs.com>
+
 # Stripe (optional)
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=<your-stripe-key>
 STRIPE_SECRET_KEY=<your-stripe-secret>

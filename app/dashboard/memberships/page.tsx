@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import { hasPermission } from "@/lib/types/rbac";
 import { isMembershipCurrent, type MembershipStatus } from "@/lib/types/membership";
-import { getPayments } from "./actions";
+import { getAuthAccounts, getPayments, type AuthAccountRow } from "./actions";
 import { MembershipsPageContent } from "./MembershipsPageContent";
 import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -153,21 +153,32 @@ export default async function MembershipsPage() {
   }
 
   const profile = await fetchUserProfile(supabase, user.id);
-  if (!hasPermission(profile, "manage_memberships")) {
+  // Two permissions reach this page: manage_memberships for the member and
+  // payment tabs, manage_accounts for the Accounts tab. Either one on its own
+  // is enough to get in; the tabs themselves are what each permission gates.
+  const canManageMemberships = hasPermission(profile, "manage_memberships");
+  const canManageAccounts = hasPermission(profile, "manage_accounts");
+  if (!canManageMemberships && !canManageAccounts) {
     redirect("/dashboard");
   }
 
   let users: UserPaymentRow[] = [];
   let error: string | null = null;
 
-  try {
-    users = await fetchUserPaymentRows(supabase);
-  } catch (e) {
-    error =
-      e instanceof Error ? e.message : "Failed to load users with payment info.";
+  if (canManageMemberships) {
+    try {
+      users = await fetchUserPaymentRows(supabase);
+    } catch (e) {
+      error =
+        e instanceof Error ? e.message : "Failed to load users with payment info.";
+    }
   }
 
-  const paymentsRes = await getPayments();
+  const paymentsRes = canManageMemberships
+    ? await getPayments()
+    : { data: [], error: null };
+  const accountsRes: { data: AuthAccountRow[]; error: string | null } =
+    canManageAccounts ? await getAuthAccounts() : { data: [], error: null };
 
   return (
     <div className="space-y-8">
@@ -196,6 +207,10 @@ export default async function MembershipsPage() {
           users={users}
           initialPayments={paymentsRes.data}
           paymentsError={paymentsRes.error}
+          accounts={accountsRes.data}
+          accountsError={accountsRes.error}
+          canManageMemberships={canManageMemberships}
+          canManageAccounts={canManageAccounts}
         />
       )}
     </div>
