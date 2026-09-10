@@ -427,7 +427,7 @@ entrypoint = "./functions/google-calendar-sync/index.ts"
 project_id = "hbhahqephsndzjtqdzin"
 
 [remotes.production.auth]
-site_url = "http://app.codecoogs.com/dashboard"
+site_url = "https://app.codecoogs.com/dashboard"
 additional_redirect_urls = [
   "http://localhost:3000",
   "https://www.codecoogs.com",
@@ -436,6 +436,20 @@ additional_redirect_urls = [
 
 [remotes.production.auth.email]
 max_frequency = "30s"
+
+# Production runs 400 emails/hour, set through the dashboard; the root
+# [auth.rate_limit] block still carries the CLI default of 2. Verified against
+# the dashboard on 2026-09-10 and pinned so a merge to main cannot quietly
+# drop production from 400 to 2.
+#
+# It has not bitten yet only because the setting is conditional on custom SMTP
+# ("Requires auth.email.smtp to be enabled"), which no environment has - so the
+# value has been going unapplied rather than being applied correctly. Enabling
+# SMTP anywhere would make the root default live, which is exactly when losing
+# this would hurt. Every other limit in the root block already matches
+# production, so this is the only one that needs pinning.
+[remotes.production.auth.rate_limit]
+email_sent = 400
 
 [remotes.production.auth.sessions]
 timebox = "0s"

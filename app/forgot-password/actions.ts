@@ -23,6 +23,28 @@ async function findUserByEmail(email: string) {
 }
 
 /**
+ * The caller is never told whether the send failed - that would answer the
+ * exact question this endpoint refuses to answer, namely whether the address
+ * has an account. So log it instead: without this a failure is completely
+ * silent, because sendEmail() returns its error rather than throwing and both
+ * actions below report success either way. The function log is then the only
+ * place a missing RESEND_API_KEY or a Resend rejection can surface.
+ *
+ * The address is deliberately left out of the message; the log line only needs
+ * to say that sending broke, not to whom.
+ */
+async function sendResetCode(email: string, code: string): Promise<void> {
+  const { error } = await sendOtpEmail({
+    email: email.trim(),
+    purpose: "password_reset",
+    code,
+  });
+  if (error) {
+    console.error(`Failed to send a password reset code: ${error}`);
+  }
+}
+
+/**
  * Always reports success regardless of whether the email exists, so this
  * endpoint can't be used to enumerate registered accounts.
  *
@@ -40,11 +62,7 @@ export async function requestPasswordResetOtp(
     // button was throttled - the asymmetry that let the mailer be flooded.
     const { code, shouldSend } = await requestOtp(user.id, "password_reset");
     if (shouldSend) {
-      await sendOtpEmail({
-        email: email.trim(),
-        purpose: "password_reset",
-        code,
-      });
+      await sendResetCode(email, code);
     }
   }
   // Always the full cooldown, never the real remaining time: a shorter wait for
@@ -60,11 +78,7 @@ export async function resendPasswordResetOtp(
   if (user) {
     const { code, shouldSend } = await requestOtp(user.id, "password_reset");
     if (shouldSend) {
-      await sendOtpEmail({
-        email: email.trim(),
-        purpose: "password_reset",
-        code,
-      });
+      await sendResetCode(email, code);
     }
   }
   // Constant for the same anti-enumeration reason as the initial request.
