@@ -66,3 +66,17 @@ test("both emails name the recipient address in the footer", () => {
     assert.ok(subject.length > 0);
   }
 });
+
+test("the mascot is an absolute URL on the site, since email cannot resolve a relative path", () => {
+  for (const render of [renderReinvite, renderAttendanceInvite]) {
+    const { html } = render({
+      firstName: "Ada",
+      email: "ada@example.com",
+      siteUrl: SITE,
+    });
+    assert.ok(html.includes(`${SITE}/images/icons/coco-nice.png`));
+    assert.ok(!html.includes('src="/images'));
+    // Decorative: the wordmark carries the branding when images are blocked.
+    assert.ok(html.includes('alt=""'));
+  }
+});

@@ -25,6 +25,16 @@ export type InviteParams = {
 
 export type RenderedEmail = { subject: string; html: string };
 
+/**
+ * Served from the deployed app rather than embedded: mail clients strip
+ * data: URIs, and inlining a 250KB attachment on every send is worse than a
+ * cached fetch. Most clients block remote images until the reader allows
+ * them, so the wordmark below it carries the branding on its own and the img
+ * is decorative (empty alt) with explicit dimensions, so a blocked image
+ * leaves a fixed gap instead of reflowing the card.
+ */
+const LOGO_PATH = "/images/icons/coco-nice.png";
+
 /** First names and emails are member-supplied and land inside markup. */
 function escapeHtml(value: string): string {
   return value
@@ -48,8 +58,10 @@ function renderInviteEmail(params: {
   ctaLabel: string;
   ctaHref: string;
   closing: string;
+  logoUrl: string;
 }): string {
-  const { firstName, email, intro, ctaLabel, ctaHref, closing } = params;
+  const { firstName, email, intro, ctaLabel, ctaHref, closing, logoUrl } =
+    params;
   return `<!DOCTYPE html>
 <html>
   <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -58,7 +70,12 @@ function renderInviteEmail(params: {
         <td align="center">
           <table role="presentation" width="100%" style="max-width:480px;background-color:#ffffff;border:1px solid #d4d4d8;border-radius:12px;padding:32px;">
             <tr>
-              <td style="color:#18181b;font-size:20px;font-weight:600;padding-bottom:16px;">
+              <td align="center" style="padding-bottom:8px;">
+                <img src="${escapeHtml(logoUrl)}" alt="" width="88" height="88" style="display:block;border:0;outline:none;text-decoration:none;width:88px;height:88px;" />
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="color:#18181b;font-size:20px;font-weight:600;padding-bottom:20px;">
                 CodeCoogs
               </td>
             </tr>
@@ -111,6 +128,7 @@ export function renderReinvite(params: InviteParams): RenderedEmail {
     html: renderInviteEmail({
       firstName,
       email,
+      logoUrl: `${siteUrl}${LOGO_PATH}`,
       intro:
         "You started a CodeCoogs account but never finished verifying your email, so you can't sign in yet. Picking a password will verify it at the same time and get you into the app.",
       ctaLabel: "Verify my account",
@@ -134,6 +152,7 @@ export function renderAttendanceInvite(params: InviteParams): RenderedEmail {
     html: renderInviteEmail({
       firstName,
       email,
+      logoUrl: `${siteUrl}${LOGO_PATH}`,
       intro:
         "Thanks for coming to a CodeCoogs event. You don't have an account yet - making one lets you track your points, sign up for events, and manage your membership.",
       ctaLabel: "Create my account",
