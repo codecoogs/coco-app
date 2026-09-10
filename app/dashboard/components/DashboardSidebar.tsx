@@ -448,6 +448,26 @@ export function DashboardSidebar() {
         [profile, canSeePointManagement],
     );
 
+    /**
+     * Management links. A table rather than twelve hand-written blocks so the
+     * collapsed styling is applied once - the old markup ignored `collapsed`,
+     * which left labels clipped and the rail scrolling sideways when minimized.
+     */
+    const managementItems = [
+        { href: "/dashboard/events/manage", label: "Events management", show: hasAnyPermission(profile, ["manage_events"]), d: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
+        { href: "/dashboard/attendance", label: "Attendance", show: can("manage_attendance"), d: "M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" },
+        { href: "/dashboard/officers", label: "Officers", show: can("manage_officers"), d: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" },
+        { href: "/dashboard/permissions", label: "Permissions", show: can("manage_officers"), d: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V6m0 12v-2m8-4a8 8 0 11-16 0 8 8 0 0116 0z" },
+        { href: "/dashboard/team-management", label: "Team management", show: canSeeTeamManagement, d: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
+        { href: "/dashboard/ticket-management", label: "Ticket management", show: can("manage_tickets"), d: "M9 11l3 3L22 4" },
+        { href: "/dashboard/point-management", label: "Point management", show: canSeePointManagement, d: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
+        { href: "/dashboard/memberships", label: "User Management", show: can("manage_memberships"), d: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
+        { href: "/dashboard/memberships/plans", label: "Membership plans", show: can("manage_membership_plans"), d: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
+        { href: "/dashboard/forms/manage", label: "Forms management", show: can("manage_forms"), d: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
+        { href: "/dashboard/opportunities/manage", label: "Opportunities management", show: can("manage_opportunities"), d: "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
+        { href: "/dashboard/finances", label: "Finances", show: canSeeFinances, d: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m0-2c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+    ].filter((item) => item.show);
+
     const showManagementTakeover = canSeeManagement && managementOpen;
 
     const content = (
@@ -533,15 +553,17 @@ export function DashboardSidebar() {
                             </p>
                         )}
 
-                        {hasAnyPermission(profile, ["manage_events"]) ? (
+                        {managementItems.map(({ href, label, d }) => (
                             <Link
-                                href="/dashboard/events/manage"
+                                key={href}
+                                href={href}
                                 onClick={closeMobile}
                                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/events/manage"
+                                    activeHref === href
                                         ? "nav-accent-active border shadow-sm"
                                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
+                                } ${collapsed ? "justify-center px-2" : ""} border border-transparent`}
+                                title={collapsed ? label : undefined}
                             >
                                 <svg
                                     className="h-5 w-5 shrink-0"
@@ -554,326 +576,12 @@ export function DashboardSidebar() {
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
                                         strokeWidth={2}
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                        d={d}
                                     />
                                 </svg>
-                                <span>Events management</span>
+                                {!collapsed && <span>{label}</span>}
                             </Link>
-                        ) : null}
-
-                        {can("manage_attendance") ? (
-                            <Link
-                                href="/dashboard/attendance"
-                                onClick={closeMobile}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/attendance"
-                                        ? "nav-accent-active border shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
-                            >
-                                <svg
-                                    className="h-5 w-5 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                                    />
-                                </svg>
-                                <span>Attendance</span>
-                            </Link>
-                        ) : null}
-
-                        {can("manage_officers") ? (
-                            <Link
-                                href="/dashboard/officers"
-                                onClick={closeMobile}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/officers"
-                                        ? "nav-accent-active border shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
-                            >
-                                <svg
-                                    className="h-5 w-5 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                                    />
-                                </svg>
-                                <span>Officers</span>
-                            </Link>
-                        ) : null}
-
-                        {can("manage_officers") ? (
-                            <Link
-                                href="/dashboard/permissions"
-                                onClick={closeMobile}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/permissions"
-                                        ? "nav-accent-active border shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
-                            >
-                                <svg
-                                    className="h-5 w-5 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V6m0 12v-2m8-4a8 8 0 11-16 0 8 8 0 0116 0z"
-                                    />
-                                </svg>
-                                <span>Permissions</span>
-                            </Link>
-                        ) : null}
-
-                        {canSeeTeamManagement ? (
-                            <Link
-                                href="/dashboard/team-management"
-                                onClick={closeMobile}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/team-management"
-                                        ? "nav-accent-active border shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
-                            >
-                                <svg
-                                    className="h-5 w-5 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                                    />
-                                </svg>
-                                <span>Team management</span>
-                            </Link>
-                        ) : null}
-
-                        {can("manage_tickets") ? (
-                            <Link
-                                href="/dashboard/ticket-management"
-                                onClick={closeMobile}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/ticket-management"
-                                        ? "nav-accent-active border shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
-                            >
-                                <svg
-                                    className="h-5 w-5 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 11l3 3L22 4"
-                                    />
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"
-                                    />
-                                </svg>
-                                <span>Ticket management</span>
-                            </Link>
-                        ) : null}
-
-                        {canSeePointManagement ? (
-                            <Link
-                                href="/dashboard/point-management"
-                                onClick={closeMobile}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/point-management"
-                                        ? "nav-accent-active border shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
-                            >
-                                <svg
-                                    className="h-5 w-5 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                                    />
-                                </svg>
-                                <span>Point management</span>
-                            </Link>
-                        ) : null}
-
-                        {can("manage_memberships") ? (
-                            <Link
-                                href="/dashboard/memberships"
-                                onClick={closeMobile}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/memberships"
-                                        ? "nav-accent-active border shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
-                            >
-                                <svg
-                                    className="h-5 w-5 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                                    />
-                                </svg>
-                                <span>User Management</span>
-                            </Link>
-                        ) : null}
-
-                        {can("manage_membership_plans") ? (
-                            <Link
-                                href="/dashboard/memberships/plans"
-                                onClick={closeMobile}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/memberships/plans"
-                                        ? "nav-accent-active border shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
-                            >
-                                <svg
-                                    className="h-5 w-5 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                    />
-                                </svg>
-                                <span>Membership plans</span>
-                            </Link>
-                        ) : null}
-
-                        {can("manage_forms") ? (
-                            <Link
-                                href="/dashboard/forms/manage"
-                                onClick={closeMobile}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/forms/manage"
-                                        ? "nav-accent-active border shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
-                            >
-                                <svg
-                                    className="h-5 w-5 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                    />
-                                </svg>
-                                <span>Forms management</span>
-                            </Link>
-                        ) : null}
-
-                        {can("manage_opportunities") ? (
-                            <Link
-                                href="/dashboard/opportunities/manage"
-                                onClick={closeMobile}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/opportunities/manage"
-                                        ? "nav-accent-active border shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
-                            >
-                                <svg
-                                    className="h-5 w-5 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                                    />
-                                </svg>
-                                <span>Opportunities management</span>
-                            </Link>
-                        ) : null}
-
-                        {canSeeFinances ? (
-                            <Link
-                                href="/dashboard/finances"
-                                onClick={closeMobile}
-                                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                                    activeHref === "/dashboard/finances"
-                                        ? "nav-accent-active border shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                } border border-transparent`}
-                            >
-                                <svg
-                                    className="h-5 w-5 shrink-0"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    aria-hidden
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 10v2m0-2c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
-                                <span>Finances</span>
-                            </Link>
-                        ) : null}
+                        ))}
                     </nav>
                 </>
             ) : (
