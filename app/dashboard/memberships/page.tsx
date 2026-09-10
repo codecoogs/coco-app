@@ -2,7 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchUserProfile } from "@/lib/supabase/profile";
 import { hasPermission } from "@/lib/types/rbac";
 import { isMembershipCurrent, type MembershipStatus } from "@/lib/types/membership";
-import { getAuthAccounts, getPayments, type AuthAccountRow } from "./actions";
+import {
+  getAuthAccounts,
+  getInvitableContacts,
+  getPayments,
+  type AuthAccountRow,
+  type InvitableContact,
+} from "./actions";
 import { MembershipsPageContent } from "./MembershipsPageContent";
 import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -179,6 +185,8 @@ export default async function MembershipsPage() {
     : { data: [], error: null };
   const accountsRes: { data: AuthAccountRow[]; error: string | null } =
     canManageAccounts ? await getAuthAccounts() : { data: [], error: null };
+  const contactsRes: { data: InvitableContact[]; error: string | null } =
+    canManageAccounts ? await getInvitableContacts() : { data: [], error: null };
 
   return (
     <div className="space-y-8">
@@ -209,6 +217,8 @@ export default async function MembershipsPage() {
           paymentsError={paymentsRes.error}
           accounts={accountsRes.data}
           accountsError={accountsRes.error}
+          contacts={contactsRes.data}
+          contactsError={contactsRes.error}
           canManageMemberships={canManageMemberships}
           canManageAccounts={canManageAccounts}
         />
