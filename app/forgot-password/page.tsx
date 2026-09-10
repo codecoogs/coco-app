@@ -4,8 +4,8 @@ import { OtpInput } from "@/app/components/ui/OtpInput";
 import { PasswordInput } from "@/app/components/ui/PasswordInput";
 import { validateEmail, validatePassword } from "@/lib/validation";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { useResendCountdown } from "@/lib/otp/use-resend-countdown";
 import {
   requestPasswordResetOtp,
@@ -14,9 +14,17 @@ import {
 } from "./actions";
 
 
-export default function ForgotPasswordPage() {
+/**
+ * Wrapped in Suspense below because useSearchParams opts the subtree into
+ * client-side rendering and Next refuses to build a page that reads it
+ * without a boundary.
+ */
+function ForgotPasswordForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  // Prefilled by the reinvite email, so someone who already stalled once on
+  // verification does not have to retype the address we just wrote to.
+  const [email, setEmail] = useState(() => searchParams.get("email") ?? "");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -218,5 +226,13 @@ export default function ForgotPasswordPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordForm />
+    </Suspense>
   );
 }

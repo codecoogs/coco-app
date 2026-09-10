@@ -1,17 +1,16 @@
+import { sendEmail } from "@/lib/email/send";
 import type { OtpPurpose } from "./store";
 
 /**
- * Sent through Resend's API directly rather than through Supabase's mailer.
- * The old path wrote the code into user_metadata and triggered
- * admin.auth.resend()/resetPasswordForEmail() so Supabase would render it,
- * which meant every OTP was charged against Supabase Auth's own per-project
- * email rate limit (and its per-address minimum interval) on top of Resend's
- * — Supabase's limit is the lower of the two, so it was the one we hit. Going
- * straight to Resend also keeps a live code out of user_metadata, which the
- * account holder can read back from its own session.
+ * Sent through Resend rather than Supabase's mailer. The old path wrote the
+ * code into user_metadata and triggered admin.auth.resend() /
+ * resetPasswordForEmail() so Supabase would render it, which meant every OTP
+ * was charged against Supabase Auth's own per-project email rate limit (and
+ * its per-address minimum interval) on top of Resend's - Supabase's limit is
+ * the lower of the two, so it was the one we hit. Going straight to Resend
+ * also keeps a live code out of user_metadata, which the account holder can
+ * read back from its own session.
  */
-
-const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 const PURPOSE_LABEL: Record<OtpPurpose, string> = {
   signup: "verify your account",
@@ -68,41 +67,9 @@ export async function sendOtpEmail(params: {
   code: string;
 }): Promise<{ error?: string }> {
   const { email, purpose, code } = params;
-
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.OTP_EMAIL_FROM;
-  if (!apiKey || !from) {
-    return { error: "Email is not configured. Contact an administrator." };
-  }
-
-  let response: Response;
-  try {
-    response = await fetch(RESEND_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: [email],
-        subject: PURPOSE_SUBJECT[purpose],
-        html: renderOtpEmail(code, purpose),
-      }),
-    });
-  } catch {
-    return { error: "Could not reach the email service. Try again shortly." };
-  }
-
-  if (!response.ok) {
-    // Resend's own message is for us, not the member: it names the account and
-    // can carry the address back verbatim, so log it and return something safe.
-    const detail = await response.text().catch(() => "");
-    console.error(
-      `Resend rejected the OTP email (${response.status}): ${detail}`
-    );
-    return { error: "Could not send the email. Try again shortly." };
-  }
-
-  return {};
+  return sendEmail({
+    to: email,
+    subject: PURPOSE_SUBJECT[purpose],
+    html: renderOtpEmail(code, purpose),
+  });
 }
