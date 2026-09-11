@@ -329,7 +329,7 @@ export async function getFinanceSponsors(): Promise<{
   const { data, error } = await auth.supabase
     .from("finance_sponsors")
     .select("id, name, contact_name, contact_email, stripe_customer_id, is_active, created_at, updated_at")
-    .order("name", { ascending: true });
+    .order("created_at", { ascending: false });
   if (error) return { data: [], error: error.message };
   return { data: data ?? [], error: null };
 }
@@ -380,7 +380,7 @@ export async function getFinanceAccounts(): Promise<{
   const { data, error } = await auth.supabase
     .from("finance_accounts")
     .select("id, name, type, external_id, is_active, created_at, updated_at")
-    .order("type", { ascending: true });
+    .order("created_at", { ascending: false });
   if (error) return { data: [], error: error.message };
   return { data: data ?? [], error: null };
 }
@@ -478,8 +478,7 @@ export async function getFinanceBudgets(academicYearId: string): Promise<{
     .from("finance_categories")
     .select("id, name, type")
     .eq("is_active", true)
-    .order("type", { ascending: true })
-    .order("name", { ascending: true });
+    .order("created_at", { ascending: false });
   if (categoriesError) return { data: [], error: categoriesError.message };
 
   let actualsByCategory = new Map<string, number>();

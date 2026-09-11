@@ -1,5 +1,6 @@
 "use client";
 
+import { PaginationControls, usePagination } from "@/app/components/ui/Pagination";
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/shadcn/tabs";
 import type { Resource } from "@/lib/types/resources";
 import { compareAsc, isPast, parseISO } from "date-fns";
@@ -167,7 +168,7 @@ export function EventsManagementContent({
     setEvents(initialEvents);
   }, [initialEvents]);
   const [hidePast, setHidePast] = useState(false);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [confirmCancelId, setConfirmCancelId] = useState<number | null>(null);
 
@@ -341,6 +342,9 @@ export function EventsManagementContent({
     return list;
   }, [events, hidePast, sortDir]);
 
+  const eventsPage = usePagination(rows);
+  const setEventsPage = eventsPage.setPage;
+
   const attendanceFilteredEvents = useMemo(() => {
     let list = [...rows];
     if (attendanceEventStatusFilter === "active") {
@@ -392,7 +396,8 @@ export function EventsManagementContent({
 
   const toggleSort = useCallback(() => {
     setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-  }, []);
+    setEventsPage(0);
+  }, [setEventsPage]);
 
   const handleTogglePublic = useCallback(
     async (id: number) => {
@@ -464,7 +469,10 @@ export function EventsManagementContent({
             <input
               type="checkbox"
               checked={hidePast}
-              onChange={(e) => setHidePast(e.target.checked)}
+              onChange={(e) => {
+                setHidePast(e.target.checked);
+                setEventsPage(0);
+              }}
               className="rounded border-border"
             />
             Hide past events
@@ -532,7 +540,7 @@ export function EventsManagementContent({
                   </td>
                 </tr>
               ) : (
-                rows.map((row) => {
+                eventsPage.pageItems.map((row) => {
                   const cancelled = row.status === "cancelled";
                   return (
                     <tr
@@ -616,6 +624,7 @@ export function EventsManagementContent({
             </tbody>
           </table>
         </div>
+        <PaginationControls pagination={eventsPage} />
       </section>
       )}
 
