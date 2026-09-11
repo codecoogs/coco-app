@@ -1,5 +1,6 @@
 "use client";
 
+import { PaginationControls, usePagination } from "@/app/components/ui/Pagination";
 import { Badge } from "@/app/components/ui/shadcn/badge";
 import { Button } from "@/app/components/ui/shadcn/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/shadcn/card";
@@ -30,10 +31,8 @@ import type {
 } from "@/lib/types/finance";
 import { useCallback, useMemo, useState } from "react";
 import {
-  createFinanceCategory,
   deleteManualTransaction,
   getFinanceLedger,
-  setFinanceCategoryActive,
   setTransactionVerified,
   type LedgerFilters,
 } from "./actions";
@@ -50,7 +49,6 @@ type Props = {
   categories: FinanceCategory[];
   sponsors: FinanceSponsor[];
   accounts: FinanceAccount[];
-  onCategoriesChange: () => void;
 };
 
 export function LedgerTab({
@@ -59,7 +57,6 @@ export function LedgerTab({
   categories,
   sponsors,
   accounts,
-  onCategoriesChange,
 }: Props) {
   const [ledger, setLedger] = useState(initialLedger.data);
   const [summary, setSummary] = useState(initialLedger.summary);
@@ -70,8 +67,8 @@ export function LedgerTab({
     { mode: "create" } | { mode: "edit"; transaction: FinanceTransactionWithLabels } | null
   >(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">("expense");
+  const ledgerPage = usePagination(ledger);
+  const setLedgerPage = ledgerPage.setPage;
 
   const refresh = useCallback(async (nextFilters: LedgerFilters) => {
     setBusy(true);
@@ -86,9 +83,10 @@ export function LedgerTab({
     (key: keyof LedgerFilters, value: string | undefined) => {
       const next = { ...filters, [key]: value || undefined };
       setFilters(next);
+      setLedgerPage(0);
       refresh(next);
     },
-    [filters, refresh]
+    [filters, refresh, setLedgerPage]
   );
 
   const activeCategories = useMemo(() => categories.filter((c) => c.is_active), [categories]);
@@ -110,17 +108,6 @@ export function LedgerTab({
       return;
     }
     refresh(filters);
-  }
-
-  async function handleAddCategory() {
-    if (!newCategoryName.trim()) return;
-    const res = await createFinanceCategory({ name: newCategoryName.trim(), type: newCategoryType });
-    if (res.error) {
-      alert(res.error);
-      return;
-    }
-    setNewCategoryName("");
-    onCategoriesChange();
   }
 
   return (
@@ -264,7 +251,7 @@ export function LedgerTab({
                 </TableCell>
               </TableRow>
             )}
-            {ledger.map((t) => (
+            {ledgerPage.pageItems.map((t) => (
               <TableRow key={t.id}>
                 <TableCell>{new Date(t.occurred_at).toLocaleDateString()}</TableCell>
                 <TableCell className="max-w-64 truncate">{t.description ?? "—"}</TableCell>
@@ -302,50 +289,8 @@ export function LedgerTab({
             ))}
           </TableBody>
         </Table>
+        <PaginationControls pagination={ledgerPage} />
       </div>
-
-      {canManageFinances && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Categories</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              {categories.map((c) => (
-                <Badge
-                  key={c.id}
-                  variant={c.is_active ? "secondary" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => setFinanceCategoryActive(c.id, !c.is_active).then(onCategoriesChange)}
-                  title={c.is_active ? "Click to deactivate" : "Click to reactivate"}
-                >
-                  {c.name} ({c.type}){!c.is_active && " · inactive"}
-                </Badge>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="new-category-name">New category</Label>
-                <Input
-                  id="new-category-name"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="e.g. Event Supplies"
-                  className="w-56"
-                />
-              </div>
-              <Select value={newCategoryType} onValueChange={(v) => setNewCategoryType(v as "income" | "expense")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="income">Income</SelectItem>
-                  <SelectItem value="expense">Expense</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" onClick={handleAddCategory}>Add category</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {formDialog && (
         <TransactionFormDialog

@@ -1,5 +1,6 @@
 "use client";
 
+import { PaginationControls, usePagination } from "@/app/components/ui/Pagination";
 import { Badge } from "@/app/components/ui/shadcn/badge";
 import { Button } from "@/app/components/ui/shadcn/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/shadcn/card";
@@ -29,6 +30,7 @@ export function SponsorsTab({ canManageFinances, sponsors, onChange }: Props) {
   const [contactEmail, setContactEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sponsorsPage = usePagination(sponsors);
 
   async function handleAdd() {
     if (!name.trim()) return;
@@ -71,7 +73,7 @@ export function SponsorsTab({ canManageFinances, sponsors, onChange }: Props) {
                 </TableCell>
               </TableRow>
             )}
-            {sponsors.map((s) => (
+            {sponsorsPage.pageItems.map((s) => (
               <TableRow key={s.id}>
                 <TableCell>{s.name}</TableCell>
                 <TableCell>{s.contact_name ?? "—"}</TableCell>
@@ -96,6 +98,7 @@ export function SponsorsTab({ canManageFinances, sponsors, onChange }: Props) {
             ))}
           </TableBody>
         </Table>
+        <PaginationControls pagination={sponsorsPage} />
       </div>
 
       {canManageFinances && (

@@ -168,7 +168,7 @@ export async function getEvents(): Promise<{
     .select(
       "id, title, description, location, start_time, end_time, point_category, flyer_url, is_public, status, google_event_id"
     )
-    .order("start_time", { ascending: true, nullsFirst: false });
+    .order("start_time", { ascending: false, nullsFirst: false });
 
   if (error) return { data: [], error: error.message };
 
