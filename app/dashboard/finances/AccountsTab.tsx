@@ -1,5 +1,6 @@
 "use client";
 
+import { PaginationControls, usePagination } from "@/app/components/ui/Pagination";
 import { Badge } from "@/app/components/ui/shadcn/badge";
 import { Button } from "@/app/components/ui/shadcn/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/shadcn/card";
@@ -42,6 +43,7 @@ export function AccountsTab({ accounts, onChange }: Props) {
   const [externalId, setExternalId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const accountsPage = usePagination(accounts);
 
   function startEdit(a: FinanceAccount) {
     setEditingId(a.id);
@@ -97,7 +99,7 @@ export function AccountsTab({ accounts, onChange }: Props) {
                 </TableCell>
               </TableRow>
             )}
-            {accounts.map((a) => (
+            {accountsPage.pageItems.map((a) => (
               <TableRow key={a.id}>
                 <TableCell>{a.name}</TableCell>
                 <TableCell>{TYPE_LABELS[a.type]}</TableCell>
@@ -123,6 +125,7 @@ export function AccountsTab({ accounts, onChange }: Props) {
             ))}
           </TableBody>
         </Table>
+        <PaginationControls pagination={accountsPage} />
       </div>
 
       <Card>

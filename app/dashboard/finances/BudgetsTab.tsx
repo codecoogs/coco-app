@@ -1,5 +1,6 @@
 "use client";
 
+import { PaginationControls, usePagination } from "@/app/components/ui/Pagination";
 import { Button } from "@/app/components/ui/shadcn/button";
 import { Input } from "@/app/components/ui/shadcn/input";
 import {
@@ -43,6 +44,7 @@ export function BudgetsTab({ canManageFinances, academicYears }: Props) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const budgetsPage = usePagination(budgets);
 
   useEffect(() => {
     if (!yearId) return;
@@ -88,7 +90,14 @@ export function BudgetsTab({ canManageFinances, academicYears }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Select value={yearId} onValueChange={(v) => v && setYearId(v)}>
+        <Select
+          value={yearId}
+          onValueChange={(v) => {
+            if (!v) return;
+            setYearId(v);
+            budgetsPage.setPage(0);
+          }}
+        >
           <SelectTrigger>
             <SelectValue>{(v: string) => academicYears.find((y) => y.id === v)?.label ?? v}</SelectValue>
           </SelectTrigger>
@@ -131,7 +140,7 @@ export function BudgetsTab({ canManageFinances, academicYears }: Props) {
                 </TableCell>
               </TableRow>
             )}
-            {budgets.map((b) => {
+            {budgetsPage.pageItems.map((b) => {
               const draft = drafts[b.category_id];
               const diff = b.planned_amount_cents - b.actual_amount_cents;
               return (
@@ -175,6 +184,7 @@ export function BudgetsTab({ canManageFinances, academicYears }: Props) {
             })}
           </TableBody>
         </Table>
+        <PaginationControls pagination={budgetsPage} />
       </div>
     </div>
   );
