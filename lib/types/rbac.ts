@@ -79,6 +79,7 @@ export function isTeamAllowed(profile: UserProfile | null): boolean {
  * - manage_finance_sources: narrower than manage_finances; configuring Stripe/bank accounts only.
  * - view_executive_dashboard: executive-tier growth dashboard (sign-ups, memberships, form submissions).
  * - manage_accounts: sign-in accounts (Accounts tab) - see who has an account and mark an email verified.
+ * - view_tasks / manage_tasks: officer task boards - see a board, and create or move tasks on it.
  */
 export const PERMISSION_NAMES = [
   "view_officers",
@@ -109,6 +110,8 @@ export const PERMISSION_NAMES = [
   "manage_finance_sources",
   "view_executive_dashboard",
   "manage_accounts",
+  "view_tasks",
+  "manage_tasks",
 ] as const;
 
 export type PermissionName = (typeof PERMISSION_NAMES)[number];
