@@ -42,7 +42,7 @@ export type RenderedEmail = { subject: string; html: string };
 const LOGO_PATH = "/images/icons/coco-nice-email.png";
 
 /** First names and emails are member-supplied and land inside markup. */
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

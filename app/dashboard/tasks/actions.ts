@@ -430,6 +430,13 @@ export async function createTask(
     if (assignError) {
       return { id: created.id, error: "The task was created, but you cannot assign it to that person." };
     }
+
+    // The bell, so nobody waits until Sunday to hear they were given something.
+    await Promise.all(
+      input.assigneeIds.map((userId) =>
+        supabase.rpc("notify_task_assigned", { p_task_id: created.id, p_user_id: userId })
+      )
+    );
   }
 
   if (input.labelIds.length) {
@@ -540,6 +547,7 @@ export async function addAssignee(
     return { error: "You can only assign work to yourself or to someone who reports to you." };
   }
 
+  await supabase.rpc("notify_task_assigned", { p_task_id: taskId, p_user_id: userId });
   await logActivity(supabase, taskId, appUserId, "assigned", { user_id: userId });
   revalidatePath(TASKS_PATH);
   return { error: null };
