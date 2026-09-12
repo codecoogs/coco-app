@@ -151,6 +151,26 @@ const navItems: NavItem[] = [
         ),
     },
     {
+        href: "/dashboard/org-chart",
+        label: "Org chart",
+        requiredAnyPermissions: ["view_positions", "manage_positions"],
+        icon: (
+            <svg
+                className="h-5 w-5 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+            >
+                <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 3h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V4a1 1 0 011-1zM4 16h4a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3a1 1 0 011-1zm12 0h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3a1 1 0 011-1zM12 8v4m-6 4v-2a2 2 0 012-2h8a2 2 0 012 2v2"
+                />
+            </svg>
+        ),
+    },
+    {
         href: "/dashboard/opportunities",
         label: "Opportunities",
         icon: (
@@ -241,6 +261,7 @@ const ALL_NAV_HREFS = [
     "/dashboard/events",
     "/dashboard/events/manage",
     "/dashboard/tasks",
+    "/dashboard/org-chart",
     "/dashboard/attendance",
     "/dashboard/opportunities",
     "/dashboard/opportunities/manage",

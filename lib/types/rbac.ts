@@ -80,6 +80,7 @@ export function isTeamAllowed(profile: UserProfile | null): boolean {
  * - view_executive_dashboard: executive-tier growth dashboard (sign-ups, memberships, form submissions).
  * - manage_accounts: sign-in accounts (Accounts tab) - see who has an account and mark an email verified.
  * - view_tasks / manage_tasks: officer task boards - see a board, and create or move tasks on it.
+ * - view_positions / manage_positions: the org chart - see it, and redraw who reports to whom.
  */
 export const PERMISSION_NAMES = [
   "view_officers",
@@ -112,6 +113,8 @@ export const PERMISSION_NAMES = [
   "manage_accounts",
   "view_tasks",
   "manage_tasks",
+  "view_positions",
+  "manage_positions",
 ] as const;
 
 export type PermissionName = (typeof PERMISSION_NAMES)[number];
